@@ -2,20 +2,39 @@
 //  FonstersApp.swift
 //  Fonsters
 //
-//  Created by Nathan Fennel on 2/3/26.
+//  App entry point. Configures SwiftData with the Fonster model and presents
+//  the main Master–Detail content view.
+//
+//  Supported platforms: iOS, macOS, visionOS (as built by the current scheme).
+//  See DOCUMENTATION.md for what works on each platform.
 //
 
 import SwiftUI
 import SwiftData
+import Combine
+
+/// Holds a URL that was used to open the app (custom scheme or universal link); ContentView consumes it and imports seeds.
+final class PendingImportURLHolder: ObservableObject {
+    @Published var url: URL?
+}
 
 @main
 struct FonstersApp: App {
+    #if os(iOS)
+    @UIApplicationDelegateAdaptor(ShakeListenerAppDelegate.self) private var appDelegate
+    #endif
+    @StateObject private var pendingImportURL = PendingImportURLHolder()
+    @State private var loadingComplete = false
+
     var sharedModelContainer: ModelContainer = {
         let schema = Schema([
-            Item.self,
+            Fonster.self,
         ])
-        let modelConfiguration = ModelConfiguration(schema: schema, isStoredInMemoryOnly: false)
-
+        let modelConfiguration = ModelConfiguration(
+            "Synced",
+            schema: schema,
+            cloudKitDatabase: .automatic
+        )
         do {
             return try ModelContainer(for: schema, configurations: [modelConfiguration])
         } catch {
@@ -25,7 +44,17 @@ struct FonstersApp: App {
 
     var body: some Scene {
         WindowGroup {
-            ContentView()
+            if loadingComplete {
+                ContentView()
+                    .environmentObject(pendingImportURL)
+                    #if !os(tvOS) && !os(visionOS)
+                    .onOpenURL { url in
+                        pendingImportURL.url = url
+                    }
+                    #endif
+            } else {
+                LoadingView(onComplete: { loadingComplete = true })
+            }
         }
         .modelContainer(sharedModelContainer)
     }

@@ -34,6 +34,11 @@ enum InstallationSeeds {
         return result
     }
 
+    /// Current time as ISO 8601 string for use as a seed (e.g. when creating a Fonster on empty store at launch).
+    static func currentTimeSeed() -> String {
+        iso8601Time()
+    }
+
     private static func deviceName() -> String {
         #if os(iOS) || os(tvOS) || os(visionOS)
         let name = UIDevice.current.name

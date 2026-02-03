@@ -6,6 +6,12 @@
 	objectVersion = 77;
 	objects = {
 
+/* Begin PBXBuildFile section */
+		8003B57A2F324B9C0035E183 /* Fonsters Watch Clock Extension.appex in Embed Watch Extensions */ = {isa = PBXBuildFile; fileRef = 8003B5712F324B9C0035E183 /* Fonsters Watch Clock Extension.appex */; };
+		8085E0672F328F90009F6980 /* Messages.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 8085E0662F328F90009F6980 /* Messages.framework */; };
+		8085E0732F328F91009F6980 /* Fonsters iMessage Extension.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = 8085E0642F328F90009F6980 /* Fonsters iMessage Extension.appex */; platformFilters = ( ios ); settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
+/* End PBXBuildFile section */
+
 /* Begin PBXContainerItemProxy section */
 		8003B5332F324B9C0035E183 /* PBXContainerItemProxy */ = {
 			isa = PBXContainerItemProxy;
@@ -21,12 +27,55 @@
 			remoteGlobalIDString = 8003B5202F324B9A0035E183;
 			remoteInfo = Fonsters;
 		};
+		8003B57B2F324B9C0035E183 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 8003B5192F324B9A0035E183 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = 8003B5742F324B9C0035E183;
+			remoteInfo = "Fonsters Watch Clock Extension";
+		};
+		8085E0712F328F91009F6980 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 8003B5192F324B9A0035E183 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = 8085E0632F328F90009F6980;
+			remoteInfo = "Fonsters iMessage Extension";
+		};
 /* End PBXContainerItemProxy section */
+
+/* Begin PBXCopyFilesBuildPhase section */
+		8003B57C2F324B9C0035E183 /* Embed Watch Extensions */ = {
+			isa = PBXCopyFilesBuildPhase;
+			buildActionMask = 2147483647;
+			dstPath = "";
+			dstSubfolderSpec = 13;
+			files = (
+				8003B57A2F324B9C0035E183 /* Fonsters Watch Clock Extension.appex in Embed Watch Extensions */,
+			);
+			name = "Embed Watch Extensions";
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		8085E0742F328F91009F6980 /* Embed Foundation Extensions */ = {
+			isa = PBXCopyFilesBuildPhase;
+			buildActionMask = 2147483647;
+			dstPath = "";
+			dstSubfolderSpec = 13;
+			files = (
+				8085E0732F328F91009F6980 /* Fonsters iMessage Extension.appex in Embed Foundation Extensions */,
+			);
+			name = "Embed Foundation Extensions";
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXCopyFilesBuildPhase section */
 
 /* Begin PBXFileReference section */
 		8003B5212F324B9A0035E183 /* Fonsters.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Fonsters.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		8003B5322F324B9C0035E183 /* FonstersTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = FonstersTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		8003B53C2F324B9C0035E183 /* FonstersUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = FonstersUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+		8003B5602F324B9C0035E183 /* Fonsters Watch App.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = "Fonsters Watch App.app"; sourceTree = BUILT_PRODUCTS_DIR; };
+		8003B5712F324B9C0035E183 /* Fonsters Watch Clock Extension.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; path = "Fonsters Watch Clock Extension.appex"; sourceTree = BUILT_PRODUCTS_DIR; };
+		8085E0642F328F90009F6980 /* Fonsters iMessage Extension.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; path = "Fonsters iMessage Extension.appex"; sourceTree = BUILT_PRODUCTS_DIR; };
+		8085E0662F328F90009F6980 /* Messages.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = Messages.framework; path = Library/Frameworks/Messages.framework; sourceTree = DEVELOPER_DIR; };
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
@@ -37,6 +86,57 @@
 			);
 			target = 8003B5202F324B9A0035E183 /* Fonsters */;
 		};
+		8003B5622F324B9C0035E183 /* Exceptions for "Fonsters" folder in "Fonsters Watch App" target */ = {
+			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
+			membershipExceptions = (
+				Assets.xcassets,
+				ContentView.swift,
+				FonstersApp.swift,
+				Info.plist,
+				InstallationSeeds.swift,
+				ShareLoadHelpers.swift,
+			);
+			target = 8003B5632F324B9C0035E183 /* Fonsters Watch App */;
+		};
+		8003B5722F324B9C0035E183 /* Exceptions for "Fonsters" folder in "Fonsters Watch Clock Extension" target */ = {
+			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
+			membershipExceptions = (
+				Assets.xcassets,
+				ContentView.swift,
+				CreatureEnvironmentView.swift,
+				Fonster.swift,
+				FonstersApp.swift,
+				Info.plist,
+				InitialCreatureNames.swift,
+				InstallationSeeds.swift,
+				ShareLoadHelpers.swift,
+			);
+			target = 8003B5742F324B9C0035E183 /* Fonsters Watch Clock Extension */;
+		};
+		8085E0782F328F91009F6980 /* Exceptions for "Fonsters iMessage Extension" folder in "Fonsters iMessage Extension" target */ = {
+			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
+			membershipExceptions = (
+				Info.plist,
+			);
+			target = 8085E0632F328F90009F6980 /* Fonsters iMessage Extension */;
+		};
+		8085E0792F328F91009F6980 /* Exceptions for "Fonsters" folder in "Fonsters iMessage Extension" target */ = {
+			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
+			membershipExceptions = (
+				Assets.xcassets,
+				ClockSeed.swift,
+				ContentView.swift,
+				CreatureEnvironmentView.swift,
+				FonstersApp.swift,
+				Info.plist,
+				InitialCreatureNames.swift,
+				InstallationSeeds.swift,
+				LoadingView.swift,
+				ShareLoadHelpers.swift,
+				UprightCreatureFeature.swift,
+			);
+			target = 8085E0632F328F90009F6980 /* Fonsters iMessage Extension */;
+		};
 /* End PBXFileSystemSynchronizedBuildFileExceptionSet section */
 
 /* Begin PBXFileSystemSynchronizedRootGroup section */
@@ -44,6 +144,9 @@
 			isa = PBXFileSystemSynchronizedRootGroup;
 			exceptions = (
 				8003B5442F324B9C0035E183 /* Exceptions for "Fonsters" folder in "Fonsters" target */,
+				8003B5622F324B9C0035E183 /* Exceptions for "Fonsters" folder in "Fonsters Watch App" target */,
+				8003B5722F324B9C0035E183 /* Exceptions for "Fonsters" folder in "Fonsters Watch Clock Extension" target */,
+				8085E0792F328F91009F6980 /* Exceptions for "Fonsters" folder in "Fonsters iMessage Extension" target */,
 			);
 			path = Fonsters;
 			sourceTree = "<group>";
@@ -56,6 +159,24 @@
 		8003B53F2F324B9C0035E183 /* FonstersUITests */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
 			path = FonstersUITests;
+			sourceTree = "<group>";
+		};
+		8003B5612F324B9C0035E183 /* Fonsters Watch App */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			path = "Fonsters Watch App";
+			sourceTree = "<group>";
+		};
+		8003B5732F324B9C0035E183 /* Fonsters Watch Clock Extension */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			path = "Fonsters Watch Clock Extension";
+			sourceTree = "<group>";
+		};
+		8085E0682F328F90009F6980 /* Fonsters iMessage Extension */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			exceptions = (
+				8085E0782F328F91009F6980 /* Exceptions for "Fonsters iMessage Extension" folder in "Fonsters iMessage Extension" target */,
+			);
+			path = "Fonsters iMessage Extension";
 			sourceTree = "<group>";
 		};
 /* End PBXFileSystemSynchronizedRootGroup section */
@@ -82,6 +203,28 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
+		8003B5652F324B9C0035E183 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		8003B5762F324B9C0035E183 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		8085E0612F328F90009F6980 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				8085E0672F328F90009F6980 /* Messages.framework in Frameworks */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 /* End PBXFrameworksBuildPhase section */
 
 /* Begin PBXGroup section */
@@ -89,8 +232,12 @@
 			isa = PBXGroup;
 			children = (
 				8003B5232F324B9A0035E183 /* Fonsters */,
+				8003B5612F324B9C0035E183 /* Fonsters Watch App */,
+				8003B5732F324B9C0035E183 /* Fonsters Watch Clock Extension */,
 				8003B5352F324B9C0035E183 /* FonstersTests */,
 				8003B53F2F324B9C0035E183 /* FonstersUITests */,
+				8085E0682F328F90009F6980 /* Fonsters iMessage Extension */,
+				8085E0652F328F90009F6980 /* Frameworks */,
 				8003B5222F324B9A0035E183 /* Products */,
 			);
 			sourceTree = "<group>";
@@ -99,10 +246,21 @@
 			isa = PBXGroup;
 			children = (
 				8003B5212F324B9A0035E183 /* Fonsters.app */,
+				8003B5602F324B9C0035E183 /* Fonsters Watch App.app */,
+				8003B5712F324B9C0035E183 /* Fonsters Watch Clock Extension.appex */,
 				8003B5322F324B9C0035E183 /* FonstersTests.xctest */,
 				8003B53C2F324B9C0035E183 /* FonstersUITests.xctest */,
+				8085E0642F328F90009F6980 /* Fonsters iMessage Extension.appex */,
 			);
 			name = Products;
+			sourceTree = "<group>";
+		};
+		8085E0652F328F90009F6980 /* Frameworks */ = {
+			isa = PBXGroup;
+			children = (
+				8085E0662F328F90009F6980 /* Messages.framework */,
+			);
+			name = Frameworks;
 			sourceTree = "<group>";
 		};
 /* End PBXGroup section */
@@ -115,10 +273,12 @@
 				8003B51D2F324B9A0035E183 /* Sources */,
 				8003B51E2F324B9A0035E183 /* Frameworks */,
 				8003B51F2F324B9A0035E183 /* Resources */,
+				8085E0742F328F91009F6980 /* Embed Foundation Extensions */,
 			);
 			buildRules = (
 			);
 			dependencies = (
+				8085E0722F328F91009F6980 /* PBXTargetDependency */,
 			);
 			fileSystemSynchronizedGroups = (
 				8003B5232F324B9A0035E183 /* Fonsters */,
@@ -176,6 +336,77 @@
 			productReference = 8003B53C2F324B9C0035E183 /* FonstersUITests.xctest */;
 			productType = "com.apple.product-type.bundle.ui-testing";
 		};
+		8003B5632F324B9C0035E183 /* Fonsters Watch App */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 8003B5662F324B9C0035E183 /* Build configuration list for PBXNativeTarget "Fonsters Watch App" */;
+			buildPhases = (
+				8003B5642F324B9C0035E183 /* Sources */,
+				8003B5652F324B9C0035E183 /* Frameworks */,
+				8003B5672F324B9C0035E183 /* Resources */,
+				8003B57C2F324B9C0035E183 /* Embed Watch Extensions */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+				8003B5792F324B9C0035E183 /* PBXTargetDependency */,
+			);
+			fileSystemSynchronizedGroups = (
+				8003B5232F324B9A0035E183 /* Fonsters */,
+				8003B5612F324B9C0035E183 /* Fonsters Watch App */,
+			);
+			name = "Fonsters Watch App";
+			packageProductDependencies = (
+			);
+			productName = "Fonsters Watch App";
+			productReference = 8003B5602F324B9C0035E183 /* Fonsters Watch App.app */;
+			productType = "com.apple.product-type.application";
+		};
+		8003B5742F324B9C0035E183 /* Fonsters Watch Clock Extension */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 8003B57D2F324B9C0035E183 /* Build configuration list for PBXNativeTarget "Fonsters Watch Clock Extension" */;
+			buildPhases = (
+				8003B5752F324B9C0035E183 /* Sources */,
+				8003B5762F324B9C0035E183 /* Frameworks */,
+				8003B5772F324B9C0035E183 /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			fileSystemSynchronizedGroups = (
+				8003B5232F324B9A0035E183 /* Fonsters */,
+				8003B5732F324B9C0035E183 /* Fonsters Watch Clock Extension */,
+			);
+			name = "Fonsters Watch Clock Extension";
+			packageProductDependencies = (
+			);
+			productName = "Fonsters Watch Clock Extension";
+			productReference = 8003B5712F324B9C0035E183 /* Fonsters Watch Clock Extension.appex */;
+			productType = "com.apple.product-type.app-extension";
+		};
+		8085E0632F328F90009F6980 /* Fonsters iMessage Extension */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 8085E0772F328F91009F6980 /* Build configuration list for PBXNativeTarget "Fonsters iMessage Extension" */;
+			buildPhases = (
+				8085E0602F328F90009F6980 /* Sources */,
+				8085E0612F328F90009F6980 /* Frameworks */,
+				8085E0622F328F90009F6980 /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			fileSystemSynchronizedGroups = (
+				8003B5232F324B9A0035E183 /* Fonsters */,
+				8085E0682F328F90009F6980 /* Fonsters iMessage Extension */,
+			);
+			name = "Fonsters iMessage Extension";
+			packageProductDependencies = (
+			);
+			productName = "Fonsters iMessage Extension";
+			productReference = 8085E0642F328F90009F6980 /* Fonsters iMessage Extension.appex */;
+			productType = "com.apple.product-type.app-extension.messages";
+		};
 /* End PBXNativeTarget section */
 
 /* Begin PBXProject section */
@@ -197,6 +428,15 @@
 						CreatedOnToolsVersion = 26.2;
 						TestTargetID = 8003B5202F324B9A0035E183;
 					};
+					8003B5632F324B9C0035E183 = {
+						CreatedOnToolsVersion = 26.2;
+					};
+					8003B5742F324B9C0035E183 = {
+						CreatedOnToolsVersion = 26.2;
+					};
+					8085E0632F328F90009F6980 = {
+						CreatedOnToolsVersion = 26.2;
+					};
 				};
 			};
 			buildConfigurationList = 8003B51C2F324B9A0035E183 /* Build configuration list for PBXProject "Fonsters" */;
@@ -214,8 +454,11 @@
 			projectRoot = "";
 			targets = (
 				8003B5202F324B9A0035E183 /* Fonsters */,
+				8003B5632F324B9C0035E183 /* Fonsters Watch App */,
+				8003B5742F324B9C0035E183 /* Fonsters Watch Clock Extension */,
 				8003B5312F324B9C0035E183 /* FonstersTests */,
 				8003B53B2F324B9C0035E183 /* FonstersUITests */,
+				8085E0632F328F90009F6980 /* Fonsters iMessage Extension */,
 			);
 		};
 /* End PBXProject section */
@@ -236,6 +479,27 @@
 			runOnlyForDeploymentPostprocessing = 0;
 		};
 		8003B53A2F324B9C0035E183 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		8003B5672F324B9C0035E183 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		8003B5772F324B9C0035E183 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		8085E0622F328F90009F6980 /* Resources */ = {
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
@@ -266,6 +530,27 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
+		8003B5642F324B9C0035E183 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		8003B5752F324B9C0035E183 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		8085E0602F328F90009F6980 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 /* End PBXSourcesBuildPhase section */
 
 /* Begin PBXTargetDependency section */
@@ -278,6 +563,17 @@
 			isa = PBXTargetDependency;
 			target = 8003B5202F324B9A0035E183 /* Fonsters */;
 			targetProxy = 8003B53D2F324B9C0035E183 /* PBXContainerItemProxy */;
+		};
+		8003B5792F324B9C0035E183 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = 8003B5742F324B9C0035E183 /* Fonsters Watch Clock Extension */;
+			targetProxy = 8003B57B2F324B9C0035E183 /* PBXContainerItemProxy */;
+		};
+		8085E0722F328F91009F6980 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			platformFilters = ( ios );
+			target = 8085E0632F328F90009F6980 /* Fonsters iMessage Extension */;
+			targetProxy = 8085E0712F328F91009F6980 /* PBXContainerItemProxy */;
 		};
 /* End PBXTargetDependency section */
 
@@ -306,24 +602,25 @@
 				"INFOPLIST_KEY_UIStatusBarStyle[sdk=iphonesimulator*]" = UIStatusBarStyleDefault;
 				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
 				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone = "UIInterfaceOrientationPortrait UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
-				IPHONEOS_DEPLOYMENT_TARGET = 26.2;
+				IPHONEOS_DEPLOYMENT_TARGET = 17.6;
 				LD_RUNPATH_SEARCH_PATHS = "@executable_path/Frameworks";
 				"LD_RUNPATH_SEARCH_PATHS[sdk=macosx*]" = "@executable_path/../Frameworks";
-				MACOSX_DEPLOYMENT_TARGET = 26.2;
+				MACOSX_DEPLOYMENT_TARGET = 15.6;
 				MARKETING_VERSION = 1.0;
 				PRODUCT_BUNDLE_IDENTIFIER = com.nathanfennel.Fonsters;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				REGISTER_APP_GROUPS = YES;
 				SDKROOT = auto;
 				STRING_CATALOG_GENERATE_SYMBOLS = YES;
-				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator macosx xros xrsimulator";
+				SUPPORTED_PLATFORMS = "appletvos appletvsimulator iphoneos iphonesimulator macosx xros xrsimulator";
 				SWIFT_APPROACHABLE_CONCURRENCY = YES;
 				SWIFT_DEFAULT_ACTOR_ISOLATION = MainActor;
 				SWIFT_EMIT_LOC_STRINGS = YES;
 				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
 				SWIFT_VERSION = 5.0;
-				TARGETED_DEVICE_FAMILY = "1,2,7";
-				XROS_DEPLOYMENT_TARGET = 26.2;
+				TARGETED_DEVICE_FAMILY = "1,2,3,7";
+				TVOS_DEPLOYMENT_TARGET = 17.6;
+				XROS_DEPLOYMENT_TARGET = 2.6;
 			};
 			name = Debug;
 		};
@@ -351,24 +648,25 @@
 				"INFOPLIST_KEY_UIStatusBarStyle[sdk=iphonesimulator*]" = UIStatusBarStyleDefault;
 				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
 				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone = "UIInterfaceOrientationPortrait UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
-				IPHONEOS_DEPLOYMENT_TARGET = 26.2;
+				IPHONEOS_DEPLOYMENT_TARGET = 17.6;
 				LD_RUNPATH_SEARCH_PATHS = "@executable_path/Frameworks";
 				"LD_RUNPATH_SEARCH_PATHS[sdk=macosx*]" = "@executable_path/../Frameworks";
-				MACOSX_DEPLOYMENT_TARGET = 26.2;
+				MACOSX_DEPLOYMENT_TARGET = 15.6;
 				MARKETING_VERSION = 1.0;
 				PRODUCT_BUNDLE_IDENTIFIER = com.nathanfennel.Fonsters;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				REGISTER_APP_GROUPS = YES;
 				SDKROOT = auto;
 				STRING_CATALOG_GENERATE_SYMBOLS = YES;
-				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator macosx xros xrsimulator";
+				SUPPORTED_PLATFORMS = "appletvos appletvsimulator iphoneos iphonesimulator macosx xros xrsimulator";
 				SWIFT_APPROACHABLE_CONCURRENCY = YES;
 				SWIFT_DEFAULT_ACTOR_ISOLATION = MainActor;
 				SWIFT_EMIT_LOC_STRINGS = YES;
 				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
 				SWIFT_VERSION = 5.0;
-				TARGETED_DEVICE_FAMILY = "1,2,7";
-				XROS_DEPLOYMENT_TARGET = 26.2;
+				TARGETED_DEVICE_FAMILY = "1,2,3,7";
+				TVOS_DEPLOYMENT_TARGET = 17.6;
+				XROS_DEPLOYMENT_TARGET = 2.6;
 			};
 			name = Release;
 		};
@@ -590,6 +888,149 @@
 			};
 			name = Release;
 		};
+		8003B5682F324B9C0035E183 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				CODE_SIGN_ENTITLEMENTS = "Fonsters Watch App/FonstersWatchApp.entitlements";
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = EJLR2RPSV2;
+				GENERATE_INFOPLIST_FILE = YES;
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.nathanfennel.Fonsters.watchkitapp;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = watchos;
+				SKIP_INSTALL = YES;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = 4;
+				WATCHOS_DEPLOYMENT_TARGET = 10.6;
+			};
+			name = Debug;
+		};
+		8003B5692F324B9C0035E183 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				CODE_SIGN_ENTITLEMENTS = "Fonsters Watch App/FonstersWatchApp.entitlements";
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = EJLR2RPSV2;
+				GENERATE_INFOPLIST_FILE = YES;
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.nathanfennel.Fonsters.watchkitapp;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = watchos;
+				SKIP_INSTALL = YES;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = 4;
+				WATCHOS_DEPLOYMENT_TARGET = 10.6;
+			};
+			name = Release;
+		};
+		8003B57E2F324B9C0035E183 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = EJLR2RPSV2;
+				GENERATE_INFOPLIST_FILE = YES;
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.nathanfennel.Fonsters.watchkitapp.clock;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = watchos;
+				SKIP_INSTALL = YES;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = 4;
+				WATCHOS_DEPLOYMENT_TARGET = 11.0;
+			};
+			name = Debug;
+		};
+		8003B57F2F324B9C0035E183 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = EJLR2RPSV2;
+				GENERATE_INFOPLIST_FILE = YES;
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.nathanfennel.Fonsters.watchkitapp.clock;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = watchos;
+				SKIP_INSTALL = YES;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = 4;
+				WATCHOS_DEPLOYMENT_TARGET = 11.0;
+			};
+			name = Release;
+		};
+		8085E0752F328F91009F6980 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = "iMessage App Icon";
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = EJLR2RPSV2;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = "Fonsters iMessage Extension/Info.plist";
+				INFOPLIST_KEY_CFBundleDisplayName = "Fonsters iMessage Extension";
+				INFOPLIST_KEY_NSHumanReadableCopyright = "";
+				IPHONEOS_DEPLOYMENT_TARGET = 26.2;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@executable_path/../../Frameworks",
+				);
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = "com.nathanfennel.Fonsters.Fonsters-iMessage-Extension";
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = iphoneos;
+				SKIP_INSTALL = YES;
+				STRING_CATALOG_GENERATE_SYMBOLS = YES;
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Debug;
+		};
+		8085E0762F328F91009F6980 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = "iMessage App Icon";
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = EJLR2RPSV2;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = "Fonsters iMessage Extension/Info.plist";
+				INFOPLIST_KEY_CFBundleDisplayName = "Fonsters iMessage Extension";
+				INFOPLIST_KEY_NSHumanReadableCopyright = "";
+				IPHONEOS_DEPLOYMENT_TARGET = 26.2;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@executable_path/../../Frameworks",
+				);
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = "com.nathanfennel.Fonsters.Fonsters-iMessage-Extension";
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = iphoneos;
+				SKIP_INSTALL = YES;
+				STRING_CATALOG_GENERATE_SYMBOLS = YES;
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+				VALIDATE_PRODUCT = YES;
+			};
+			name = Release;
+		};
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
@@ -625,6 +1066,33 @@
 			buildConfigurations = (
 				8003B54E2F324B9C0035E183 /* Debug */,
 				8003B54F2F324B9C0035E183 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		8003B5662F324B9C0035E183 /* Build configuration list for PBXNativeTarget "Fonsters Watch App" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				8003B5682F324B9C0035E183 /* Debug */,
+				8003B5692F324B9C0035E183 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		8003B57D2F324B9C0035E183 /* Build configuration list for PBXNativeTarget "Fonsters Watch Clock Extension" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				8003B57E2F324B9C0035E183 /* Debug */,
+				8003B57F2F324B9C0035E183 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		8085E0772F328F91009F6980 /* Build configuration list for PBXNativeTarget "Fonsters iMessage Extension" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				8085E0752F328F91009F6980 /* Debug */,
+				8085E0762F328F91009F6980 /* Release */,
 			);
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;
