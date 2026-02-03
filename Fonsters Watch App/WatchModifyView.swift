@@ -2,57 +2,39 @@
 //  WatchModifyView.swift
 //  Fonsters Watch App
 //
-//  Screen 3: Modify seed – load random (Words/UUID) or simple actions.
+//  Screen 3: Modify seed – load random (local only) or simple actions.
+//  On watchOS we don’t call the API; users can’t see the source. We generate
+//  a random seed from 4 UUIDs with a random number between each for variety.
 //
 
 import SwiftUI
 import SwiftData
 
+/// Generates a random seed locally: 4 UUIDs with a random number between each. No API call.
+private func watchLocalRandomSeed() -> String {
+    let uuids = (0..<4).map { _ in UUID().uuidString }
+    let numbers = (0..<3).map { _ in UInt64.random(in: 0...UInt64.max) }
+    return [
+        uuids[0], String(numbers[0]), uuids[1], String(numbers[1]), uuids[2], String(numbers[2]), uuids[3]
+    ].joined(separator: " ")
+}
+
 struct WatchModifyView: View {
     @Bindable var fonster: Fonster
     @Environment(\.dismiss) private var dismiss
-    @State private var loadingSource: String?
 
     var body: some View {
         List {
             Section("Load random") {
-                ForEach(["words", "uuid"], id: \.self) { source in
-                    Button(source.capitalized) {
-                        Task { await loadRandom(source: source) }
-                    }
-                    .disabled(loadingSource != nil)
-                    if loadingSource == source {
-                        HStack {
-                            ProgressView()
-                            Text("Loading…")
-                                .font(.caption)
-                                .foregroundStyle(.secondary)
-                        }
-                    }
+                Button("Random") {
+                    let seed = watchLocalRandomSeed()
+                    fonster.randomSource = nil
+                    fonster.pushHistoryAndSetSeed(seed)
                 }
             }
         }
         .navigationTitle("Modify")
         .navigationBarTitleDisplayMode(.inline)
     }
-
-    private func loadRandom(source: String) async {
-        loadingSource = source
-        defer { loadingSource = nil }
-        guard let text = await fetchRandomText(source: source) else { return }
-        fonster.randomSource = source
-        fonster.pushHistoryAndSetSeed(text)
-    }
 }
 
-private func fetchRandomText(source: String) async -> String? {
-    let urlString = "https://nathanfennel.com/api/creature-avatar/random-text?source=\(source.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? source)"
-    guard let url = URL(string: urlString) else { return nil }
-    do {
-        let (data, _) = try await URLSession.shared.data(from: url)
-        let json = try JSONSerialization.jsonObject(with: data) as? [String: Any]
-        return json?["text"] as? String
-    } catch {
-        return nil
-    }
-}

@@ -45,12 +45,20 @@ struct TappableCreatureView: View {
 
     @ViewBuilder
     private func creatureWithTransform(state: CreatureTapAnimationState) -> some View {
-        CreatureAvatarView(seed: effectiveSeed, size: size)
+        let rotated = CreatureAvatarView(seed: effectiveSeed, size: size)
             .scaleEffect(x: state.scaleX, y: state.scaleY)
             .rotationEffect(.degrees(state.rotationDegrees), anchor: .center)
+        #if os(visionOS)
+        rotated
+            .rotation3DEffect(.degrees(state.rotation3DY), axis: (x: 0, y: 1, z: 0), anchor: .center)
+            .offset(x: state.offsetX, y: state.offsetY)
+            .opacity(state.opacity)
+        #else
+        rotated
             .rotation3DEffect(.degrees(state.rotation3DY), axis: (x: 0, y: 1, z: 0), anchor: .center, perspective: 0.4)
             .offset(x: state.offsetX, y: state.offsetY)
             .opacity(state.opacity)
+        #endif
     }
 
     @ViewBuilder
@@ -81,11 +89,6 @@ struct TappableCreatureView: View {
 
                 case .rain(let intensity):
                     RainOverlay(intensity: intensity, size: size)
-                        .frame(width: size, height: size)
-                        .allowsHitTesting(false)
-
-                case .snow(let intensity):
-                    SnowOverlay(intensity: intensity, size: size)
                         .frame(width: size, height: size)
                         .allowsHitTesting(false)
 
@@ -172,28 +175,6 @@ private struct RainOverlay: View {
                 path.move(to: CGPoint(x: x, y: 0))
                 path.addLine(to: CGPoint(x: x + 2, y: len))
                 context.stroke(path, with: .color(.white.opacity(alpha)), lineWidth: 1)
-            }
-        }
-    }
-}
-
-private struct SnowOverlay: View {
-    let intensity: CGFloat
-    let size: CGFloat
-
-    private let dotCount = 15
-
-    var body: some View {
-        Canvas { context, canvasSize in
-            for i in 0..<dotCount {
-                let x = (CGFloat(i * 7) + intensity * 20).truncatingRemainder(dividingBy: canvasSize.width + 10) - 5
-                let y = (CGFloat(i * 11) + intensity * 30).truncatingRemainder(dividingBy: canvasSize.height + 10) - 5
-                let r: CGFloat = 1.5
-                let alpha = intensity * 0.8
-                context.fill(
-                    Path(ellipseIn: CGRect(x: x - r, y: y - r, width: r * 2, height: r * 2)),
-                    with: .color(.white.opacity(alpha))
-                )
             }
         }
     }

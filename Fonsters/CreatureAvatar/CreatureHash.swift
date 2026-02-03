@@ -35,12 +35,16 @@ private func stringHash256(_ str: String) -> (UInt32, UInt32, UInt32, UInt32, UI
 }
 
 /// Returns a value in [0, 1) for the given seed and segment id.
-/// Top 53 bits of 256-bit hash / 2^53.
+/// Top 53 bits of 256-bit hash / 2^53. All 8 lanes are combined so that every
+/// character in the seed affects the result (avoiding identical output for
+/// prefixes that only differ in positions 2–7 mod 8).
 public func segmentHash(seed: String, segmentId: String) -> Double {
     let combined = seed + "\0" + segmentId
     let (l0, l1, l2, l3, l4, l5, l6, l7) = stringHash256(combined)
-    // Top 53 bits: lane0 (32 bits) + top 21 bits of lane1
-    let top53 = (UInt64(l0) << 21) | (UInt64(l1) >> 11)
+    // Combine all lanes so each character position contributes; then take 53 bits.
+    let low = l0 ^ l2 ^ l4 ^ l6
+    let high = l1 ^ l3 ^ l5 ^ l7
+    let top53 = (UInt64(high) << 21) | (UInt64(low) >> 11)
     return Double(top53) / 9007199254740992.0  // 2^53
 }
 

@@ -93,6 +93,14 @@ public final class Fonster {
         return today.month == bday.month && today.day == bday.day
     }
 
+    /// True if today is this Fonster's birthday and at least one year has passed since creation (anniversary only, not creation day).
+    public var isBirthdayAnniversary: Bool {
+        guard isBirthdayToday else { return false }
+        let cal = Calendar.current
+        guard let oneYearLater = cal.date(byAdding: .year, value: 1, to: createdAt) else { return false }
+        return Date() >= oneYearLater
+    }
+
     private static let cap = 20
 
     public var history: [String] {
@@ -121,6 +129,15 @@ public final class Fonster {
     public func pushHistoryAndSetSeed(_ newSeed: String) {
         var h = history
         h.append(seed)
+        history = Array(h.suffix(Self.cap))
+        future = []
+        seed = newSeed
+    }
+
+    /// Pushes a previous seed onto history, clears future, and sets seed to newSeed. Use when committing manual edits (e.g. on field blur).
+    public func pushPreviousAndSetSeed(previous: String, newSeed: String) {
+        var h = history
+        h.append(previous)
         history = Array(h.suffix(Self.cap))
         future = []
         seed = newSeed

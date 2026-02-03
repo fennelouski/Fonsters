@@ -35,8 +35,6 @@ private struct EnvKeywordHints {
     let fireworkCount: Int?
     let leaves: Bool
     let leafCount: Int?
-    let snow: Bool
-    let snowCount: Int?
     let christmasLights: Bool
     let christmasLightsCount: Int?
 
@@ -71,10 +69,6 @@ private struct EnvKeywordHints {
         let (fireworksOn, fireworkCount) = singularPlural(singular: "firework", plural: "fireworks", multipleCount: 5)
         let (leavesOn, leafCount) = singularPlural(singular: "leaf", plural: "leaves", multipleCount: 8)
 
-        var snowCount: Int? = nil
-        if let n = numberBefore(word: "snow", plural: "snow") { snowCount = n }
-        let snowOn = lower.contains("snow") || snowCount != nil
-
         var christmasLightsCount: Int? = nil
         if let n = numberBefore(word: "(?:light|lights)", plural: "lights") { christmasLightsCount = n }
         let lightsOn = lower.contains("christmas") || lower.contains("lights") || christmasLightsCount != nil
@@ -96,8 +90,6 @@ private struct EnvKeywordHints {
             fireworkCount: fireworkCount,
             leaves: leavesOn,
             leafCount: leafCount,
-            snow: snowOn,
-            snowCount: snowCount,
             christmasLights: lightsOn,
             christmasLightsCount: christmasLightsCount
         )
@@ -123,8 +115,6 @@ private struct EnvironmentConfig {
     let fireworkCount: Int?
     let leaves: Bool
     let leafCount: Int?
-    let snow: Bool
-    let snowCount: Int?
     let christmasLights: Bool
     let christmasLightsCount: Int?
 
@@ -148,8 +138,6 @@ private struct EnvironmentConfig {
         fireworkCount = hints.fireworkCount
         leaves = segmentRoll(seed: s, segmentId: "env_leaves", p: 0.2) || hints.leaves
         leafCount = hints.leafCount
-        snow = segmentRoll(seed: s, segmentId: "env_snow", p: 0.2) || hints.snow
-        snowCount = hints.snowCount
         christmasLights = segmentRoll(seed: s, segmentId: "env_lights", p: 0.15) || hints.christmasLights
         christmasLightsCount = hints.christmasLightsCount
     }
@@ -261,6 +249,10 @@ struct CreatureEnvironmentView: View {
     private var effectiveSeed: String {
         seed.trimmingCharacters(in: .whitespaces).isEmpty ? " " : seed
     }
+    /// Optional environmental layers show at most 20% of the time (single roll per seed).
+    private var showOptionalEffects: Bool {
+        segmentRoll(seed: effectiveSeed, segmentId: "env_show_effects", p: 0.2)
+    }
 
     var body: some View {
         GeometryReader { geometry in
@@ -269,20 +261,8 @@ struct CreatureEnvironmentView: View {
                 // Base sky gradient (always; tint from seed)
                 skyGradient(seed: effectiveSeed)
 
-                if config.sun { SunLayer(seed: effectiveSeed, size: size) }
-                if config.moon { MoonLayer(seed: effectiveSeed, size: size) }
-                if config.clouds { CloudsLayer(seed: effectiveSeed, size: size, count: config.cloudCount) }
-                if config.snow { SnowLayer(seed: effectiveSeed, size: size, count: config.snowCount) }
-                if config.leaves { LeavesLayer(seed: effectiveSeed, size: size, count: config.leafCount) }
-                if config.flowers { FlowersLayer(seed: effectiveSeed, size: size, count: config.flowerCount) }
-                if config.clovers { CloversLayer(seed: effectiveSeed, size: size, count: config.cloverCount) }
-                if config.butterflies { ButterfliesLayer(seed: effectiveSeed, size: size, count: config.butterflyCount) }
-                if config.birds { BirdsLayer(seed: effectiveSeed, size: size, count: config.birdCount) }
-                if config.fireworks { FireworksLayer(seed: effectiveSeed, size: size, count: config.fireworkCount) }
-                if config.christmasLights { ChristmasLightsLayer(seed: effectiveSeed, size: size, count: config.christmasLightsCount) }
-
-                // Subtle generic particles (low opacity, only if few other layers)
-                ParticlesLayer(seed: effectiveSeed, size: size)
+                if showOptionalEffects && config.sun { SunLayer(seed: effectiveSeed, size: size) }
+                if showOptionalEffects && config.clouds { CloudsLayer(seed: effectiveSeed, size: size, count: config.cloudCount) }
             }
         }
     }
@@ -415,75 +395,6 @@ private struct CloudsLayer: View {
         }
         DispatchQueue.main.asyncAfter(deadline: .now() + dur) {
             clouds.removeAll { $0.id == cloud.id }
-        }
-    }
-}
-
-// MARK: - Snow (falling particles, count from seed or keyword)
-
-private struct SnowLayer: View {
-    let seed: String
-    let size: CGSize
-    let count: Int?
-    @State private var flakes: [Flake] = []
-    @State private var timer: Timer?
-
-    private struct Flake: Identifiable {
-        let id = UUID()
-        var x: CGFloat
-        var y: CGFloat
-        var size: CGFloat
-        var opacity: Double
-    }
-
-    private var initialCount: Int {
-        if let c = count { return min(c * 3, 60) }
-        return 30
-    }
-    private var maxFlakes: Int {
-        if let c = count { return min(c * 6, 120) }
-        return 60
-    }
-
-    var body: some View {
-        ZStack {
-            ForEach(flakes) { f in
-                Circle()
-                    .fill(Color.white.opacity(f.opacity * 0.7))
-                    .frame(width: f.size, height: f.size)
-                    .position(x: f.x, y: f.y)
-            }
-        }
-        .onAppear { startSnow() }
-        .onChange(of: size) { _, _ in startSnow() }
-        .onDisappear { timer?.invalidate() }
-    }
-
-    private func startSnow() {
-        timer?.invalidate()
-        flakes = []
-        for _ in 0..<initialCount { addFlake() }
-        timer = Timer.scheduledTimer(withTimeInterval: 0.15, repeats: true) { _ in
-            if flakes.count < maxFlakes { addFlake() }
-        }
-    }
-
-    private func addFlake() {
-        let i = flakes.count
-        let x = CGFloat(segmentHash(seed: seed, segmentId: "env_snow_x\(i)")) * (size.width + 40) - 20
-        let startY: CGFloat = -10
-        let sz = 2 + CGFloat(segmentPick(seed: seed, segmentId: "env_snow_sz\(i)", n: 4))
-        let op = 0.3 + segmentHash(seed: seed, segmentId: "env_snow_op\(i)") * 0.5
-        let f = Flake(x: x, y: startY, size: sz, opacity: op)
-        flakes.append(f)
-        let idx = flakes.count - 1
-        let dur = 10.0 + Double(segmentPick(seed: seed, segmentId: "env_snow_dur\(i)", n: 12))
-        withAnimation(.linear(duration: dur)) {
-            flakes[idx].y = size.height + 20
-            flakes[idx].x += CGFloat((segmentHash(seed: seed, segmentId: "env_snow_dx\(i)") - 0.5) * 40)
-        }
-        DispatchQueue.main.asyncAfter(deadline: .now() + dur) {
-            flakes.removeAll { $0.id == f.id }
         }
     }
 }

@@ -2,7 +2,7 @@
 //  CreatureTapAnimation.swift
 //  Fonsters
 //
-//  Tap-to-animate: 22 animation types driven by progress t in [0,1].
+//  Tap-to-animate: 21 animation types driven by progress t in [0,1].
 //  Forward 0→1 (500ms), reverse 1→0 (500ms). View-level transforms and overlays only.
 //
 
@@ -21,7 +21,6 @@ public enum CreatureTapAnimation: CaseIterable {
     case shake
     case pulse
     case rain
-    case snow
     case explode
     case wipe
     case dissolve
@@ -33,7 +32,7 @@ public enum CreatureTapAnimation: CaseIterable {
     case spotlight
     case bounceIn
 
-    public static let count = 22
+    public static let count = 21
 
     /// Pick animation deterministically from seed (and optional tap salt for variety).
     public static func pick(seed: String, tapCount: Int = 0) -> CreatureTapAnimation {
@@ -64,8 +63,6 @@ public enum CreatureTapOverlay {
     case eyebrowBand(offsetY: CGFloat, opacity: CGFloat)
     /// Rain: diagonal lines, intensity 0...1
     case rain(intensity: CGFloat)
-    /// Snow: dots drifting, intensity 0...1
-    case snow(intensity: CGFloat)
     /// Explode: radial burst scale 0...1
     case explode(scale: CGFloat, flashOpacity: CGFloat)
     /// Wipe: horizontal reveal 0...1 (0 = hidden, 1 = full)
@@ -147,12 +144,6 @@ extension CreatureTapAnimation {
                 scaleX: 1, scaleY: 1, rotationDegrees: 0, rotation3DY: 0, offsetX: 0, offsetY: 0,
                 opacity: 1,
                 overlay: .rain(intensity: t)
-            )
-        case .snow:
-            return CreatureTapAnimationState(
-                scaleX: 1, scaleY: 1, rotationDegrees: 0, rotation3DY: 0, offsetX: 0, offsetY: 0,
-                opacity: 1,
-                overlay: .snow(intensity: t)
             )
         case .explode:
             let burst = t

@@ -39,7 +39,7 @@ struct WatchListView: View {
                                 .clipShape(RoundedRectangle(cornerRadius: 4))
                             Text(displayName(for: fonster))
                                 .lineLimit(1)
-                            if fonster.isBirthdayToday {
+                            if fonster.isBirthdayAnniversary {
                                 Text("Birthday!")
                                     .font(.caption2)
                                     .foregroundStyle(.secondary)

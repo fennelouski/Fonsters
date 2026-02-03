@@ -21,11 +21,42 @@ import ImageIO
 import UIKit
 #endif
 
+#if os(macOS)
+/// Holder for detail-view actions so the macOS menu can invoke them. The detail view sets these when it appears.
+final class DetailFonsterActionsHolder {
+    var refresh: (() -> Void)?
+    var undo: (() -> Void)?
+    var redo: (() -> Void)?
+    var copySource: (() -> Void)?
+    var togglePlayPause: (() -> Void)?
+    func clear() {
+        refresh = nil
+        undo = nil
+        redo = nil
+        copySource = nil
+        togglePlayPause = nil
+    }
+}
+
+private struct DetailFonsterActionsHolderKey: EnvironmentKey {
+    static let defaultValue: DetailFonsterActionsHolder? = nil
+}
+extension EnvironmentValues {
+    var detailActionsHolder: DetailFonsterActionsHolder? {
+        get { self[DetailFonsterActionsHolderKey.self] }
+        set { self[DetailFonsterActionsHolderKey.self] = newValue }
+    }
+}
+#endif
+
 struct ContentView: View {
     @Environment(\.modelContext) private var modelContext
     @EnvironmentObject private var pendingImportURL: PendingImportURLHolder
     @Query(sort: \Fonster.createdAt, order: .reverse) private var fonsters: [Fonster]
     @State private var selectedId: Fonster.ID?
+    #if os(macOS)
+    @State private var detailActionsHolder = DetailFonsterActionsHolder()
+    #endif
     @State private var showImportSheet = false
     @State private var shareURLWarning = false
     @State private var shareURLToShow: String?
@@ -39,6 +70,9 @@ struct ContentView: View {
     var body: some View {
         uprightContent
             .environmentObject(uprightCreatureState)
+            #if os(macOS)
+            .environment(\.detailActionsHolder, detailActionsHolder)
+            #endif
     }
 
     @ViewBuilder
@@ -53,6 +87,7 @@ struct ContentView: View {
         #endif
     }
 
+    @ViewBuilder
     private var navigationContent: some View {
         NavigationSplitView(columnVisibility: $columnVisibility) {
             VStack(alignment: .leading, spacing: 0) {
@@ -76,7 +111,7 @@ struct ContentView: View {
                                     .clipShape(RoundedRectangle(cornerRadius: 6))
                                 Text(displayName(for: fonster))
                                     .lineLimit(1)
-                                if fonster.isBirthdayToday {
+                                if fonster.isBirthdayAnniversary {
                                     Text("Birthday!")
                                         .font(.caption)
                                         .foregroundStyle(.secondary)
@@ -183,6 +218,9 @@ struct ContentView: View {
         } detail: {
             if let id = selectedId, let fonster = fonsters.first(where: { $0.id == id }) {
                 FonsterDetailView(fonster: fonster)
+                    #if os(macOS)
+                    .onDisappear { detailActionsHolder?.clear() }
+                    #endif
             } else {
                 ContentUnavailableView("Select a Fonster", systemImage: "sparkles")
             }
@@ -207,9 +245,14 @@ struct ContentView: View {
                     }
                 }
                 .keyboardShortcut("p", modifiers: .command)
+                Button("") { duplicateCurrentFonster() }
+                    .keyboardShortcut("d", modifiers: .command)
             }
             .hidden()
         }
+        #endif
+        #if os(macOS)
+        .focusedSceneValue(\.fonstersMenuActions, menuActions)
         #endif
     }
 
@@ -231,6 +274,49 @@ struct ContentView: View {
             selectedId = f.id
         }
     }
+
+    #if os(macOS) || os(iOS)
+    private func duplicateCurrentFonster() {
+        guard let id = selectedId, let f = fonsters.first(where: { $0.id == id }) else { return }
+        withAnimation {
+            let copy = Fonster(
+                name: f.name,
+                seed: f.seed,
+                randomSource: f.randomSource,
+                history: [],
+                future: [],
+                createdAtISO8601: Fonster.currentCreatedAtISO8601()
+            )
+            modelContext.insert(copy)
+            selectedId = copy.id
+        }
+    }
+    #endif
+
+    #if os(macOS)
+    private var menuActions: FonstersMenuActions {
+        FonstersMenuActions(
+            addFonster: addFonster,
+            shareCurrentFonster: {
+                if let id = selectedId, let f = fonsters.first(where: { $0.id == id }) {
+                    shareFonster(f)
+                }
+            },
+            selectFonsterAt: selectFonsterAt,
+            selectPreviousFonster: selectPreviousFonster,
+            selectNextFonster: selectNextFonster,
+            toggleSidebar: {
+                columnVisibility = columnVisibility == .doubleColumn ? .detailOnly : .doubleColumn
+            },
+            refreshCurrentFonster: detailActionsHolder.refresh,
+            undoCurrentFonster: detailActionsHolder.undo,
+            redoCurrentFonster: detailActionsHolder.redo,
+            copySource: detailActionsHolder.copySource,
+            duplicateFonster: duplicateCurrentFonster,
+            togglePlayPause: detailActionsHolder.togglePlayPause
+        )
+    }
+    #endif
 
     #if os(macOS) || os(iOS)
     private func selectFonsterAt(position: Int) {
@@ -425,35 +511,40 @@ struct ImportSheet: View {
 struct FonsterDetailView: View {
     @Environment(\.modelContext) private var modelContext
     @EnvironmentObject private var uprightCreatureState: UprightCreatureState
+    #if os(macOS)
+    @Environment(\.detailActionsHolder) private var detailActionsHolder: DetailFonsterActionsHolder?
+    #endif
     @Bindable var fonster: Fonster
     @State private var seedText: String = ""
     @State private var isPlaying = false
     @State private var playFrameIndex = 0
     @State private var gifLoading = false
     @State private var randomLoading: String?
-    @State private var randomMessage: String?
-    @State private var showRandomMessageAlert = false
     @FocusState private var nameFocused: Bool
     @FocusState private var seedFocused: Bool
     @State private var playTask: Task<Void, Never>?
+    /// 0.1 = 10% (current default speed), 1.0 = 100% (10× faster). Controls Play evolution and GIF frame timing.
+    @State private var animationSpeedMultiplier: Double = 0.1
+    /// When user leaves seed field, push this value as previous for undo (so manual edits are undoable).
+    @State private var seedWhenFocused: String?
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 0) {
-            // Birthday banner when today is this Fonster's birthday
-            if fonster.isBirthdayToday {
-                HStack(spacing: 8) {
-                    Image(systemName: "birthday.cake")
-                    Text("It's \(displayName)'s birthday!")
-                        .font(.subheadline.weight(.medium))
+        ScrollView {
+            VStack(alignment: .leading, spacing: 0) {
+                // Birthday banner when today is this Fonster's birthday (anniversary only)
+                if fonster.isBirthdayAnniversary {
+                    HStack(spacing: 8) {
+                        Image(systemName: "birthday.cake")
+                        Text(birthdayBannerText)
+                            .font(.subheadline.weight(.medium))
+                    }
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, 10)
+                    .padding(.horizontal, 12)
+                    .background(.quaternary.opacity(0.6))
                 }
-                .frame(maxWidth: .infinity)
-                .padding(.vertical, 10)
-                .padding(.horizontal, 12)
-                .background(.quaternary.opacity(0.6))
-            }
 
-            // Form: scrollable so it doesn't push creature off on small windows
-            ScrollView {
+                // Form: name, seed, random buttons
                 VStack(alignment: .leading, spacing: 20) {
                     // Name
                     VStack(alignment: .leading, spacing: 6) {
@@ -493,6 +584,16 @@ struct FonsterDetailView: View {
                             .onChange(of: seedText) { _, newValue in
                                 fonster.seed = newValue
                             }
+                            .onChange(of: seedFocused) { _, focused in
+                                if focused {
+                                    seedWhenFocused = seedText
+                                } else {
+                                    if let prev = seedWhenFocused, prev != seedText {
+                                        fonster.pushPreviousAndSetSeed(previous: prev, newSeed: seedText)
+                                    }
+                                    seedWhenFocused = nil
+                                }
+                            }
                         if let usedLen = usedPrefixLength, usedLen < trimmedSeed.count {
                             let prefix = String(trimmedSeed.prefix(usedLen))
                             HStack(alignment: .top, spacing: 8) {
@@ -517,14 +618,12 @@ struct FonsterDetailView: View {
                                 .controlSize(.small)
                             }
                         }
-                        // Load random: label wraps; buttons scroll so nothing is cut off on small windows
                         randomButtonRow(
                             label: "Load random:",
                             sources: ["quote", "words", "uuid", "lorem"],
                             action: { source in Task { await loadRandom(source: source) } },
                             disabled: randomLoading != nil
                         )
-                        // Prepend random
                         randomButtonRow(
                             label: "Prepend random:",
                             sources: ["quote", "words", "uuid", "lorem"],
@@ -532,29 +631,38 @@ struct FonsterDetailView: View {
                             disabled: randomLoading != nil
                         )
                     }
-
-                    // Created / Birthday
-                    VStack(alignment: .leading, spacing: 4) {
-                        Text("Created")
-                            .font(.subheadline)
-                            .foregroundStyle(.secondary)
-                        Text(createdDateDisplayString(for: fonster))
-                            .font(.subheadline)
-                    }
                 }
                 .padding()
-            }
-            .frame(minHeight: 0)
 
-            // Creature area: environment + preview + play; expands to fill remaining space
-            VStack(spacing: 12) {
+                // Creature area: environment + preview + play
                 creatureSection
+                    .padding(.horizontal)
+                    .padding(.top, 8)
+                Spacer(minLength: 16)
                 actionButtons
+                    .padding(.horizontal)
+                if isPlaying {
+                    animationSpeedSlider
+                        .padding(.horizontal)
+                }
+
+                // Footer: Created date
+                HStack(spacing: 6) {
+                    Text("Created")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                    Text(createdDateDisplayString(for: fonster))
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
+                .frame(maxWidth: .infinity, alignment: .trailing)
+                .padding(.horizontal)
+                .padding(.vertical, 8)
+                .padding(.bottom, 8)
+                .background(.quaternary.opacity(0.4))
             }
-            .padding()
-            .frame(maxWidth: .infinity, maxHeight: .infinity)
-            .frame(minHeight: 280)
         }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
         .navigationTitle(displayName)
         .toolbar {
             ToolbarItem(placement: .primaryAction) {
@@ -577,6 +685,30 @@ struct FonsterDetailView: View {
             isPlaying.toggle()
             return .handled
         }
+        #if os(macOS) || os(iOS)
+        .background {
+            Group {
+                Button("") { Task { await refreshRandom() } }
+                    .keyboardShortcut("r", modifiers: .command)
+                    .disabled(fonster.randomSource == nil || randomLoading != nil)
+                Button("") { _ = fonster.undo() }
+                    .keyboardShortcut("z", modifiers: .command)
+                    .disabled(fonster.history.isEmpty)
+                Button("") { _ = fonster.redo() }
+                    .keyboardShortcut("z", modifiers: [.command, .shift])
+                    .disabled(fonster.future.isEmpty)
+                Button("") { copySourceToPasteboard() }
+                    .keyboardShortcut("c", modifiers: .command)
+                Button("") {
+                    if !nameFocused && !seedFocused && !fonster.seed.trimmingCharacters(in: .whitespaces).isEmpty {
+                        isPlaying.toggle()
+                    }
+                }
+                .keyboardShortcut(.space, modifiers: .command)
+            }
+            .hidden()
+        }
+        #endif
         #if os(tvOS)
         .background(PlayPauseHandlerView(onPlayPause: {
             if !nameFocused && !seedFocused && !fonster.seed.trimmingCharacters(in: .whitespaces).isEmpty {
@@ -584,15 +716,49 @@ struct FonsterDetailView: View {
             }
         }))
         #endif
+        // Reset animation to stopped state on appear/selection/seed change — applies to all platforms (iOS, macOS, tvOS, visionOS).
         .onAppear {
             seedText = fonster.seed
+            // Start in stopped state: full creature visible, animation off.
+            isPlaying = false
+            playTask?.cancel()
+            playTask = nil
+            let s = fonster.seed.trimmingCharacters(in: .whitespaces)
+            playFrameIndex = s.isEmpty ? 0 : s.count
+            #if os(macOS)
+            if let holder = detailActionsHolder {
+                holder.refresh = { Task { await refreshRandom() } }
+                holder.undo = { _ = fonster.undo() }
+                holder.redo = { _ = fonster.redo() }
+                holder.copySource = copySourceToPasteboard
+                holder.togglePlayPause = {
+                    if !nameFocused && !seedFocused && !fonster.seed.trimmingCharacters(in: .whitespaces).isEmpty {
+                        isPlaying.toggle()
+                    }
+                }
+            }
+            #endif
+        }
+        .onChange(of: fonster.id) { _, _ in
+            // When a different Fonster is selected (same as Stop button).
+            isPlaying = false
+            playTask?.cancel()
+            playTask = nil
+            let s = fonster.seed.trimmingCharacters(in: .whitespaces)
+            if !s.isEmpty {
+                playFrameIndex = s.count
+            } else {
+                playFrameIndex = 0
+            }
         }
         .onChange(of: fonster.seed) { _, newValue in
             if seedText != newValue { seedText = newValue }
+            // After every change to source text (keystroke, paste, etc.), same as Stop.
+            isPlaying = false
+            playTask?.cancel()
+            playTask = nil
             let s = newValue.trimmingCharacters(in: .whitespaces)
-            if !s.isEmpty && playFrameIndex > s.count {
-                playFrameIndex = s.count
-            }
+            playFrameIndex = s.isEmpty ? 0 : s.count
         }
         .onChange(of: isPlaying) { _, playing in
             if !playing {
@@ -605,17 +771,13 @@ struct FonsterDetailView: View {
                 }
                 playTask = Task { @MainActor in
                     while !Task.isCancelled && isPlaying {
-                        try? await Task.sleep(nanoseconds: 300_000_000)
+                        let intervalNs = UInt64(playFrameIntervalSeconds * 1_000_000_000)
+                        try? await Task.sleep(nanoseconds: intervalNs)
                         guard !Task.isCancelled else { break }
                         advancePlayFrame()
                     }
                 }
             }
-        }
-        .alert("Random text", isPresented: $showRandomMessageAlert) {
-            Button("OK", role: .cancel) { randomMessage = nil }
-        } message: {
-            Text(randomMessage ?? "")
         }
     }
 
@@ -624,6 +786,15 @@ struct FonsterDetailView: View {
             return fonster.name
         }
         return "Fonster"
+    }
+
+    /// Birthday banner text: named "It's {name}'s birthday!" or "It's your Fonster's Birthday!" when unnamed.
+    private var birthdayBannerText: String {
+        let name = fonster.name.trimmingCharacters(in: .whitespaces)
+        if !name.isEmpty {
+            return "It's \(name)'s birthday!"
+        }
+        return "It's your Fonster's Birthday!"
     }
 
     /// Formatted creation date for display (user's locale).
@@ -640,12 +811,15 @@ struct FonsterDetailView: View {
     }
 
     /// When stopped (playFrameIndex >= count) or not playing and at full length, show full seed; otherwise show prefix for current frame.
+    /// Uses seedText when showing the full seed so the creature updates in real time as the user types.
     private var effectiveSeedForDisplay: String {
         let s = trimmedSeed
-        if s.isEmpty { return " " }
+        if s.isEmpty && seedText.trimmingCharacters(in: .whitespaces).isEmpty { return " " }
         if !isPlaying && playFrameIndex >= s.count {
-            return fonster.seed
+            let live = seedText.trimmingCharacters(in: .whitespaces)
+            return live.isEmpty ? " " : seedText
         }
+        if s.isEmpty { return " " }
         let prefixes = (1...s.count).map { i in String(s.prefix(i)) }
         let idx = min(playFrameIndex % max(1, prefixes.count), prefixes.count - 1)
         return prefixes[idx]
@@ -659,48 +833,43 @@ struct FonsterDetailView: View {
         return min(playFrameIndex + 1, s.count)
     }
 
-    /// Random button row: label wraps; buttons in horizontal scroll so nothing is cut off on small windows.
+    /// Random button row: label on top; buttons wrap to next line when horizontal space is limited.
     private func randomButtonRow(
         label: String,
         sources: [String],
         action: @escaping (String) -> Void,
         disabled: Bool
     ) -> some View {
-        HStack(alignment: .top, spacing: 8) {
+        VStack(alignment: .leading, spacing: 6) {
             Text(label)
-                .font(.caption)
+                .font(.subheadline)
                 .foregroundStyle(.secondary)
-                .fixedSize(horizontal: false, vertical: true)
-            ScrollView(.horizontal, showsIndicators: false) {
-                HStack(spacing: 8) {
-                    ForEach(sources, id: \.self) { source in
-                        Button(source.capitalized) { action(source) }
-                            .buttonStyle(.bordered)
-                            .controlSize(.small)
-                            .disabled(disabled)
-                    }
+            LazyVGrid(columns: [GridItem(.adaptive(minimum: 70))], spacing: 8) {
+                ForEach(sources, id: \.self) { source in
+                    Button(source.capitalized) { action(source) }
+                        .buttonStyle(.bordered)
+                        .controlSize(.small)
+                        .disabled(disabled)
                 }
-                .padding(.vertical, 2)
             }
         }
     }
 
-    /// Creature area that fills available space and sizes the creature to fit (min 200, max 600).
+    /// Creature area: expands to fill space; creature scales to fill its container (no gap).
     private var creatureSection: some View {
         GeometryReader { geo in
-            let padding: CGFloat = 32
-            let availableW = max(0, geo.size.width - padding)
-            let availableH = max(0, geo.size.height - padding - 60) // leave room for play button
-            let size = min(availableW, availableH, 600)
-            let creatureSize = max(200, size)
+            let padding: CGFloat = 24
+            let availableW = max(0, geo.size.width - padding * 2)
+            let availableH = max(0, geo.size.height - padding * 2 - 44) // leave room for play/stop
+            let creatureSize = max(160, min(availableW, availableH))
             ZStack(alignment: .bottomTrailing) {
-                CreatureEnvironmentView(seed: fonster.seed)
+                CreatureEnvironmentView(seed: effectiveSeedForDisplay)
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
                     .clipped()
                     .allowsHitTesting(false)
                 creaturePreviewWithUpright(size: creatureSize)
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
-                    .padding()
+                    .padding(padding)
                     .background(Color.gray.opacity(0.15))
                     .clipShape(RoundedRectangle(cornerRadius: 12))
                 playStopButtons
@@ -708,7 +877,7 @@ struct FonsterDetailView: View {
             .frame(maxWidth: .infinity, maxHeight: .infinity)
             .clipShape(RoundedRectangle(cornerRadius: 12))
         }
-        .frame(minHeight: 280)
+        .frame(minHeight: 200, maxHeight: .infinity)
     }
 
     @ViewBuilder
@@ -727,6 +896,28 @@ struct FonsterDetailView: View {
         #else
         TappableCreatureView(seed: effectiveSeedForDisplay, size: size)
         #endif
+    }
+
+    /// Frame interval in seconds: 0.3 at 10% (current default), 0.03 at 100% (10× faster).
+    private var playFrameIntervalSeconds: Double {
+        let baseSeconds: Double = 0.3
+        let speedFactor = animationSpeedMultiplier * 10 // 1 at 10%, 10 at 100%
+        return baseSeconds / speedFactor
+    }
+
+    private var animationSpeedSlider: some View {
+        HStack(spacing: 8) {
+            Text("Speed")
+                .font(.caption)
+                .foregroundStyle(.secondary)
+                .frame(width: 36, alignment: .leading)
+            Slider(value: $animationSpeedMultiplier, in: 0.1...1.0, step: 0.05)
+            Text("\(Int(animationSpeedMultiplier * 100))%")
+                .font(.caption)
+                .foregroundStyle(.secondary)
+                .frame(width: 28, alignment: .trailing)
+        }
+        .padding(.vertical, 2)
     }
 
     private var playStopButtons: some View {
@@ -771,8 +962,7 @@ struct FonsterDetailView: View {
 
     @ViewBuilder
     private var actionButtons: some View {
-        ScrollView(.horizontal, showsIndicators: false) {
-            HStack(spacing: 12) {
+        LazyVGrid(columns: [GridItem(.adaptive(minimum: 80))], spacing: 8) {
             #if !os(tvOS)
             Button {
                 exportPNG()
@@ -840,8 +1030,6 @@ struct FonsterDetailView: View {
                 .buttonStyle(.bordered)
                 .disabled(fonster.future.isEmpty)
             }
-            }
-            .padding(.horizontal, 4)
         }
     }
 
@@ -880,7 +1068,7 @@ struct FonsterDetailView: View {
         let frames = (1...effective.count).map { i in String(effective.prefix(i)) }
         let metadata = seedMetadata(seed: fonster.seed, createdAtISO8601: fonster.createdAtISO8601, createdAt: fonster.createdAt)
         guard !frames.isEmpty,
-              let gifData = creatureGIFData(seeds: frames, frameDelaySeconds: 0.3, metadata: metadata) else { return }
+              let gifData = creatureGIFData(seeds: frames, frameDelaySeconds: playFrameIntervalSeconds, metadata: metadata) else { return }
         #if os(iOS)
         let filename = safeFilename(seed: exportFilenameSeed(fonster: fonster), ext: "gif")
         let tempURL = FileManager.default.temporaryDirectory.appendingPathComponent(filename)
@@ -913,10 +1101,9 @@ struct FonsterDetailView: View {
         let panel = NSSavePanel()
         panel.allowedContentTypes = [.jpeg]
         panel.nameFieldStringValue = filename
-        panel.begin { response in
-            if response == .OK, let url = panel.url {
-                try? jpegData.write(to: url)
-            }
+        let response = panel.runModal()
+        if response == .OK, let url = panel.url {
+            try? jpegData.write(to: url)
         }
     }
     #endif
@@ -930,14 +1117,10 @@ struct FonsterDetailView: View {
     private func loadRandom(source: String) async {
         randomLoading = source
         defer { randomLoading = nil }
-        let (text, usedFallback) = await fetchRandomTextWithFallback(source: source)
+        let (text, _) = await fetchRandomTextWithFallback(source: source)
         if let text = text {
             fonster.randomSource = source
             fonster.pushHistoryAndSetSeed(text)
-            if usedFallback { randomMessage = "Used local fallback (server unavailable)."; showRandomMessageAlert = true }
-        } else {
-            randomMessage = "Couldn’t load random text. Try again or check your connection."
-            showRandomMessageAlert = true
         }
     }
 
@@ -945,31 +1128,35 @@ struct FonsterDetailView: View {
         guard let source = fonster.randomSource else { return }
         randomLoading = source
         defer { randomLoading = nil }
-        let (text, usedFallback) = await fetchRandomTextWithFallback(source: source)
+        let (text, _) = await fetchRandomTextWithFallback(source: source)
         if let text = text {
             fonster.pushHistoryAndSetSeed(text)
-            if usedFallback { randomMessage = "Used local fallback (server unavailable)."; showRandomMessageAlert = true }
-        } else {
-            randomMessage = "Couldn’t load random text. Try again or check your connection."
-            showRandomMessageAlert = true
         }
     }
 
     private func prependRandom(source: String) async {
         randomLoading = source
         defer { randomLoading = nil }
-        let (text, usedFallback) = await fetchRandomTextWithFallback(source: source)
+        let (text, _) = await fetchRandomTextWithFallback(source: source)
         if let text = text {
             fonster.randomSource = source
             let newSeed = text.trimmingCharacters(in: .whitespaces) + " " + fonster.seed
             fonster.pushHistoryAndSetSeed(newSeed)
             seedText = fonster.seed
-            if usedFallback { randomMessage = "Used local fallback (server unavailable)."; showRandomMessageAlert = true }
-        } else {
-            randomMessage = "Couldn’t load random text. Try again or check your connection."
-            showRandomMessageAlert = true
         }
     }
+
+    #if os(macOS) || os(iOS)
+    private func copySourceToPasteboard() {
+        let text = fonster.seed
+        #if os(iOS)
+        UIPasteboard.general.string = text
+        #elseif os(macOS)
+        NSPasteboard.general.clearContents()
+        NSPasteboard.general.setString(text, forType: .string)
+        #endif
+    }
+    #endif
 }
 
 // MARK: - Helpers (file-private; used by ContentView and FonsterDetailView)
@@ -1071,33 +1258,6 @@ private func jpegData(from cgImage: CGImage, metadata: [String: Any], quality: F
     CGImageDestinationAddImage(dest, opaqueImage, addMetadata as CFDictionary)
     guard CGImageDestinationFinalize(dest) else { return nil }
     return data as Data
-}
-
-/// Fetches random text from API; on failure tries local fallback for "words" and "uuid". Returns (text, usedFallback).
-private func fetchRandomTextWithFallback(source: String) async -> (String?, Bool) {
-    let urlString = "https://nathanfennel.com/api/creature-avatar/random-text?source=\(source.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? source)"
-    guard let url = URL(string: urlString) else { return (localFallbackRandomText(source: source), true) }
-    do {
-        let (data, _) = try await URLSession.shared.data(from: url)
-        let json = try JSONSerialization.jsonObject(with: data) as? [String: Any]
-        if let text = json?["text"] as? String { return (text, false) }
-    } catch { }
-    let fallback = localFallbackRandomText(source: source)
-    return (fallback, fallback != nil)
-}
-
-/// Local fallback when API is unavailable. Supports "words" and "uuid"; returns nil for quote/lorem.
-private func localFallbackRandomText(source: String) -> String? {
-    switch source {
-    case "uuid":
-        return UUID().uuidString
-    case "words":
-        let words = ["glow", "leaf", "coral", "flame", "forest", "river", "stone", "cloud", "star", "moon", "sun", "wind", "wave", "seed", "root", "vine", "frost", "ember", "shadow", "light"]
-        let count = 4 + (words.count % 5)
-        return (0..<count).map { _ in words.randomElement()! }.joined(separator: " ")
-    default:
-        return nil
-    }
 }
 
 // MARK: - tvOS play/pause remote button

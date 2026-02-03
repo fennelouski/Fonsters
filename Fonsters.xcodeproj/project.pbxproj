@@ -9,7 +9,7 @@
 /* Begin PBXBuildFile section */
 		8003B57A2F324B9C0035E183 /* Fonsters Watch Clock Extension.appex in Embed Watch Extensions */ = {isa = PBXBuildFile; fileRef = 8003B5712F324B9C0035E183 /* Fonsters Watch Clock Extension.appex */; };
 		8085E0672F328F90009F6980 /* Messages.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 8085E0662F328F90009F6980 /* Messages.framework */; };
-		8085E0732F328F91009F6980 /* Fonsters iMessage Extension.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = 8085E0642F328F90009F6980 /* Fonsters iMessage Extension.appex */; platformFilters = ( ios ); settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
+		8085E0732F328F91009F6980 /* Fonsters iMessage Extension.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = 8085E0642F328F90009F6980 /* Fonsters iMessage Extension.appex */; platformFilter = ios; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -571,7 +571,7 @@
 		};
 		8085E0722F328F91009F6980 /* PBXTargetDependency */ = {
 			isa = PBXTargetDependency;
-			platformFilters = ( ios );
+			platformFilter = ios;
 			target = 8085E0632F328F90009F6980 /* Fonsters iMessage Extension */;
 			targetProxy = 8085E0712F328F91009F6980 /* PBXContainerItemProxy */;
 		};
@@ -583,13 +583,19 @@
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CODE_SIGN_ENTITLEMENTS = Fonsters/Fonsters.entitlements;
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
 				DEVELOPMENT_TEAM = EJLR2RPSV2;
+				ENABLE_APP_INTENTS_METADATA_EXTRACTION = NO;
+				"ENABLE_APP_INTENTS_METADATA_EXTRACTION[sdk=appletvos*]" = NO;
+				"ENABLE_APP_INTENTS_METADATA_EXTRACTION[sdk=appletvsimulator*]" = NO;
+				"ENABLE_APP_INTENTS_METADATA_EXTRACTION[sdk=xros*]" = NO;
+				"ENABLE_APP_INTENTS_METADATA_EXTRACTION[sdk=xrsimulator*]" = NO;
 				ENABLE_APP_SANDBOX = YES;
 				ENABLE_HARDENED_RUNTIME = YES;
 				ENABLE_PREVIEWS = YES;
-				ENABLE_USER_SELECTED_FILES = readonly;
+				ENABLE_USER_SELECTED_FILES = readwrite;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = Fonsters/Info.plist;
 				"INFOPLIST_KEY_UIApplicationSceneManifest_Generation[sdk=iphoneos*]" = YES;
@@ -629,13 +635,19 @@
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CODE_SIGN_ENTITLEMENTS = Fonsters/Fonsters.entitlements;
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
 				DEVELOPMENT_TEAM = EJLR2RPSV2;
+				ENABLE_APP_INTENTS_METADATA_EXTRACTION = NO;
+				"ENABLE_APP_INTENTS_METADATA_EXTRACTION[sdk=appletvos*]" = NO;
+				"ENABLE_APP_INTENTS_METADATA_EXTRACTION[sdk=appletvsimulator*]" = NO;
+				"ENABLE_APP_INTENTS_METADATA_EXTRACTION[sdk=xros*]" = NO;
+				"ENABLE_APP_INTENTS_METADATA_EXTRACTION[sdk=xrsimulator*]" = NO;
 				ENABLE_APP_SANDBOX = YES;
 				ENABLE_HARDENED_RUNTIME = YES;
 				ENABLE_PREVIEWS = YES;
-				ENABLE_USER_SELECTED_FILES = readonly;
+				ENABLE_USER_SELECTED_FILES = readwrite;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = Fonsters/Info.plist;
 				"INFOPLIST_KEY_UIApplicationSceneManifest_Generation[sdk=iphoneos*]" = YES;
@@ -706,6 +718,7 @@
 				COPY_PHASE_STRIP = NO;
 				DEBUG_INFORMATION_FORMAT = dwarf;
 				DEVELOPMENT_TEAM = EJLR2RPSV2;
+				ENABLE_APP_INTENTS_METADATA_EXTRACTION = NO;
 				ENABLE_STRICT_OBJC_MSGSEND = YES;
 				ENABLE_TESTABILITY = YES;
 				ENABLE_USER_SCRIPT_SANDBOXING = YES;
@@ -768,6 +781,7 @@
 				COPY_PHASE_STRIP = NO;
 				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
 				DEVELOPMENT_TEAM = EJLR2RPSV2;
+				ENABLE_APP_INTENTS_METADATA_EXTRACTION = NO;
 				ENABLE_NS_ASSERTIONS = NO;
 				ENABLE_STRICT_OBJC_MSGSEND = YES;
 				ENABLE_USER_SCRIPT_SANDBOXING = YES;
@@ -975,6 +989,7 @@
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
 				DEVELOPMENT_TEAM = EJLR2RPSV2;
+				ENABLE_APP_INTENTS_METADATA_EXTRACTION = NO;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = "Fonsters iMessage Extension/Info.plist";
 				INFOPLIST_KEY_CFBundleDisplayName = "Fonsters iMessage Extension";
@@ -1006,6 +1021,7 @@
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
 				DEVELOPMENT_TEAM = EJLR2RPSV2;
+				ENABLE_APP_INTENTS_METADATA_EXTRACTION = NO;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = "Fonsters iMessage Extension/Info.plist";
 				INFOPLIST_KEY_CFBundleDisplayName = "Fonsters iMessage Extension";

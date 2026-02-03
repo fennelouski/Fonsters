@@ -22,8 +22,8 @@ public struct CreaturePROB {
     public static let upsideDown: Double = 0.06
     public static let shapeCircleOrEllipse: Double = 0.35
     public static let shapePolygon: Double = 0.5
-    public static let hasEyes: Double = 0.84
-    public static let hasMouth: Double = 0.19
+    public static let hasEyes: Double = 0.95
+    public static let hasMouth: Double = 0.55
     public static let mouthNeutral: Double = 0.4
     public static let mouthOpen: Double = 0.2
     public static let mouthSmiling: Double = 0.4

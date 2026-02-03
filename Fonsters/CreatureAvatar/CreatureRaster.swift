@@ -63,16 +63,29 @@ public func gridToRgbaBuffer(grid: Grid, palette: [String], _ hasOpaqueBackgroun
 }
 
 /// Create a CGImage from a creature grid (for the given seed).
+/// Uses premultiplied alpha format (kCGImageAlphaPremultipliedLast) which is supported
+/// by CGBitmapContextCreate on all platforms including app extensions; non-premultiplied
+/// formats can cause context creation to return nil.
 public func creatureImage(for seed: String) -> CGImage? {
     let effectiveSeed = seed.trimmingCharacters(in: .whitespaces).isEmpty ? " " : seed
     let grid = generateCreatureGrid(seed: effectiveSeed)
     let (palette, _) = getPaletteForSeed(seed: effectiveSeed)
-    var rgba = gridToRgbaBuffer(grid: grid, palette: palette, false)
+    let rgba = gridToRgbaBuffer(grid: grid, palette: palette, false)
+
+    // Convert to premultiplied alpha (required for CGBitmapContextCreate compatibility)
+    var premul = [UInt8](repeating: 0, count: rgba.count)
+    for i in stride(from: 0, to: rgba.count, by: 4) {
+        let a = Double(rgba[i + 3]) / 255.0
+        premul[i] = UInt8(Double(rgba[i]) * a + 0.5)
+        premul[i + 1] = UInt8(Double(rgba[i + 1]) * a + 0.5)
+        premul[i + 2] = UInt8(Double(rgba[i + 2]) * a + 0.5)
+        premul[i + 3] = rgba[i + 3]
+    }
 
     let colorSpace = CGColorSpaceCreateDeviceRGB()
-    let bitmapInfo = CGBitmapInfo.byteOrder32Big.rawValue | (CGImageAlphaInfo.last.rawValue & CGBitmapInfo.alphaInfoMask.rawValue)
+    let bitmapInfo = CGBitmapInfo.byteOrder32Big.rawValue | (CGImageAlphaInfo.premultipliedLast.rawValue & CGBitmapInfo.alphaInfoMask.rawValue)
 
-    return rgba.withUnsafeMutableBytes { (ptr: UnsafeMutableRawBufferPointer) -> CGImage? in
+    return premul.withUnsafeMutableBytes { (ptr: UnsafeMutableRawBufferPointer) -> CGImage? in
         guard let base = ptr.baseAddress else { return nil }
         guard let context = CGContext(
             data: base,
