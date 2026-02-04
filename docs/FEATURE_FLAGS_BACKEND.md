@@ -13,7 +13,7 @@ The app can fetch feature-flag overrides from a backend. This repo includes a Ve
 
 3. **Configure the app**: Set this URL in the app’s **Info.plist** under the key `FeatureFlagBackendURL` (in `Fonsters/Info.plist`). Replace the placeholder with your deployed URL, e.g. `https://fonsters.vercel.app/api/flags`.
 
-4. **Update flags**: Edit `api/flags.json` in the repo (keys must match `FeatureFlag` raw values in the app, e.g. `show_birthday_overlay`, `creature_glow_effect`). Push to GitHub; Vercel will redeploy and the new values will be used on the next app fetch (typically next launch).
+4. **Update flags**: Edit `config/flags.json` in the repo (keys must match `FeatureFlag` raw values in the app, e.g. `show_birthday_overlay`, `creature_glow_effect`). Push to GitHub; Vercel will redeploy and the new values will be used on the next app fetch (typically next launch).
 
 ## Lock-on-read behavior
 
@@ -24,7 +24,7 @@ Each flag’s value is **locked on first read** for the rest of the app session:
 - Every later read of that same flag in the same session returns the cached value, even if the backend is fetched again or returns different data.
 - Locks clear only when the app process ends (e.g. next launch).
 
-So you can change `api/flags.json` and redeploy; the new values apply only to flags that have not yet been read in an already-running app, and to all flags on the next app launch.
+So you can change `config/flags.json` and redeploy; the new values apply only to flags that have not yet been read in an already-running app, and to all flags on the next app launch.
 
 ## API format
 

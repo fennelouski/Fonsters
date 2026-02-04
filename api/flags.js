@@ -1,17 +1,20 @@
 /**
  * Vercel serverless function: GET /api/flags
  * Returns feature-flag overrides as JSON. Keys must match FeatureFlag raw values in the app.
- * Edit api/flags.json and push to update flags (redeploys automatically).
+ * Edit config/flags.json and push to update flags (redeploys automatically).
+ *
+ * Flags JSON lives in config/ (not api/) to avoid Vercel path conflicts:
+ * api/flags.js and api/flags.json would both map to /api/flags.
  */
 
 const path = require('path');
 const fs = require('fs');
 
 function getFlagsPath() {
-  // Prefer same directory as this file (works when deployed)
-  const here = path.join(__dirname, 'flags.json');
-  if (fs.existsSync(here)) return here;
-  return path.join(process.cwd(), 'api', 'flags.json');
+  const configPath = path.join(process.cwd(), 'config', 'flags.json');
+  if (fs.existsSync(configPath)) return configPath;
+  // Fallback for local dev if config/ is elsewhere
+  return path.join(__dirname, '..', 'config', 'flags.json');
 }
 
 module.exports = function handler(req, res) {
