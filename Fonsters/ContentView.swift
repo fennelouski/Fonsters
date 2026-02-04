@@ -21,42 +21,12 @@ import ImageIO
 import UIKit
 #endif
 
-#if os(macOS)
-/// Holder for detail-view actions so the macOS menu can invoke them. The detail view sets these when it appears.
-final class DetailFonsterActionsHolder {
-    var refresh: (() -> Void)?
-    var undo: (() -> Void)?
-    var redo: (() -> Void)?
-    var copySource: (() -> Void)?
-    var togglePlayPause: (() -> Void)?
-    func clear() {
-        refresh = nil
-        undo = nil
-        redo = nil
-        copySource = nil
-        togglePlayPause = nil
-    }
-}
-
-private struct DetailFonsterActionsHolderKey: EnvironmentKey {
-    static let defaultValue: DetailFonsterActionsHolder? = nil
-}
-extension EnvironmentValues {
-    var detailActionsHolder: DetailFonsterActionsHolder? {
-        get { self[DetailFonsterActionsHolderKey.self] }
-        set { self[DetailFonsterActionsHolderKey.self] = newValue }
-    }
-}
-#endif
-
 struct ContentView: View {
     @Environment(\.modelContext) private var modelContext
+    @Environment(\.colorScheme) private var colorScheme
     @EnvironmentObject private var pendingImportURL: PendingImportURLHolder
     @Query(sort: \Fonster.createdAt, order: .reverse) private var fonsters: [Fonster]
     @State private var selectedId: Fonster.ID?
-    #if os(macOS)
-    @State private var detailActionsHolder = DetailFonsterActionsHolder()
-    #endif
     @State private var showImportSheet = false
     @State private var shareURLWarning = false
     @State private var shareURLToShow: String?
@@ -66,13 +36,17 @@ struct ContentView: View {
     @State private var showDeleteConfirmation = false
     @State private var columnVisibility: NavigationSplitViewVisibility = .doubleColumn
     @StateObject private var uprightCreatureState = UprightCreatureState()
+    @StateObject private var onboardingCoordinator = OnboardingCoordinator()
+    @EnvironmentObject private var featureFlags: FeatureFlagStore
+    @State private var showHelpSheet = false
+    #if DEBUG
+    @State private var showFeatureFlagDebug = false
+    #endif
 
     var body: some View {
         uprightContent
             .environmentObject(uprightCreatureState)
-            #if os(macOS)
-            .environment(\.detailActionsHolder, detailActionsHolder)
-            #endif
+            .environmentObject(onboardingCoordinator)
     }
 
     @ViewBuilder
@@ -87,92 +61,44 @@ struct ContentView: View {
         #endif
     }
 
-    @ViewBuilder
     private var navigationContent: some View {
         NavigationSplitView(columnVisibility: $columnVisibility) {
-            VStack(alignment: .leading, spacing: 0) {
-                // Sidebar branding header
-                HStack(spacing: 10) {
-                    Image("Logo")
-                        .resizable()
-                        .aspectRatio(contentMode: .fit)
-                        .frame(width: 28, height: 28)
-                    Text("Fonsters")
-                        .font(.title2.weight(.semibold))
+            sidebarColumn
+        } detail: {
+            detailColumn
+        }
+        #if os(macOS) || os(iOS)
+        .background {
+            keyboardShortcutButtons
+        }
+        #endif
+        #if os(macOS)
+        .focusedSceneValue(\.fonstersMenuActions, FonstersMenuActions(
+            addFonster: addFonster,
+            shareCurrentFonster: {
+                if let id = selectedId, let fonster = fonsters.first(where: { $0.id == id }) {
+                    shareFonster(fonster)
                 }
-                .padding(.horizontal, 12)
-                .padding(.vertical, 10)
-
-                List(selection: $selectedId) {
-                    ForEach(fonsters) { fonster in
-                        NavigationLink(value: fonster.id) {
-                            HStack(spacing: 12) {
-                                CreatureAvatarView(seed: fonster.seed, size: 48)
-                                    .clipShape(RoundedRectangle(cornerRadius: 6))
-                                Text(displayName(for: fonster))
-                                    .lineLimit(1)
-                                if fonster.isBirthdayAnniversary {
-                                    Text("Birthday!")
-                                        .font(.caption)
-                                        .foregroundStyle(.secondary)
-                                }
-                            }
-                        }
-                        #if os(macOS)
-                        .contextMenu {
-                            Button {
-                                shareFonster(fonster)
-                            } label: {
-                                Label("Share", systemImage: "square.and.arrow.up")
-                            }
-                            Button(role: .destructive) {
-                                if let index = fonsters.firstIndex(where: { $0.id == fonster.id }) {
-                                    deleteFonsters(offsets: IndexSet(integer: index))
-                                }
-                            } label: {
-                                Label("Delete", systemImage: "trash")
-                            }
-                        }
-                        #endif
-                    }
-                    .onDelete(perform: deleteFonsters)
-                }
+            },
+            selectFonsterAt: selectFonsterAt,
+            selectPreviousFonster: selectPreviousFonster,
+            selectNextFonster: selectNextFonster,
+            toggleSidebar: {
+                columnVisibility = columnVisibility == .doubleColumn ? .detailOnly : .doubleColumn
             }
+        ))
+        #endif
+    }
+
+    private var sidebarColumn: some View {
+        sidebarColumnContent
             #if os(macOS)
             .navigationSplitViewColumnWidth(min: 180, ideal: 220)
             #endif
-            .toolbar {
-                #if os(iOS)
-                ToolbarItem(placement: .navigationBarTrailing) {
-                    EditButton()
-                }
-                #endif
-                ToolbarItem {
-                    Button(action: addFonster) {
-                        Label("Add Fonster", systemImage: "plus")
-                    }
-                }
-                ToolbarItem {
-                    Button(action: shareFonsters) {
-                        Label("Share", systemImage: "square.and.arrow.up")
-                    }
-                }
-                ToolbarItem {
-                    Button(action: { showImportSheet = true }) {
-                        Label("Import", systemImage: "square.and.arrow.down")
-                    }
-                }
-                #if os(macOS) || os(iOS)
-                ToolbarItem {
-                    Button {
-                        columnVisibility = columnVisibility == .doubleColumn ? .detailOnly : .doubleColumn
-                    } label: {
-                        Label("Toggle Sidebar", systemImage: "sidebar.left")
-                    }
-                    .keyboardShortcut(KeyEquivalent("`"), modifiers: [.command, .option])
-                }
-                #endif
-            }
+            #if os(iOS)
+            .navigationBarTitleDisplayMode(.inline)
+            #endif
+            .toolbar(content: sidebarToolbar)
             .navigationTitle("Fonsters")
             .sheet(isPresented: $showImportSheet) {
                 ImportSheet(onImport: { _ = importSeeds($0) }, onDismiss: { showImportSheet = false })
@@ -180,7 +106,7 @@ struct ContentView: View {
             .alert("Share link too long", isPresented: $shareURLWarning) {
                 Button("OK", role: .cancel) { }
             } message: {
-                Text("Try fewer or shorter seeds so the URL stays under 2,000 characters.")
+                Text("Try fewer creatures or shorter text so the link stays under 2,000 characters.")
             }
             #if os(tvOS)
             .alert("Share URL", isPresented: $showShareURLAlert) {
@@ -190,9 +116,7 @@ struct ContentView: View {
             }
             #endif
             .confirmationDialog(deleteConfirmationTitle, isPresented: $showDeleteConfirmation, titleVisibility: .visible) {
-                Button("Cancel", role: .cancel) {
-                    pendingDeleteOffsets = nil
-                }
+                Button("Cancel", role: .cancel) { pendingDeleteOffsets = nil }
                 Button("Delete", role: .destructive) {
                     if let offsets = pendingDeleteOffsets {
                         performDeleteFonsters(offsets: offsets)
@@ -204,57 +128,365 @@ struct ContentView: View {
             }
             .onChange(of: pendingImportURL.url) { _, url in
                 guard let url = url else { return }
-                if let seeds = parseSeedsFromShareURL(url.absoluteString) {
-                    if let firstId = importSeeds(seeds) {
-                        selectedId = firstId
-                    }
+                if let seeds = parseSeedsFromShareURL(url.absoluteString),
+                   let firstId = importSeeds(seeds) {
+                    selectedId = firstId
                 }
                 pendingImportURL.url = nil
             }
             .task {
                 await seedInitialCreaturesIfNeeded()
                 await ensureSelectionOnLaunch()
+                #if canImport(Tips)
+                OnboardingCoordinator.shared = onboardingCoordinator
+                if !onboardingCoordinator.hasCompletedOnboarding {
+                    onboardingCoordinator.startWalkthrough()
+                }
+                #endif
             }
-        } detail: {
-            if let id = selectedId, let fonster = fonsters.first(where: { $0.id == id }) {
-                FonsterDetailView(fonster: fonster)
-                    #if os(macOS)
-                    .onDisappear { detailActionsHolder?.clear() }
-                    #endif
-            } else {
-                ContentUnavailableView("Select a Fonster", systemImage: "sparkles")
+            .sheet(isPresented: $showHelpSheet) {
+                HelpSheetView()
             }
+            #if DEBUG
+            .sheet(isPresented: $showFeatureFlagDebug) {
+                FeatureFlagDebugSheet(store: featureFlags)
+            }
+            #endif
+    }
+
+    private var sidebarColumnContent: some View {
+        VStack(alignment: .leading, spacing: 0) {
+            #if !os(iOS)
+            sidebarHeader
+            #endif
+            sidebarFonstersList
+            #if !os(iOS)
+            sidebarFooter
+            #endif
         }
-        #if os(macOS) || os(iOS)
-        .background {
+    }
+
+    @ViewBuilder
+    private var sidebarFooter: some View {
+        #if os(iOS)
+        VStack(spacing: 0) {
+            #if canImport(Tips)
             Group {
-                ForEach(1...10, id: \.self) { position in
-                    let keyChar = Character(Unicode.Scalar(48 + (position == 10 ? 0 : position))!)
-                    Button("") { selectFonsterAt(position: position) }
-                        .keyboardShortcut(KeyEquivalent(keyChar), modifiers: .command)
-                }
-                Button("") { selectPreviousFonster() }
-                    .keyboardShortcut(.upArrow, modifiers: [])
-                Button("") { selectNextFonster() }
-                    .keyboardShortcut(.downArrow, modifiers: [])
-                Button("") { addFonster() }
-                    .keyboardShortcut("n", modifiers: .command)
-                Button("") {
-                    if let id = selectedId, let fonster = fonsters.first(where: { $0.id == id }) {
-                        shareFonster(fonster)
+                if onboardingCoordinator.shouldShowTip(for: 1) {
+                    Button(action: addFonster) {
+                        HStack(alignment: .center) {
+                            Label("Add Fonster", systemImage: "plus")
+                                .font(.caption)
+                            Spacer(minLength: 0)
+                        }
+                        .frame(maxWidth: .infinity, minHeight: 44)
                     }
+                    .buttonStyle(.borderless)
+                    .popoverTip(AddFonsterTip())
+                } else {
+                    Button(action: addFonster) {
+                        HStack(alignment: .center) {
+                            Label("Add Fonster", systemImage: "plus")
+                                .font(.caption)
+                            Spacer(minLength: 0)
+                        }
+                        .frame(maxWidth: .infinity, minHeight: 44)
+                    }
+                    .buttonStyle(.borderless)
                 }
-                .keyboardShortcut("p", modifiers: .command)
-                Button("") { duplicateCurrentFonster() }
-                    .keyboardShortcut("d", modifiers: .command)
             }
-            .hidden()
+            .padding(.horizontal, 12)
+            .background(.ultraThinMaterial)
+            Button {
+                onboardingCoordinator.showTipsAgain()
+            } label: {
+                HStack(alignment: .center) {
+                    Label("Show tips again", systemImage: "lightbulb")
+                        .font(.caption)
+                    Spacer(minLength: 0)
+                }
+                .frame(maxWidth: .infinity, minHeight: 44)
+            }
+            .buttonStyle(.borderless)
+            .padding(.horizontal, 12)
+            .background(.ultraThinMaterial)
+            #else
+            Button(action: addFonster) {
+                HStack(alignment: .center) {
+                    Label("Add Fonster", systemImage: "plus")
+                        .font(.caption)
+                    Spacer(minLength: 0)
+                }
+                .frame(maxWidth: .infinity, minHeight: 44)
+            }
+            .buttonStyle(.plain)
+            .padding(.horizontal, 12)
+            .background(.ultraThinMaterial)
+            Button {
+                showHelpSheet = true
+            } label: {
+                HStack(alignment: .center) {
+                    Label("How to use Fonsters", systemImage: "questionmark.circle")
+                        .font(.caption)
+                    Spacer(minLength: 0)
+                }
+                .frame(maxWidth: .infinity, minHeight: 44)
+            }
+            .buttonStyle(.plain)
+            .padding(.horizontal, 12)
+            .background(.ultraThinMaterial)
+            #endif
         }
+        #else
+        #if canImport(Tips)
+        Button {
+            onboardingCoordinator.showTipsAgain()
+        } label: {
+            Label("Show tips again", systemImage: "lightbulb")
+                .font(.caption)
+        }
+        .buttonStyle(.borderless)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(.horizontal, 12)
+        .padding(.vertical, 8)
+        .background(.quaternary.opacity(0.4))
+        #else
+        Button {
+            showHelpSheet = true
+        } label: {
+            Label("How to use Fonsters", systemImage: "questionmark.circle")
+                .font(.caption)
+        }
+        .buttonStyle(.plain)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(.horizontal, 12)
+        .padding(.vertical, 8)
+        .background(.quaternary.opacity(0.4))
         #endif
-        #if os(macOS)
-        .focusedSceneValue(\.fonstersMenuActions, menuActions)
         #endif
     }
+
+    private var sidebarHeader: some View {
+        HStack(spacing: 10) {
+            Image("Logo")
+                .resizable()
+                .aspectRatio(contentMode: .fit)
+                .frame(width: 28, height: 28)
+            Text("Fonsters")
+                .font(.title2.weight(.semibold))
+        }
+        .padding(.horizontal, 12)
+        .padding(.vertical, 10)
+    }
+
+    @ViewBuilder
+    private var sidebarFonstersList: some View {
+        List(selection: $selectedId) {
+            ForEach(fonsters) { fonster in
+                NavigationLink(value: fonster.id) {
+                    sidebarRow(for: fonster)
+                }
+                #if os(iOS)
+                .listRowBackground(colorScheme == .dark ? Color(white: 0.2) : Color(uiColor: .secondarySystemGroupedBackground))
+                #endif
+                #if os(macOS)
+                .contextMenu {
+                    Button {
+                        shareFonster(fonster)
+                    } label: {
+                        Label("Share", systemImage: "square.and.arrow.up")
+                    }
+                    Button(role: .destructive) {
+                        if let index = fonsters.firstIndex(where: { $0.id == fonster.id }) {
+                            deleteFonsters(offsets: IndexSet(integer: index))
+                        }
+                    } label: {
+                        Label("Delete", systemImage: "trash")
+                    }
+                }
+                #endif
+            }
+            .onDelete(perform: deleteFonsters)
+            #if os(iOS)
+            Section {
+                #if canImport(Tips)
+                Group {
+                    if onboardingCoordinator.shouldShowTip(for: 1) {
+                        Button(action: addFonster) {
+                            Label("Add Fonster", systemImage: "plus")
+                        }
+                        .popoverTip(AddFonsterTip())
+                    } else {
+                        Button(action: addFonster) {
+                            Label("Add Fonster", systemImage: "plus")
+                        }
+                    }
+                }
+                Button {
+                    onboardingCoordinator.showTipsAgain()
+                } label: {
+                    Label("Show tips again", systemImage: "lightbulb")
+                }
+                #else
+                Button(action: addFonster) {
+                    Label("Add Fonster", systemImage: "plus")
+                }
+                Button {
+                    showHelpSheet = true
+                } label: {
+                    Label("How to use Fonsters", systemImage: "questionmark.circle")
+                }
+                #endif
+            }
+            .listRowBackground(Rectangle().fill(.ultraThinMaterial))
+            #endif
+        }
+        #if canImport(Tips)
+        .modifier(ConditionalPopoverTip(step: 3, tip: ListTip(), coordinator: onboardingCoordinator))
+        #endif
+    }
+
+    private func sidebarRow(for fonster: Fonster) -> some View {
+        HStack(spacing: 12) {
+            CreatureAvatarView(seed: fonster.seed, size: 48)
+                .clipShape(RoundedRectangle(cornerRadius: 6))
+            Text(displayName(for: fonster))
+                .lineLimit(1)
+            if fonster.isBirthdayAnniversary {
+                Text("Birthday!")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
+        }
+    }
+
+    @ToolbarContentBuilder
+    private func sidebarToolbar() -> some ToolbarContent {
+        #if os(iOS)
+        ToolbarItem(placement: .navigationBarLeading) {
+            Button(action: addFonster) {
+                Image(systemName: "plus")
+            }
+        }
+        ToolbarItem(placement: .navigationBarTrailing) {
+            EditButton()
+        }
+        #endif
+        #if canImport(Tips)
+        #if !os(iOS)
+        ToolbarItem {
+            Group {
+                if onboardingCoordinator.shouldShowTip(for: 1) {
+                    Button(action: addFonster) { Label("Add Fonster", systemImage: "plus") }
+                        .popoverTip(AddFonsterTip())
+                } else {
+                    Button(action: addFonster) { Label("Add Fonster", systemImage: "plus") }
+                }
+            }
+        }
+        #endif
+        #if !os(iOS)
+        ToolbarItem {
+            Group {
+                if onboardingCoordinator.shouldShowTip(for: 2) {
+                    Button(action: shareFonsters) { Label("Share", systemImage: "square.and.arrow.up") }
+                        .popoverTip(ShareImportTip())
+                } else {
+                    Button(action: shareFonsters) { Label("Share", systemImage: "square.and.arrow.up") }
+                }
+            }
+        }
+        ToolbarItem {
+            Button(action: { showImportSheet = true }) {
+                Label("Import", systemImage: "square.and.arrow.down")
+            }
+        }
+        #endif
+        #else
+        #if !os(iOS)
+        ToolbarItem {
+            Button(action: addFonster) {
+                Label("Add Fonster", systemImage: "plus")
+            }
+        }
+        ToolbarItem {
+            Button(action: shareFonsters) {
+                Label("Share", systemImage: "square.and.arrow.up")
+            }
+        }
+        ToolbarItem {
+            Button(action: { showImportSheet = true }) {
+                Label("Import", systemImage: "square.and.arrow.down")
+            }
+        }
+        #endif
+        #endif
+        #if os(macOS)
+        ToolbarItem {
+            Button {
+                columnVisibility = columnVisibility == .doubleColumn ? .detailOnly : .doubleColumn
+            } label: {
+                Label("Show/Hide Sidebar", systemImage: "sidebar.left")
+            }
+            .keyboardShortcut(KeyEquivalent("`"), modifiers: [.command, .option])
+        }
+        #endif
+        #if DEBUG
+        ToolbarItem(placement: .primaryAction) {
+            Button {
+                showFeatureFlagDebug = true
+            } label: {
+                Label("Feature Flags", systemImage: "flag")
+            }
+        }
+        #endif
+    }
+
+    @ViewBuilder
+    private var detailColumn: some View {
+        if let id = selectedId, let fonster = fonsters.first(where: { $0.id == id }) {
+            #if os(iOS)
+            NavigationStack {
+                FonsterDetailView(fonster: fonster, onShare: shareFonster)
+            }
+            #else
+            FonsterDetailView(fonster: fonster)
+            #endif
+        } else {
+            ContentUnavailableView("Select a Fonster", systemImage: "sparkles")
+        }
+    }
+
+    #if os(macOS) || os(iOS)
+    private var keyboardShortcutButtons: some View {
+        Group {
+            ForEach(1...10, id: \.self) { position in
+                keyboardShortcutButton(for: position)
+            }
+            Button("") { selectPreviousFonster() }
+                .keyboardShortcut(.upArrow, modifiers: [])
+            Button("") { selectNextFonster() }
+                .keyboardShortcut(.downArrow, modifiers: [])
+            Button("") { addFonster() }
+                .keyboardShortcut("n", modifiers: .command)
+            Button("") {
+                if let id = selectedId, let fonster = fonsters.first(where: { $0.id == id }) {
+                    shareFonster(fonster)
+                }
+            }
+            .keyboardShortcut("p", modifiers: .command)
+            Button("") { duplicateCurrentFonster() }
+                .keyboardShortcut("d", modifiers: .command)
+        }
+        .hidden()
+    }
+
+    private func keyboardShortcutButton(for position: Int) -> some View {
+        let keyChar = Character(Unicode.Scalar(48 + (position == 10 ? 0 : position))!)
+        return Button("") { selectFonsterAt(position: position) }
+            .keyboardShortcut(KeyEquivalent(keyChar), modifiers: .command)
+    }
+    #endif
 
     private func displayName(for fonster: Fonster) -> String {
         if !fonster.name.trimmingCharacters(in: .whitespaces).isEmpty {
@@ -269,7 +501,7 @@ struct ContentView: View {
 
     private func addFonster() {
         withAnimation {
-            let f = Fonster(name: "", seed: "", createdAtISO8601: Fonster.currentCreatedAtISO8601())
+            let f = Fonster(name: InitialCreatureNames.oneName(), seed: InstallationSeeds.currentTimeSeed(), createdAtISO8601: Fonster.currentCreatedAtISO8601())
             modelContext.insert(f)
             selectedId = f.id
         }
@@ -290,31 +522,6 @@ struct ContentView: View {
             modelContext.insert(copy)
             selectedId = copy.id
         }
-    }
-    #endif
-
-    #if os(macOS)
-    private var menuActions: FonstersMenuActions {
-        FonstersMenuActions(
-            addFonster: addFonster,
-            shareCurrentFonster: {
-                if let id = selectedId, let f = fonsters.first(where: { $0.id == id }) {
-                    shareFonster(f)
-                }
-            },
-            selectFonsterAt: selectFonsterAt,
-            selectPreviousFonster: selectPreviousFonster,
-            selectNextFonster: selectNextFonster,
-            toggleSidebar: {
-                columnVisibility = columnVisibility == .doubleColumn ? .detailOnly : .doubleColumn
-            },
-            refreshCurrentFonster: detailActionsHolder.refresh,
-            undoCurrentFonster: detailActionsHolder.undo,
-            redoCurrentFonster: detailActionsHolder.redo,
-            copySource: detailActionsHolder.copySource,
-            duplicateFonster: duplicateCurrentFonster,
-            togglePlayPause: detailActionsHolder.togglePlayPause
-        )
     }
     #endif
 
@@ -410,7 +617,7 @@ struct ContentView: View {
         var firstId: Fonster.ID?
         withAnimation {
             for seed in seeds {
-                let f = Fonster(name: "", seed: seed, createdAtISO8601: Fonster.currentCreatedAtISO8601())
+                let f = Fonster(name: InitialCreatureNames.oneName(), seed: seed, createdAtISO8601: Fonster.currentCreatedAtISO8601())
                 modelContext.insert(f)
                 if firstId == nil { firstId = f.id }
             }
@@ -441,7 +648,7 @@ struct ContentView: View {
         await Task.yield()
         if fonsters.isEmpty {
             withAnimation {
-                let f = Fonster(name: "", seed: InstallationSeeds.currentTimeSeed(), createdAtISO8601: Fonster.currentCreatedAtISO8601())
+                let f = Fonster(name: InitialCreatureNames.oneName(), seed: InstallationSeeds.currentTimeSeed(), createdAtISO8601: Fonster.currentCreatedAtISO8601())
                 modelContext.insert(f)
                 selectedId = f.id
             }
@@ -463,7 +670,7 @@ struct ImportSheet: View {
     var body: some View {
         NavigationStack {
             VStack(alignment: .leading, spacing: 16) {
-                Text("Paste a Fonsters share URL (with ?cards=...) to import those creatures.")
+                Text("Paste a Fonsters share link to import those creatures.")
                     .font(.subheadline)
                     .foregroundStyle(.secondary)
                 TextField("URL", text: $pastedText, axis: .vertical)
@@ -506,15 +713,72 @@ struct ImportSheet: View {
     }
 }
 
+// MARK: - Help sheet (tvOS / visionOS or when TipKit is unavailable)
+struct HelpSheetView: View {
+    @Environment(\.dismiss) private var dismiss
+
+    var body: some View {
+        NavigationStack {
+            List {
+                Section {
+                    Label("Add a Fonster with the + button in the toolbar.", systemImage: "plus.circle")
+                    Label("Share creates a link others can open; Import adds creatures from a pasted link.", systemImage: "square.and.arrow.up")
+                    Label("Tap a creature in the list to open it and edit its name and source text.", systemImage: "list.bullet")
+                    Label("Type in the source text field to change the creature; use Get random for quick ideas.", systemImage: "text.cursor")
+                    Label("Tap Play to watch the creature evolve; tap the creature for a short animation.", systemImage: "play.circle.fill")
+                    Label("Export as PNG or GIF to save or share.", systemImage: "square.and.arrow.down")
+                }
+            }
+            .navigationTitle("How to use Fonsters")
+            .toolbar {
+                ToolbarItem(placement: .confirmationAction) {
+                    Button("Done") { dismiss() }
+                }
+            }
+        }
+    }
+}
+
+// MARK: - Detail shortcut buttons (macOS/iOS) — extracted to ease type-checking
+
+#if os(macOS) || os(iOS)
+private struct DetailShortcutButtonsView: View {
+    var canRefresh: Bool
+    var canUndo: Bool
+    var canRedo: Bool
+    var onRefresh: () -> Void
+    var onUndo: () -> Void
+    var onRedo: () -> Void
+    var onCopy: () -> Void
+
+    var body: some View {
+        Group {
+            Button("", action: onRefresh)
+                .keyboardShortcut("r", modifiers: .command)
+                .disabled(!canRefresh)
+            Button("", action: onUndo)
+                .keyboardShortcut("z", modifiers: .command)
+                .disabled(!canUndo)
+            Button("", action: onRedo)
+                .keyboardShortcut("z", modifiers: [.command, .shift])
+                .disabled(!canRedo)
+            Button("", action: onCopy)
+                .keyboardShortcut("c", modifiers: .command)
+        }
+        .hidden()
+    }
+}
+#endif
+
 // MARK: - Detail View
 
 struct FonsterDetailView: View {
     @Environment(\.modelContext) private var modelContext
     @EnvironmentObject private var uprightCreatureState: UprightCreatureState
-    #if os(macOS)
-    @Environment(\.detailActionsHolder) private var detailActionsHolder: DetailFonsterActionsHolder?
-    #endif
+    @EnvironmentObject private var onboardingCoordinator: OnboardingCoordinator
+    @EnvironmentObject private var featureFlags: FeatureFlagStore
     @Bindable var fonster: Fonster
+    var onShare: ((Fonster) -> Void)? = nil
     @State private var seedText: String = ""
     @State private var isPlaying = false
     @State private var playFrameIndex = 0
@@ -527,30 +791,47 @@ struct FonsterDetailView: View {
     @State private var animationSpeedMultiplier: Double = 0.1
     /// When user leaves seed field, push this value as previous for undo (so manual edits are undoable).
     @State private var seedWhenFocused: String?
+    @State private var showBirthdayCelebration = false
+    @State private var triggerBirthdayDanceID = 0
+    #if os(iOS) || os(macOS)
+    @State private var showFontPicker = false
+    #endif
+    #if os(macOS)
+    @State private var nameLabelLastTapTime: Date?
+    @State private var nameLabelSingleTapTask: Task<Void, Never>?
+    #endif
 
     var body: some View {
-        ScrollView {
-            VStack(alignment: .leading, spacing: 0) {
-                // Birthday banner when today is this Fonster's birthday (anniversary only)
-                if fonster.isBirthdayAnniversary {
-                    HStack(spacing: 8) {
-                        Image(systemName: "birthday.cake")
-                        Text(birthdayBannerText)
-                            .font(.subheadline.weight(.medium))
+        #if os(iOS)
+        iosDetailBody
+        #else
+        ZStack {
+        VStack(spacing: 0) {
+            ScrollView {
+                VStack(alignment: .leading, spacing: 0) {
+                    // Birthday banner when today is this Fonster's birthday (anniversary only)
+                    if fonster.isBirthdayAnniversary {
+                        HStack(spacing: 8) {
+                            Image(systemName: "birthday.cake")
+                            Text(birthdayBannerText)
+                                .font(.subheadline.weight(.medium))
+                        }
+                        .frame(maxWidth: .infinity)
+                        .padding(.vertical, 10)
+                        .padding(.horizontal, 12)
+                        .background(.quaternary.opacity(0.6))
                     }
-                    .frame(maxWidth: .infinity)
-                    .padding(.vertical, 10)
-                    .padding(.horizontal, 12)
-                    .background(.quaternary.opacity(0.6))
-                }
 
-                // Form: name, seed, random buttons
-                VStack(alignment: .leading, spacing: 20) {
+                    // Form: name, seed, random buttons
+                    VStack(alignment: .leading, spacing: 20) {
                     // Name
                     VStack(alignment: .leading, spacing: 6) {
                     Text("Name")
                         .font(.subheadline)
                         .foregroundStyle(.secondary)
+                    #if os(macOS)
+                    nameFieldOrLabel
+                    #else
                     TextField("Fonster name", text: $fonster.name)
                         #if os(tvOS)
                         .textFieldStyle(.plain)
@@ -559,14 +840,15 @@ struct FonsterDetailView: View {
                         #endif
                         .focused($nameFocused)
                         .onKeyPress(keys: [.escape]) { _ in nameFocused = false; return .handled }
-                        #if os(macOS) || os(tvOS)
+                        #if os(tvOS)
                         .onExitCommand { nameFocused = false }
                         #endif
+                    #endif
                     }
 
                     // Seed / source
                     VStack(alignment: .leading, spacing: 6) {
-                        Text("Seed (source text)")
+                        Text("Source text")
                             .font(.subheadline)
                             .foregroundStyle(.secondary)
                         TextField("Type anything...", text: $seedText, axis: .vertical)
@@ -594,72 +876,131 @@ struct FonsterDetailView: View {
                                     seedWhenFocused = nil
                                 }
                             }
-                        if let usedLen = usedPrefixLength, usedLen < trimmedSeed.count {
-                            let prefix = String(trimmedSeed.prefix(usedLen))
-                            HStack(alignment: .top, spacing: 8) {
-                                Text("Using for creature:")
-                                    .font(.caption)
-                                    .foregroundStyle(.secondary)
-                                Text(prefix)
-                                    .font(.caption)
-                                    .padding(.horizontal, 6)
-                                    .padding(.vertical, 4)
-                                    .background(Color.accentColor.opacity(0.2))
-                                    .clipShape(RoundedRectangle(cornerRadius: 4))
-                                    .lineLimit(2)
-                                Button("Use as seed") {
-                                    let newSeed = String(trimmedSeed.prefix(usedLen))
-                                    fonster.seed = newSeed
-                                    seedText = newSeed
-                                    playFrameIndex = newSeed.count
-                                    isPlaying = false
-                                }
-                                .buttonStyle(.bordered)
-                                .controlSize(.small)
-                            }
-                        }
                         randomButtonRow(
-                            label: "Load random:",
+                            label: "Get random:",
                             sources: ["quote", "words", "uuid", "lorem"],
                             action: { source in Task { await loadRandom(source: source) } },
                             disabled: randomLoading != nil
                         )
                         randomButtonRow(
-                            label: "Prepend random:",
+                            label: "Add random to start:",
                             sources: ["quote", "words", "uuid", "lorem"],
                             action: { source in Task { await prependRandom(source: source) } },
                             disabled: randomLoading != nil
                         )
                     }
                 }
+                #if canImport(Tips)
+                .modifier(ConditionalPopoverTip(step: 4, tip: DetailSeedTip(), coordinator: onboardingCoordinator))
+                #endif
                 .padding()
 
                 // Creature area: environment + preview + play
                 creatureSection
                     .padding(.horizontal)
                     .padding(.top, 8)
+                #if canImport(Tips)
+                    .modifier(ConditionalPopoverTip(step: 5, tip: PlayTip(), coordinator: onboardingCoordinator))
+                #endif
+                // What shapes your creature: show beneath the image only while playing
+                if isPlaying, let usedLen = usedPrefixLength, usedLen < trimmedSeed.count {
+                    let prefix = String(trimmedSeed.prefix(usedLen))
+                    HStack(alignment: .top, spacing: 8) {
+                        Text("What shapes your creature:")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                        Text(prefix)
+                            .font(.caption)
+                            .padding(.horizontal, 6)
+                            .padding(.vertical, 4)
+                            .background(Color.accentColor.opacity(0.2))
+                            .clipShape(RoundedRectangle(cornerRadius: 4))
+                            .lineLimit(2)
+                        Button("Use this") {
+                            let newSeed = String(trimmedSeed.prefix(usedLen))
+                            fonster.seed = newSeed
+                            seedText = newSeed
+                            playFrameIndex = newSeed.count
+                            isPlaying = false
+                        }
+                        .buttonStyle(.bordered)
+                        .controlSize(.small)
+                    }
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .padding(.horizontal)
+                    .padding(.top, 8)
+                }
                 Spacer(minLength: 16)
                 actionButtons
                     .padding(.horizontal)
+                #if canImport(Tips)
+                    .modifier(ConditionalPopoverTip(step: 6, tip: ExportTip(), coordinator: onboardingCoordinator))
+                #endif
                 if isPlaying {
                     animationSpeedSlider
                         .padding(.horizontal)
                 }
+                #if os(iOS) || os(visionOS) || os(tvOS)
+                if featureFlags.isEnabled(.showBirthdayOverlay) {
+                Button {
+                    showBirthdayCelebration = true
+                    triggerBirthdayDanceID += 1
+                } label: {
+                    HStack(spacing: 6) {
+                        Text("Birthday")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                        Text(fonsterBirthdayMonthDayString(for: fonster))
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                    }
+                    .frame(maxWidth: .infinity, alignment: .trailing)
+                }
+                .buttonStyle(.plain)
+                .padding(.horizontal)
+                .padding(.top, 16)
+                .padding(.bottom, 24)
+                }
+                #endif
+            }
+            }
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
 
-                // Footer: Created date
+            #if os(macOS)
+            if featureFlags.isEnabled(.showBirthdayOverlay) {
+            // Footer: Birthday (pinned to bottom, outside scroll)
+            Button {
+                showBirthdayCelebration = true
+                triggerBirthdayDanceID += 1
+            } label: {
                 HStack(spacing: 6) {
-                    Text("Created")
+                    Text("Birthday")
                         .font(.caption)
                         .foregroundStyle(.secondary)
-                    Text(createdDateDisplayString(for: fonster))
+                    Text(fonsterBirthdayMonthDayString(for: fonster))
                         .font(.caption)
                         .foregroundStyle(.secondary)
                 }
                 .frame(maxWidth: .infinity, alignment: .trailing)
-                .padding(.horizontal)
-                .padding(.vertical, 8)
-                .padding(.bottom, 8)
-                .background(.quaternary.opacity(0.4))
+            }
+            .buttonStyle(.plain)
+            .padding(.horizontal)
+            .padding(.vertical, 8)
+            .background(.quaternary.opacity(0.4))
+            }
+            #endif
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+
+            if featureFlags.isEnabled(.showBirthdayOverlay), showBirthdayCelebration {
+                GeometryReader { geo in
+                    BirthdayCelebrationOverlay(
+                        size: geo.size,
+                        effect: celebrationEffect,
+                        onDismiss: { showBirthdayCelebration = false }
+                    )
+                }
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
             }
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
@@ -671,7 +1012,21 @@ struct FonsterDetailView: View {
                     .aspectRatio(contentMode: .fit)
                     .frame(width: 24, height: 24)
             }
+            #if os(macOS)
+            ToolbarItem(placement: .primaryAction) {
+                Button {
+                    showFontPicker = true
+                } label: {
+                    Image(systemName: "textformat")
+                }
+            }
+            #endif
         }
+        #if os(macOS)
+        .sheet(isPresented: $showFontPicker) {
+            CreatureNameFontPickerView(sampleName: displayName)
+        }
+        #endif
         #if !os(visionOS)
         .scrollDismissesKeyboard(.interactively)
         #endif
@@ -685,29 +1040,26 @@ struct FonsterDetailView: View {
             isPlaying.toggle()
             return .handled
         }
-        #if os(macOS) || os(iOS)
-        .background {
-            Group {
-                Button("") { Task { await refreshRandom() } }
-                    .keyboardShortcut("r", modifiers: .command)
-                    .disabled(fonster.randomSource == nil || randomLoading != nil)
-                Button("") { _ = fonster.undo() }
-                    .keyboardShortcut("z", modifiers: .command)
-                    .disabled(fonster.history.isEmpty)
-                Button("") { _ = fonster.redo() }
-                    .keyboardShortcut("z", modifiers: [.command, .shift])
-                    .disabled(fonster.future.isEmpty)
-                Button("") { copySourceToPasteboard() }
-                    .keyboardShortcut("c", modifiers: .command)
-                Button("") {
-                    if !nameFocused && !seedFocused && !fonster.seed.trimmingCharacters(in: .whitespaces).isEmpty {
-                        isPlaying.toggle()
-                    }
-                }
-                .keyboardShortcut(.space, modifiers: .command)
+        .onKeyPress(keys: [.return]) { _ in
+            if nameFocused || seedFocused {
+                return .ignored
             }
-            .hidden()
+            if fonster.seed.trimmingCharacters(in: .whitespaces).isEmpty {
+                return .ignored
+            }
+            isPlaying.toggle()
+            return .handled
         }
+        #if os(macOS) || os(iOS)
+        .background(DetailShortcutButtonsView(
+            canRefresh: fonster.randomSource != nil && randomLoading == nil,
+            canUndo: !fonster.history.isEmpty,
+            canRedo: !fonster.future.isEmpty,
+            onRefresh: { Task { await refreshRandom() } },
+            onUndo: { _ = fonster.undo() },
+            onRedo: { _ = fonster.redo() },
+            onCopy: copySourceToPasteboard
+        ))
         #endif
         #if os(tvOS)
         .background(PlayPauseHandlerView(onPlayPause: {
@@ -725,19 +1077,6 @@ struct FonsterDetailView: View {
             playTask = nil
             let s = fonster.seed.trimmingCharacters(in: .whitespaces)
             playFrameIndex = s.isEmpty ? 0 : s.count
-            #if os(macOS)
-            if let holder = detailActionsHolder {
-                holder.refresh = { Task { await refreshRandom() } }
-                holder.undo = { _ = fonster.undo() }
-                holder.redo = { _ = fonster.redo() }
-                holder.copySource = copySourceToPasteboard
-                holder.togglePlayPause = {
-                    if !nameFocused && !seedFocused && !fonster.seed.trimmingCharacters(in: .whitespaces).isEmpty {
-                        isPlaying.toggle()
-                    }
-                }
-            }
-            #endif
         }
         .onChange(of: fonster.id) { _, _ in
             // When a different Fonster is selected (same as Stop button).
@@ -779,13 +1118,157 @@ struct FonsterDetailView: View {
                 }
             }
         }
+        #endif
     }
+
+    #if os(iOS)
+    private var iosDetailBody: some View {
+        let displaySeed = fonster.seed.trimmingCharacters(in: .whitespaces).isEmpty ? " " : fonster.seed
+        return ZStack {
+            VStack(spacing: 0) {
+                CreatureNameView(displayName: displayName, seed: displaySeed)
+                    .frame(maxWidth: .infinity)
+                    .padding(.top, 16)
+                Spacer(minLength: 0)
+                TappableCreatureView(seed: displaySeed, size: 240, triggerBirthdayDanceID: triggerBirthdayDanceID)
+                    .rotationEffect(
+                        uprightCreatureState.isEnabled ? Angle(radians: uprightCreatureState.gravityAngle) : .zero,
+                        anchor: .center
+                    )
+                    .frame(width: 240, height: 240)
+                Spacer(minLength: 0)
+                if featureFlags.isEnabled(.showBirthdayOverlay) {
+                Button {
+                    showBirthdayCelebration = true
+                    triggerBirthdayDanceID += 1
+                } label: {
+                    HStack(spacing: 6) {
+                        Text("Birthday")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                        Text(fonsterBirthdayMonthDayString(for: fonster))
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                    }
+                }
+                .buttonStyle(.plain)
+                .padding(.vertical, 8)
+                }
+            Menu {
+                Button {
+                    onShare?(fonster)
+                } label: {
+                    Label("Share link", systemImage: "link")
+                }
+                Button {
+                    exportPNG()
+                } label: {
+                    Label("Share image", systemImage: "photo")
+                }
+                Button {
+                    Task { await exportGIF() }
+                } label: {
+                    Label("Share GIF", systemImage: "photo")
+                }
+                .disabled(gifLoading || fonster.seed.trimmingCharacters(in: .whitespaces).isEmpty)
+            } label: {
+                Label("Share", systemImage: "square.and.arrow.up")
+            }
+            .buttonStyle(.bordered)
+            .accessibilityLabel("Share")
+            .padding(.bottom, 24)
+            }
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
+            if featureFlags.isEnabled(.showBirthdayOverlay), showBirthdayCelebration {
+                GeometryReader { geo in
+                    BirthdayCelebrationOverlay(
+                        size: geo.size,
+                        effect: celebrationEffect,
+                        onDismiss: { showBirthdayCelebration = false }
+                    )
+                }
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+            }
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .navigationTitle(displayName)
+        .toolbar {
+            ToolbarItem(placement: .primaryAction) {
+                HStack(spacing: 12) {
+                    Button {
+                        showFontPicker = true
+                    } label: {
+                        Image(systemName: "textformat")
+                    }
+                    NavigationLink {
+                        FonsterEditView(
+                            fonster: fonster,
+                            onShare: onShare ?? { _ in },
+                            onShareImage: { exportPNG() },
+                            onShareGIF: { Task { await exportGIF() } }
+                        )
+                    } label: {
+                        Text("Edit")
+                    }
+                }
+            }
+        }
+        .sheet(isPresented: $showFontPicker) {
+            CreatureNameFontPickerView(sampleName: displayName)
+        }
+    }
+    #endif
 
     private var displayName: String {
         if !fonster.name.trimmingCharacters(in: .whitespaces).isEmpty {
             return fonster.name
         }
         return "Fonster"
+    }
+
+    #if os(macOS)
+    /// macOS: Show name as a styled label (single-click = creature animation, double-click = edit), or show TextField when editing.
+    @ViewBuilder
+    private var nameFieldOrLabel: some View {
+        if nameFocused {
+            TextField("Fonster name", text: $fonster.name)
+                .textFieldStyle(.roundedBorder)
+                .focused($nameFocused)
+                .onKeyPress(keys: [.escape]) { _ in nameFocused = false; return .handled }
+                .onExitCommand { nameFocused = false }
+        } else {
+            CreatureNameView(
+                displayName: displayName,
+                seed: fonster.seed.trimmingCharacters(in: .whitespaces).isEmpty ? " " : fonster.seed
+            )
+            .frame(maxWidth: .infinity, alignment: .leading)
+                .contentShape(Rectangle())
+                .onTapGesture {
+                    let now = Date()
+                    nameLabelSingleTapTask?.cancel()
+                    nameLabelSingleTapTask = nil
+                    if let last = nameLabelLastTapTime, now.timeIntervalSince(last) < 0.35 {
+                        nameLabelLastTapTime = nil
+                        nameFocused = true
+                        return
+                    }
+                    nameLabelLastTapTime = now
+                    nameLabelSingleTapTask = Task { @MainActor in
+                        try? await Task.sleep(nanoseconds: 250_000_000)
+                        guard !Task.isCancelled else { return }
+                        triggerBirthdayDanceID += 1
+                        nameLabelSingleTapTask = nil
+                    }
+                }
+        }
+    }
+    #endif
+
+    /// Celebration effect chosen deterministically from Fonster seed.
+    private var celebrationEffect: CelebrationEffect {
+        let seed = fonster.seed.trimmingCharacters(in: .whitespaces).isEmpty ? " " : fonster.seed
+        let idx = segmentPick(seed: seed, segmentId: "birthday_celebration", n: CelebrationEffect.allCases.count)
+        return CelebrationEffect(rawValue: idx) ?? .confetti
     }
 
     /// Birthday banner text: named "It's {name}'s birthday!" or "It's your Fonster's Birthday!" when unnamed.
@@ -797,13 +1280,9 @@ struct FonsterDetailView: View {
         return "It's your Fonster's Birthday!"
     }
 
-    /// Formatted creation date for display (user's locale).
-    private func createdDateDisplayString(for fonster: Fonster) -> String {
-        let f = DateFormatter()
-        f.dateStyle = .medium
-        f.timeStyle = .short
-        f.timeZone = TimeZone.current
-        return f.string(from: fonster.createdAt)
+    /// Birthday as spelled month and day (e.g. "February 4") for display.
+    private func fonsterBirthdayMonthDayString(for fonster: Fonster) -> String {
+        birthdayMonthDayString(from: fonster.createdAt)
     }
 
     private var trimmedSeed: String {
@@ -833,6 +1312,15 @@ struct FonsterDetailView: View {
         return min(playFrameIndex + 1, s.count)
     }
 
+    /// User-friendly display name for random source buttons (uuid, lorem are technical).
+    private func randomSourceDisplayName(for source: String) -> String {
+        switch source {
+        case "uuid": return "Random code"
+        case "lorem": return "Sample text"
+        default: return source.capitalized
+        }
+    }
+
     /// Random button row: label on top; buttons wrap to next line when horizontal space is limited.
     private func randomButtonRow(
         label: String,
@@ -844,9 +1332,9 @@ struct FonsterDetailView: View {
             Text(label)
                 .font(.subheadline)
                 .foregroundStyle(.secondary)
-            LazyVGrid(columns: [GridItem(.adaptive(minimum: 70))], spacing: 8) {
+            WrapLayout(spacing: 8, lineSpacing: 8) {
                 ForEach(sources, id: \.self) { source in
-                    Button(source.capitalized) { action(source) }
+                    Button(randomSourceDisplayName(for: source)) { action(source) }
                         .buttonStyle(.bordered)
                         .controlSize(.small)
                         .disabled(disabled)
@@ -863,14 +1351,11 @@ struct FonsterDetailView: View {
             let availableH = max(0, geo.size.height - padding * 2 - 44) // leave room for play/stop
             let creatureSize = max(160, min(availableW, availableH))
             ZStack(alignment: .bottomTrailing) {
-                CreatureEnvironmentView(seed: effectiveSeedForDisplay)
-                    .frame(maxWidth: .infinity, maxHeight: .infinity)
-                    .clipped()
-                    .allowsHitTesting(false)
+                RoundedRectangle(cornerRadius: 12)
+                    .fill(.regularMaterial)
                 creaturePreviewWithUpright(size: creatureSize)
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
                     .padding(padding)
-                    .background(Color.gray.opacity(0.15))
                     .clipShape(RoundedRectangle(cornerRadius: 12))
                 playStopButtons
             }
@@ -891,10 +1376,30 @@ struct FonsterDetailView: View {
 
     @ViewBuilder
     private func creaturePreview(size: CGFloat) -> some View {
+        let useGlow = featureFlags.isEnabled(.creatureGlowEffect)
+        let glowBlur: CGFloat = 14
         #if os(visionOS)
-        CreatureVoxelView(seed: effectiveSeedForDisplay, size: size)
+        if useGlow {
+            ZStack {
+                CreatureAvatarView(seed: effectiveSeedForDisplay, size: size)
+                    .colorInvert()
+                    .blur(radius: glowBlur)
+                CreatureVoxelView(seed: effectiveSeedForDisplay, size: size, triggerBirthdayDanceID: triggerBirthdayDanceID)
+            }
+        } else {
+            CreatureVoxelView(seed: effectiveSeedForDisplay, size: size, triggerBirthdayDanceID: triggerBirthdayDanceID)
+        }
         #else
-        TappableCreatureView(seed: effectiveSeedForDisplay, size: size)
+        if useGlow {
+            ZStack {
+                CreatureAvatarView(seed: effectiveSeedForDisplay, size: size)
+                    .colorInvert()
+                    .blur(radius: glowBlur)
+                TappableCreatureView(seed: effectiveSeedForDisplay, size: size, triggerBirthdayDanceID: triggerBirthdayDanceID)
+            }
+        } else {
+            TappableCreatureView(seed: effectiveSeedForDisplay, size: size, triggerBirthdayDanceID: triggerBirthdayDanceID)
+        }
         #endif
     }
 
@@ -962,7 +1467,7 @@ struct FonsterDetailView: View {
 
     @ViewBuilder
     private var actionButtons: some View {
-        LazyVGrid(columns: [GridItem(.adaptive(minimum: 80))], spacing: 8) {
+        WrapLayout(spacing: 8, lineSpacing: 8) {
             #if !os(tvOS)
             Button {
                 exportPNG()
@@ -1109,7 +1614,7 @@ struct FonsterDetailView: View {
     #endif
 
     private func addNewFonster() {
-        let f = Fonster(name: "", seed: "", createdAtISO8601: Fonster.currentCreatedAtISO8601())
+        let f = Fonster(name: InitialCreatureNames.oneName(), seed: InstallationSeeds.currentTimeSeed(), createdAtISO8601: Fonster.currentCreatedAtISO8601())
         modelContext.insert(f)
         // Selection will be updated by parent if we use navigation
     }
@@ -1159,7 +1664,178 @@ struct FonsterDetailView: View {
     #endif
 }
 
+// MARK: - Edit View (iOS only)
+
+#if os(iOS)
+struct FonsterEditView: View {
+    @Bindable var fonster: Fonster
+    var onShare: (Fonster) -> Void
+    var onShareImage: (() -> Void)? = nil
+    var onShareGIF: (() async -> Void)? = nil
+    @State private var seedText: String = ""
+    @State private var randomLoading: String?
+    @FocusState private var seedFocused: Bool
+    @State private var seedWhenFocused: String?
+
+    private let editCreatureSize: CGFloat = 80
+    private let randomSources = ["quote", "words", "uuid", "lorem"]
+
+    private var editViewTitle: String {
+        let name = fonster.name.trimmingCharacters(in: .whitespaces)
+        return name.isEmpty ? "Edit" : "Edit \(name)"
+    }
+
+    var body: some View {
+        ScrollView {
+            VStack(alignment: .leading, spacing: 20) {
+                HStack(alignment: .center, spacing: 16) {
+                    let displaySeed = fonster.seed.trimmingCharacters(in: .whitespaces).isEmpty ? " " : fonster.seed
+                    TappableCreatureView(seed: displaySeed, size: editCreatureSize)
+                        .frame(width: editCreatureSize, height: editCreatureSize)
+                    TextField("Fonster name", text: $fonster.name)
+                        .textFieldStyle(.roundedBorder)
+                }
+                .padding(.horizontal)
+
+                TextField("Type anything...", text: $seedText, axis: .vertical)
+                    .textFieldStyle(.roundedBorder)
+                    .lineLimit(3...8)
+                    .focused($seedFocused)
+                    .accessibilityLabel("Source text")
+                    .onChange(of: seedText) { _, newValue in
+                        fonster.seed = newValue
+                    }
+                    .onChange(of: seedFocused) { _, focused in
+                        if focused {
+                            seedWhenFocused = seedText
+                        } else {
+                            if let prev = seedWhenFocused, prev != seedText {
+                                fonster.pushPreviousAndSetSeed(previous: prev, newSeed: seedText)
+                            }
+                            seedWhenFocused = nil
+                        }
+                    }
+                    .padding(.horizontal)
+
+                HStack(spacing: 12) {
+                    Text("Get random:")
+                        .font(.subheadline)
+                        .foregroundStyle(.secondary)
+                    ForEach(randomSources, id: \.self) { source in
+                        Button {
+                            Task { await loadRandom(source: source) }
+                        } label: {
+                            Image(systemName: randomSourceSymbol(for: source))
+                        }
+                        .buttonStyle(.bordered)
+                        .controlSize(.small)
+                        .disabled(randomLoading != nil)
+                        .accessibilityLabel(randomSourceAccessibilityLabel(for: source))
+                    }
+                }
+                .padding(.horizontal)
+
+                HStack(spacing: 6) {
+                    Text("Birthday")
+                        .font(.subheadline)
+                        .foregroundStyle(.secondary)
+                    Text(creationDateOnlyString(from: fonster.createdAt))
+                        .font(.subheadline)
+                        .foregroundStyle(.secondary)
+                }
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .padding(.horizontal)
+                .padding(.bottom, 24)
+            }
+        }
+        .navigationTitle(editViewTitle)
+        .navigationBarTitleDisplayMode(.inline)
+        .toolbar {
+            ToolbarItem(placement: .topBarTrailing) {
+                if onShareImage != nil, onShareGIF != nil {
+                    Menu {
+                        Button {
+                            onShare(fonster)
+                        } label: {
+                            Label("Share link", systemImage: "link")
+                        }
+                        Button {
+                            onShareImage?()
+                        } label: {
+                            Label("Share image", systemImage: "photo")
+                        }
+                        Button {
+                            Task { await onShareGIF?() }
+                        } label: {
+                            Label("Share GIF", systemImage: "photo")
+                        }
+                        .disabled(fonster.seed.trimmingCharacters(in: .whitespaces).isEmpty)
+                    } label: {
+                        Image(systemName: "square.and.arrow.up")
+                    }
+                    .accessibilityLabel("Share")
+                } else {
+                    Button {
+                        onShare(fonster)
+                    } label: {
+                        Image(systemName: "square.and.arrow.up")
+                    }
+                    .accessibilityLabel("Share")
+                }
+            }
+        }
+        .scrollDismissesKeyboard(.interactively)
+        .onAppear {
+            seedText = fonster.seed
+        }
+        .onChange(of: fonster.seed) { _, newValue in
+            if seedText != newValue { seedText = newValue }
+        }
+    }
+
+    private func loadRandom(source: String) async {
+        randomLoading = source
+        defer { randomLoading = nil }
+        let (text, _) = await fetchRandomTextWithFallback(source: source)
+        if let text = text {
+            fonster.randomSource = source
+            fonster.pushHistoryAndSetSeed(text)
+            seedText = fonster.seed
+        }
+    }
+
+    private func randomSourceSymbol(for source: String) -> String {
+        switch source {
+        case "quote": return "quote.bubble"
+        case "words": return "text.word.spacing"
+        case "uuid": return "number"
+        case "lorem": return "doc.text"
+        default: return "questionmark.circle"
+        }
+    }
+
+    private func randomSourceAccessibilityLabel(for source: String) -> String {
+        switch source {
+        case "quote": return "Quote"
+        case "words": return "Words"
+        case "uuid": return "Random code"
+        case "lorem": return "Sample text"
+        default: return source
+        }
+    }
+}
+#endif
+
 // MARK: - Helpers (file-private; used by ContentView and FonsterDetailView)
+
+/// Formatted creation date (date only, no time) for display e.g. "Feb 4, 2025".
+private func creationDateOnlyString(from date: Date) -> String {
+    let f = DateFormatter()
+    f.dateStyle = .medium
+    f.timeStyle = .none
+    f.timeZone = TimeZone.current
+    return f.string(from: date)
+}
 
 /// Sanitizes seed for use as a file name (strip/replace invalid chars, cap length).
 private func safeFilename(seed: String, ext: String) -> String {
@@ -1187,13 +1863,22 @@ private func tiffDateTime(from date: Date) -> String {
     return f.string(from: date)
 }
 
+/// Birthday as spelled month and day (e.g. "February 4") from a date.
+private func birthdayMonthDayString(from date: Date) -> String {
+    let f = DateFormatter()
+    f.dateFormat = DateFormatter.dateFormat(fromTemplate: "MMMM d", options: 0, locale: Locale.current)
+    f.timeZone = TimeZone.current
+    return f.string(from: date)
+}
+
 private func seedMetadata(seed: String, createdAtISO8601: String?, createdAt: Date) -> [String: Any] {
     let trimmed = seed.trimmingCharacters(in: .whitespacesAndNewlines)
     var tiffDict: [String: Any] = [
         kCGImagePropertyTIFFDateTime as String: tiffDateTime(from: createdAt),
     ]
-    if let iso = createdAtISO8601 {
-        tiffDict[kCGImagePropertyTIFFImageDescription as String] = trimmed.isEmpty ? "Created: \(iso)" : "\(trimmed)\nCreated: \(iso)"
+    let birthdayStr = birthdayMonthDayString(from: createdAt)
+    if !birthdayStr.isEmpty {
+        tiffDict[kCGImagePropertyTIFFImageDescription as String] = trimmed.isEmpty ? "Birthday: \(birthdayStr)" : "\(trimmed)\nBirthday: \(birthdayStr)"
     } else if !trimmed.isEmpty {
         tiffDict[kCGImagePropertyTIFFImageDescription as String] = seed
     }
@@ -1304,6 +1989,73 @@ private final class PlayPauseHandlerHostView: UIView {
     }
 }
 #endif
+
+/// Horizontal flow layout that lets subviews keep their intrinsic width and wrap when space runs out.
+private struct WrapLayout: Layout {
+    var spacing: CGFloat = 8
+    var lineSpacing: CGFloat = 8
+
+    init(spacing: CGFloat = 8, lineSpacing: CGFloat = 8) {
+        self.spacing = spacing
+        self.lineSpacing = lineSpacing
+    }
+
+    func sizeThatFits(proposal: ProposedViewSize, subviews: Subviews, cache: inout ()) -> CGSize {
+        guard !subviews.isEmpty else { return .zero }
+        let maxWidth = proposal.width ?? .greatestFiniteMagnitude
+
+        var rowWidth: CGFloat = 0
+        var rowHeight: CGFloat = 0
+        var totalWidth: CGFloat = 0
+        var totalHeight: CGFloat = 0
+
+        let measureProposal = ProposedViewSize(width: nil, height: nil)
+        for subview in subviews {
+            let size = subview.sizeThatFits(measureProposal)
+            if rowWidth > 0 && rowWidth + spacing + size.width > maxWidth {
+                totalWidth = max(totalWidth, rowWidth)
+                totalHeight += rowHeight + lineSpacing
+                rowWidth = size.width
+                rowHeight = size.height
+            } else {
+                rowWidth = rowWidth == 0 ? size.width : rowWidth + spacing + size.width
+                rowHeight = max(rowHeight, size.height)
+            }
+        }
+
+        totalWidth = max(totalWidth, rowWidth)
+        totalHeight += rowHeight
+
+        if let proposedWidth = proposal.width {
+            totalWidth = proposedWidth
+        }
+
+        return CGSize(width: totalWidth, height: totalHeight)
+    }
+
+    func placeSubviews(in bounds: CGRect, proposal: ProposedViewSize, subviews: Subviews, cache: inout ()) {
+        guard !subviews.isEmpty else { return }
+        var x = bounds.minX
+        var y = bounds.minY
+        var rowHeight: CGFloat = 0
+
+        let measureProposal = ProposedViewSize(width: nil, height: nil)
+        for subview in subviews {
+            let size = subview.sizeThatFits(measureProposal)
+            if x != bounds.minX && x + size.width > bounds.maxX {
+                x = bounds.minX
+                y += rowHeight + lineSpacing
+                rowHeight = 0
+            }
+            subview.place(
+                at: CGPoint(x: x, y: y),
+                proposal: ProposedViewSize(width: size.width, height: size.height)
+            )
+            x += size.width + spacing
+            rowHeight = max(rowHeight, size.height)
+        }
+    }
+}
 
 #Preview {
     ContentView()

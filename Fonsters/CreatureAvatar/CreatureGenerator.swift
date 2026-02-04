@@ -12,9 +12,9 @@ import Foundation
 private let CORE_SHAPES: [CoreShape] = [.circle, .ellipse, .triangle, .pentagon, .hexagon, .septagon, .octagon]
 private let EYE_SHAPES: [EyeShape] = [.square, .circle, .ellipse, .triangle, .pentagon, .hexagon, .septagon, .octagon]
 
-/// Complexity 1–5 derived from seed hash (content-sensitive); drives how many features (eyes, mouth, etc.) are allowed.
+/// Complexity 3–5 derived from seed hash. Tier 1–2 (plain circles) are never used.
 public func getComplexityTier(seed: String) -> ComplexityTier {
-    return segmentPick(seed: seed, segmentId: "complexity_tier", n: 5) + 1
+    return 3 + segmentPick(seed: seed, segmentId: "complexity_tier", n: 3)  // 3, 4, or 5
 }
 
 /// Resolves full creature config from seed using segment hash for every decision.
@@ -97,10 +97,36 @@ public func resolveConfig(seed: String) -> CreatureConfig {
     let hasHorn = tier >= 4 && segmentRoll(seed: seed, segmentId: "horn", p: CreaturePROB.hasHorn)
     let hasAntlers = tier >= 4 && segmentRoll(seed: seed, segmentId: "antlers", p: CreaturePROB.hasAntlers)
 
-    let hasAppendages = tier >= 3 && segmentRoll(seed: seed, segmentId: "appendages", p: 0.55)
+    var hasAppendages = tier >= 3 && segmentRoll(seed: seed, segmentId: "appendages", p: 0.55)
     let appendageCount = hasAppendages ? [4, 6, 8][segmentPick(seed: seed, segmentId: "appendage_count", n: 3)] : 4
     let appendageStyle = hasAppendages ? ["tentacle", "arm", "leg"][segmentPick(seed: seed, segmentId: "appendage_style", n: 3)] : "arm"
     let appendageRadial = hasAppendages && segmentRoll(seed: seed, segmentId: "appendage_radial", p: 0.6)
+
+    // Ensure at least 3 of the 5 most prominent features are enabled (eyes, mouth, appendages, body, eyebrows).
+    var hasEyesFinal = hasEyes
+    var hasMouthFinal = hasMouth
+    var hasBodyFinal = hasBody
+    var hasEyebrowsFinal = hasEyebrows
+    var hasAppendagesFinal = hasAppendages
+    if avatarMode == .creature && tier >= 3 {
+        var enabled = [hasEyesFinal, hasMouthFinal, hasAppendagesFinal, hasBodyFinal, hasEyebrowsFinal]
+        var toEnable = 3 - enabled.filter { $0 }.count
+        var boostStep = 0
+        while toEnable > 0 {
+            var disabledIndices: [Int] = []
+            for (i, on) in enabled.enumerated() where !on { disabledIndices.append(i) }
+            guard !disabledIndices.isEmpty else { break }
+            let pick = segmentPick(seed: seed, segmentId: "prominent_boost_\(boostStep)", n: disabledIndices.count)
+            enabled[disabledIndices[pick]] = true
+            toEnable -= 1
+            boostStep += 1
+        }
+        hasEyesFinal = enabled[0]
+        hasMouthFinal = enabled[1]
+        hasAppendagesFinal = enabled[2]
+        hasBodyFinal = enabled[3]
+        hasEyebrowsFinal = enabled[4]
+    }
 
     return CreatureConfig(
         avatarMode: avatarMode,
@@ -114,20 +140,20 @@ public func resolveConfig(seed: String) -> CreatureConfig {
         upsideDown: upsideDown,
         shapeMask: shapeMask,
         ellipseAspect: ellipseAspect,
-        eyeShape: eyeShape,
-        hasEyes: hasEyes,
-        hasMouth: hasMouth,
+        eyeShape: hasEyesFinal ? eyeShape : .square,
+        hasEyes: hasEyesFinal,
+        hasMouth: hasMouthFinal,
         mouthStyle: mouthStyle,
         hasNose: hasNose,
         noseParams: noseParams,
-        hasBody: hasBody,
+        hasBody: hasBodyFinal,
         hasHair: hasHair,
-        hasEyebrows: hasEyebrows,
+        hasEyebrows: hasEyebrowsFinal,
         hasBeard: hasBeard,
         hasEars: hasEars,
         hasHorn: hasHorn,
         hasAntlers: hasAntlers,
-        hasAppendages: hasAppendages,
+        hasAppendages: hasAppendagesFinal,
         appendageCount: appendageCount,
         appendageStyle: appendageStyle,
         appendageRadial: appendageRadial

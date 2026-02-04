@@ -19,6 +19,44 @@ import AppKit
 
 private let defaultHex = "#888888"
 
+/// Boosts brightness and saturation by 20% each. All creature colors pass through this.
+internal func boostColorBrightnessAndSaturation(r: UInt8, g: UInt8, b: UInt8) -> (UInt8, UInt8, UInt8) {
+    let rn = Double(r) / 255, gn = Double(g) / 255, bn = Double(b) / 255
+    let cmax = max(rn, gn, bn), cmin = min(rn, gn, bn)
+    let delta = cmax - cmin
+    var h: Double = 0, s: Double = 0
+    let l = (cmax + cmin) / 2
+    if delta > 0 {
+        s = l <= 0.5 ? delta / (cmax + cmin) : delta / (2 - cmax - cmin)
+        switch cmax {
+        case rn: h = (gn - bn) / delta + (gn < bn ? 6 : 0)
+        case gn: h = (bn - rn) / delta + 2
+        default: h = (rn - gn) / delta + 4
+        }
+        h /= 6
+    }
+    let s2 = min(1, s * 1.2)
+    let l2 = min(1, l * 1.2)
+    // HSL to RGB
+    guard s2 > 0 else {
+        let v = UInt8(l2 * 255 + 0.5)
+        return (v, v, v)
+    }
+    let q = l2 < 0.5 ? l2 * (1 + s2) : l2 + s2 - l2 * s2
+    let p = 2 * l2 - q
+    func hueToRgb(_ t: Double) -> Double {
+        let tt = t < 0 ? t + 1 : (t > 1 ? t - 1 : t)
+        if tt < 1/6 { return p + (q - p) * 6 * tt }
+        if tt < 1/2 { return q }
+        if tt < 2/3 { return p + (q - p) * (2/3 - tt) * 6 }
+        return p
+    }
+    let r2 = UInt8(hueToRgb(h + 1/3) * 255 + 0.5)
+    let g2 = UInt8(hueToRgb(h) * 255 + 0.5)
+    let b2 = UInt8(hueToRgb(h - 1/3) * 255 + 0.5)
+    return (min(255, r2), min(255, g2), min(255, b2))
+}
+
 private func hexToRgba(_ hex: String) -> (UInt8, UInt8, UInt8, UInt8) {
     if hex == TRANSPARENT { return (0, 0, 0, 0) }
     guard hex.hasPrefix("#"), let n = Int(hex.dropFirst(), radix: 16) else {
@@ -27,7 +65,8 @@ private func hexToRgba(_ hex: String) -> (UInt8, UInt8, UInt8, UInt8) {
     let r = UInt8((n >> 16) & 0xFF)
     let g = UInt8((n >> 8) & 0xFF)
     let b = UInt8(n & 0xFF)
-    return (r, g, b, 255)
+    let (r2, g2, b2) = boostColorBrightnessAndSaturation(r: r, g: g, b: b)
+    return (r2, g2, b2, 255)
 }
 
 /// Fill RGBA buffer (32*32*4 bytes) from grid and palette.

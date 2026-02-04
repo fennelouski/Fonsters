@@ -26,5 +26,7 @@
 	<array>
 		<string>remote-notification</string>
 	</array>
+	<key>FeatureFlagBackendURL</key>
+	<string>https://your-project.vercel.app/api/flags</string>
 </dict>
 </plist>

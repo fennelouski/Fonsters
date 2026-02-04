@@ -10,7 +10,7 @@ Fonsters is a cross-platform SwiftUI app that lets users create and share determ
 
 ### Creature engine (CreatureAvatar/)
 
-- **Hash** (`CreatureHash.swift`): 256-bit deterministic hash, UTF-16, `segmentHash` / `segmentPick` / `segmentRoll`. Matches web output.
+- **Hash** (`CreatureHash.swift`): 256-bit deterministic hash, UTF-16, `segmentHash` / `segmentPick` / `segmentRoll`. Includes a uniformity finalizer so `segmentHash` produces values uniformly in [0, 1), ensuring feature probabilities (mouth, nose, body, eyebrows, etc.) trigger as intended. Matches web output.
 - **Types & constants**: Grid 32×32, cell indices -1…5, palettes, probabilities. Same as web.
 - **Generator** (`CreatureGenerator.swift`): `resolveConfig`, `getComplexityTier`, `generateCreatureGrid`, `getPaletteForSeed`. All drawing modes (creature, cloud, flower, repeating, space) are implemented and deterministic.
 - **Raster** (`CreatureRaster.swift`): `gridToRgbaBuffer`, `creatureImage(for:)` (CGImage), `creatureGIFData(seeds:frameDelaySeconds:)` for animated GIF. Works on iOS and macOS.
@@ -20,6 +20,10 @@ Fonsters is a cross-platform SwiftUI app that lets users create and share determ
 ### Data and persistence
 
 - **Fonster** (`Fonster.swift`): SwiftData model with `id`, `name`, `seed`, `randomSource`, undo/redo stacks (history/future, cap 20). Data syncs via **iCloud** (SwiftData + CloudKit) across iOS, macOS, tvOS, visionOS, and watchOS so users see and manage the same Fonsters on all devices. Main app and Watch app use the same iCloud container (`iCloud.com.nathanfennel.Fonsters`) and CloudKit private database. **First-launch seeding** (InstallationSeeds) remains per-device: each new device gets its own one-time seed creatures, which then sync to iCloud. Undo/redo work when `randomSource` is set.
+
+### Feature flags
+
+- **FeatureFlag.swift**: Type-safe, local-first feature flags with optional remote override. **Resolution order:** remote override (if present) → local override (UserDefaults) → bundled default. **Lock-on-read:** the first time a flag is read in a session, that value is cached and returned for all later reads until the next app launch. Flags are defined as cases on the `FeatureFlag` enum; each has a string key and a default value. `FeatureFlagStore` is injected via `.environmentObject(featureFlags)` so views use `featureFlags.isEnabled(.flagName)`. Local overrides are stored in **App Group** UserDefaults (`group.com.nathanfennel.Fonsters`) so the main app and extensions share overrides when the App Group capability is enabled. The main app can fetch overrides from a backend: set **Info.plist** key `FeatureFlagBackendURL` to your API URL (e.g. a Vercel deployment); see **[docs/FEATURE_FLAGS_BACKEND.md](docs/FEATURE_FLAGS_BACKEND.md)** for the `api/` directory, deployment, and lock-on-read. **Debug (DEBUG builds only):** A "Feature Flags" toolbar button in the sidebar opens a sheet to view and toggle local overrides (Default / On / Off) for each flag.
 
 ### Main UI (ContentView)
 
@@ -70,7 +74,7 @@ Fonsters is a cross-platform SwiftUI app that lets users create and share determ
 
 ### Regenerating app icons
 
-App icons for iOS, macOS, watchOS, visionOS, and tvOS are generated from 1024×1024 source images in the **`Graphics/`** folder. To regenerate all sizes and platform variants after changing source art, run:
+App icons for **iOS and macOS** use the export from Apple’s **Icon Composer** in **`Graphics/Icon Exports/`** (1024×1024 PNGs: Default, Dark, TintedDark). Icons for watchOS, visionOS, and tvOS are generated from 1024×1024 sources in **`Graphics/`** (e.g. `Icon_Light_1024.png`, `Icon_Background_Light_1024.png`). To regenerate all sizes and platform variants after changing source art, run:
 
 ```bash
 ./Scripts/generate_platform_icons.sh
@@ -95,6 +99,7 @@ A static launch screen (black + subtle dark blue lines) and a ~1 second in-app l
 | File | Purpose |
 |------|--------|
 | `FonstersApp.swift` | App entry; SwiftData container with `Fonster` schema and iCloud (CloudKit) sync; shows LoadingView then ContentView. |
+| `FeatureFlag.swift` | Feature flags: enum, `FeatureFlagStore` (lock-on-read, local + optional remote overrides), `FeatureFlagRemoteProviding` protocol, `HTTPFeatureFlagRemoteProvider`, `FeatureFlagBackendConfiguration`. Injected via environment; shared across main app and extensions when App Group is used. |
 | `LoadingView.swift` | In-app loading animation (~1 s): black + moving lines, icon fade-in, background fade-out, lines off, icon shrink/fade-out; same on all platforms. |
 | `Fonster.swift` | SwiftData model: name, seed, randomSource, undo stacks. |
 | `ContentView.swift` | Master list + detail (FonsterDetailView, ImportSheet). |
@@ -113,6 +118,7 @@ A static launch screen (black + subtle dark blue lines) and a ~1 second in-app l
 | `Fonsters/ClockSeed.swift` | Shared ISO 8601 seed for a date; used by watch Clock and complication. |
 | `Fonsters Watch App/*.swift` | watchOS app: Clock (virtual) + list, detail (Digital Crown, tap creature for scale-pulse animation via WatchTappableCreatureView), modify. |
 | `Fonsters Watch Clock Extension/ClockWidget.swift` | watchOS WidgetKit complication: Clock creature on watch face. |
+| `api/flags.js`, `api/flags.json` | Vercel serverless API: GET /api/flags returns feature-flag overrides as JSON. Deploy via Vercel; set `FeatureFlagBackendURL` in Info.plist. See [docs/FEATURE_FLAGS_BACKEND.md](docs/FEATURE_FLAGS_BACKEND.md). |
 
 ---
 

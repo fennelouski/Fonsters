@@ -11,6 +11,7 @@ import SwiftData
 
 @main
 struct FonstersWatchApp: App {
+    @StateObject private var featureFlags = FeatureFlagStore(remoteProvider: NoOpFeatureFlagRemoteProvider())
     @State private var loadingComplete = false
 
     var sharedModelContainer: ModelContainer = {
@@ -31,6 +32,7 @@ struct FonstersWatchApp: App {
         WindowGroup {
             if loadingComplete {
                 WatchListView()
+                    .environmentObject(featureFlags)
             } else {
                 LoadingView(onComplete: { loadingComplete = true })
             }

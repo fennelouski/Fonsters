@@ -1,0 +1,23 @@
+{
+  "/Users/nathanfennel/Documents/GitHub/Fonsters/Fonsters/CreatureAvatar/CreatureHash.swift" : {
+    "const-values" : "/Users/nathanfennel/Documents/GitHub/Fonsters/build/Fonsters.build/Debug-watchsimulator/Fonsters Watch App.build/Objects-normal/x86_64/CreatureHash.swiftconstvalues",
+    "dependencies" : "/Users/nathanfennel/Documents/GitHub/Fonsters/build/Fonsters.build/Debug-watchsimulator/Fonsters Watch App.build/Objects-normal/x86_64/CreatureHash.d",
+    "diagnostics" : "/Users/nathanfennel/Documents/GitHub/Fonsters/build/Fonsters.build/Debug-watchsimulator/Fonsters Watch App.build/Objects-normal/x86_64/CreatureHash.dia",
+    "object" : "/Users/nathanfennel/Documents/GitHub/Fonsters/build/Fonsters.build/Debug-watchsimulator/Fonsters Watch App.build/Objects-normal/x86_64/CreatureHash.o",
+    "swift-dependencies" : "/Users/nathanfennel/Documents/GitHub/Fonsters/build/Fonsters.build/Debug-watchsimulator/Fonsters Watch App.build/Objects-normal/x86_64/CreatureHash.swiftdeps"
+  },
+  "/Users/nathanfennel/Documents/GitHub/Fonsters/Fonsters/CreatureAvatar/CreatureRaster.swift" : {
+    "const-values" : "/Users/nathanfennel/Documents/GitHub/Fonsters/build/Fonsters.build/Debug-watchsimulator/Fonsters Watch App.build/Objects-normal/x86_64/CreatureRaster.swiftconstvalues",
+    "dependencies" : "/Users/nathanfennel/Documents/GitHub/Fonsters/build/Fonsters.build/Debug-watchsimulator/Fonsters Watch App.build/Objects-normal/x86_64/CreatureRaster.d",
+    "diagnostics" : "/Users/nathanfennel/Documents/GitHub/Fonsters/build/Fonsters.build/Debug-watchsimulator/Fonsters Watch App.build/Objects-normal/x86_64/CreatureRaster.dia",
+    "object" : "/Users/nathanfennel/Documents/GitHub/Fonsters/build/Fonsters.build/Debug-watchsimulator/Fonsters Watch App.build/Objects-normal/x86_64/CreatureRaster.o",
+    "swift-dependencies" : "/Users/nathanfennel/Documents/GitHub/Fonsters/build/Fonsters.build/Debug-watchsimulator/Fonsters Watch App.build/Objects-normal/x86_64/CreatureRaster.swiftdeps"
+  },
+  "/Users/nathanfennel/Documents/GitHub/Fonsters/Fonsters/CreatureAvatar/CreatureTypes.swift" : {
+    "const-values" : "/Users/nathanfennel/Documents/GitHub/Fonsters/build/Fonsters.build/Debug-watchsimulator/Fonsters Watch App.build/Objects-normal/x86_64/CreatureTypes.swiftconstvalues",
+    "dependencies" : "/Users/nathanfennel/Documents/GitHub/Fonsters/build/Fonsters.build/Debug-watchsimulator/Fonsters Watch App.build/Objects-normal/x86_64/CreatureTypes.d",
+    "diagnostics" : "/Users/nathanfennel/Documents/GitHub/Fonsters/build/Fonsters.build/Debug-watchsimulator/Fonsters Watch App.build/Objects-normal/x86_64/CreatureTypes.dia",
+    "object" : "/Users/nathanfennel/Documents/GitHub/Fonsters/build/Fonsters.build/Debug-watchsimulator/Fonsters Watch App.build/Objects-normal/x86_64/CreatureTypes.o",
+    "swift-dependencies" : "/Users/nathanfennel/Documents/GitHub/Fonsters/build/Fonsters.build/Debug-watchsimulator/Fonsters Watch App.build/Objects-normal/x86_64/CreatureTypes.swiftdeps"
+  }
+}

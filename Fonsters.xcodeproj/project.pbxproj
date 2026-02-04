@@ -91,6 +91,7 @@
 			membershipExceptions = (
 				Assets.xcassets,
 				ContentView.swift,
+				FeatureFlag.swift,
 				FonstersApp.swift,
 				Info.plist,
 				InstallationSeeds.swift,
@@ -104,6 +105,7 @@
 				Assets.xcassets,
 				ContentView.swift,
 				CreatureEnvironmentView.swift,
+				FeatureFlag.swift,
 				Fonster.swift,
 				FonstersApp.swift,
 				Info.plist,
@@ -127,6 +129,7 @@
 				ClockSeed.swift,
 				ContentView.swift,
 				CreatureEnvironmentView.swift,
+				FeatureFlagRemoteProvider.swift,
 				FonstersApp.swift,
 				Info.plist,
 				InitialCreatureNames.swift,
@@ -608,10 +611,10 @@
 				"INFOPLIST_KEY_UIStatusBarStyle[sdk=iphonesimulator*]" = UIStatusBarStyleDefault;
 				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
 				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone = "UIInterfaceOrientationPortrait UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
-				IPHONEOS_DEPLOYMENT_TARGET = 17.6;
+				IPHONEOS_DEPLOYMENT_TARGET = 18.6;
 				LD_RUNPATH_SEARCH_PATHS = "@executable_path/Frameworks";
 				"LD_RUNPATH_SEARCH_PATHS[sdk=macosx*]" = "@executable_path/../Frameworks";
-				MACOSX_DEPLOYMENT_TARGET = 15.6;
+				MACOSX_DEPLOYMENT_TARGET = 14.6;
 				MARKETING_VERSION = 1.0;
 				PRODUCT_BUNDLE_IDENTIFIER = com.nathanfennel.Fonsters;
 				PRODUCT_NAME = "$(TARGET_NAME)";
@@ -660,10 +663,10 @@
 				"INFOPLIST_KEY_UIStatusBarStyle[sdk=iphonesimulator*]" = UIStatusBarStyleDefault;
 				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
 				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone = "UIInterfaceOrientationPortrait UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
-				IPHONEOS_DEPLOYMENT_TARGET = 17.6;
+				IPHONEOS_DEPLOYMENT_TARGET = 18.6;
 				LD_RUNPATH_SEARCH_PATHS = "@executable_path/Frameworks";
 				"LD_RUNPATH_SEARCH_PATHS[sdk=macosx*]" = "@executable_path/../Frameworks";
-				MACOSX_DEPLOYMENT_TARGET = 15.6;
+				MACOSX_DEPLOYMENT_TARGET = 14.6;
 				MARKETING_VERSION = 1.0;
 				PRODUCT_BUNDLE_IDENTIFIER = com.nathanfennel.Fonsters;
 				PRODUCT_NAME = "$(TARGET_NAME)";
@@ -947,6 +950,7 @@
 		8003B57E2F324B9C0035E183 /* Debug */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
+				CODE_SIGN_ENTITLEMENTS = "Fonsters Watch Clock Extension/FonstersWatchClockExtension.entitlements";
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
 				DEVELOPMENT_TEAM = EJLR2RPSV2;
@@ -966,6 +970,7 @@
 		8003B57F2F324B9C0035E183 /* Release */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
+				CODE_SIGN_ENTITLEMENTS = "Fonsters Watch Clock Extension/FonstersWatchClockExtension.entitlements";
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
 				DEVELOPMENT_TEAM = EJLR2RPSV2;

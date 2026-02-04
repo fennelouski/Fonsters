@@ -1,0 +1,24 @@
+{
+  "source": "/Users/nathanfennel/Documents/GitHub/Fonsters/Fonsters Watch Clock Extension/ClockWidget.swift",
+  "tables": {
+    "Localizable": [
+      {
+        "comment": "",
+        "key": "Clock",
+        "location": {
+          "startingColumn": 35,
+          "startingLine": 66
+        }
+      },
+      {
+        "comment": "",
+        "key": "Creature that changes with the time.",
+        "location": {
+          "startingColumn": 22,
+          "startingLine": 67
+        }
+      }
+    ]
+  },
+  "version": 1
+}

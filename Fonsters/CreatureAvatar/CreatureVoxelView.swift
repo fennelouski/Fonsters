@@ -18,6 +18,8 @@ import UIKit
 struct CreatureVoxelView: View {
     let seed: String
     var size: CGFloat = 160
+    /// When this value changes (e.g. parent increments for birthday celebration), run a tap reaction (dance).
+    var triggerBirthdayDanceID: Int = 0
 
     @State private var tapProgress: CGFloat = 0
     @State private var activeTapReaction: Int = -1 // 0 scale, 1 bounce, 2 spin
@@ -37,6 +39,9 @@ struct CreatureVoxelView: View {
         .frame(width: size, height: size)
         .contentShape(Rectangle())
         .onTapGesture { runTapReaction() }
+        .onChange(of: triggerBirthdayDanceID) { _, _ in
+            runTapReaction()
+        }
     }
 
     private func runTapReaction() {
@@ -139,10 +144,11 @@ private func hexToRealityColor(_ hex: String) -> UIColor {
     guard hex.hasPrefix("#"), let n = Int(hex.dropFirst(), radix: 16) else {
         return .gray
     }
-    let r = CGFloat((n >> 16) & 0xFF) / 255
-    let g = CGFloat((n >> 8) & 0xFF) / 255
-    let b = CGFloat(n & 0xFF) / 255
-    return UIColor(red: r, green: g, blue: b, alpha: 1)
+    let r = UInt8((n >> 16) & 0xFF)
+    let g = UInt8((n >> 8) & 0xFF)
+    let b = UInt8(n & 0xFF)
+    let (r2, g2, b2) = boostColorBrightnessAndSaturation(r: r, g: g, b: b)
+    return UIColor(red: CGFloat(r2) / 255, green: CGFloat(g2) / 255, blue: CGFloat(b2) / 255, alpha: 1)
 }
 
 /// Heuristic: cells at grid edges or in "appendage" regions get subtle animation.

@@ -1,18 +1,34 @@
 #!/bin/bash
-# Generate watchOS, visionOS, and tvOS icon assets from Graphics/ 1024 sources.
+# Generate app icon assets from Graphics/ sources.
+# - iOS + macOS: from Graphics/Icon Exports/ (Apple Icon Composer export).
+# - watchOS, visionOS, tvOS: from Graphics/ 1024 sources (Icon_Light, Icon_Background_Light).
 # Uses sips (macOS) and ImageMagick (convert/composite).
 
 set -e
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 GRAPHICS="$ROOT/Graphics"
+ICON_EXPORTS="$GRAPHICS/Icon Exports"
 ASSETS="$ROOT/Fonsters/Assets.xcassets"
+APPICON="$ASSETS/AppIcon.appiconset"
 WATCH_ASSETS="$ROOT/Fonsters Watch App/Assets.xcassets"
 
 BG_LIGHT="$GRAPHICS/Icon_Background_Light_1024.png"
 FG_LIGHT="$GRAPHICS/Icon_Light_1024.png"
 
+mkdir -p "$APPICON"
 mkdir -p "$ASSETS/watchOS.appiconset"
 mkdir -p "$WATCH_ASSETS/AppIcon.appiconset"
+
+# --- iOS + macOS: from Icon Composer export (Graphics/Icon Exports) ---
+if [[ -d "$ICON_EXPORTS" ]]; then
+  cp "$ICON_EXPORTS/Icon-iOS-Default-1024x1024@1x.png" "$APPICON/AppIcon-iOS-1024.png"
+  cp "$ICON_EXPORTS/Icon-iOS-Dark-1024x1024@1x.png" "$APPICON/AppIcon-iOS-Dark-1024.png"
+  cp "$ICON_EXPORTS/Icon-iOS-TintedDark-1024x1024@1x.png" "$APPICON/AppIcon-iOS-Tinted-1024.png"
+  SRC_1024="$APPICON/AppIcon-iOS-1024.png"
+  for size in 16 32 64 128 256 512 1024; do
+    sips -z $size $size "$SRC_1024" --out "$APPICON/AppIcon-mac-$size.png"
+  done
+fi
 
 # --- watchOS ---
 sips -z 1024 1024 "$FG_LIGHT" --out "$ASSETS/watchOS.appiconset/AppIcon-watchOS-1024.png"

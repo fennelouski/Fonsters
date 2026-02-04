@@ -64,6 +64,15 @@ enum InitialCreatureNames {
     static func shuffledPremade() -> [String] {
         premade.shuffled()
     }
+
+    /// Returns one random name for a newly created Fonster (e.g. Add, import, empty-store fallback).
+    /// 50/50 premade vs generated; stateless so safe to call from any creation path.
+    static func oneName() -> String {
+        if Bool.random(), let name = premade.randomElement() {
+            return name
+        }
+        return CreatureNameGenerator.generate()
+    }
 }
 
 enum CreatureNameGenerator {

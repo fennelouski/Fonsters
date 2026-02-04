@@ -12,6 +12,9 @@
 import SwiftUI
 import SwiftData
 import Combine
+#if canImport(Tips)
+import Tips
+#endif
 
 /// Holds a URL that was used to open the app (custom scheme or universal link); ContentView consumes it and imports seeds.
 final class PendingImportURLHolder: ObservableObject {
@@ -27,12 +30,6 @@ struct FonstersMenuActions {
     var selectPreviousFonster: () -> Void
     var selectNextFonster: () -> Void
     var toggleSidebar: () -> Void
-    var refreshCurrentFonster: (() -> Void)?
-    var undoCurrentFonster: (() -> Void)?
-    var redoCurrentFonster: (() -> Void)?
-    var copySource: (() -> Void)?
-    var duplicateFonster: () -> Void
-    var togglePlayPause: (() -> Void)?
 }
 
 private struct FonstersMenuActionsKey: FocusedValueKey {
@@ -57,7 +54,7 @@ private struct FonstersCommands: Commands {
             .keyboardShortcut("n", modifiers: .command)
         }
         CommandGroup(after: .sidebar) {
-            Button("Toggle Sidebar") {
+            Button("Show/Hide Sidebar") {
                 actions?.toggleSidebar()
             }
             .keyboardShortcut(KeyEquivalent("`"), modifiers: [.command, .option])
@@ -67,31 +64,6 @@ private struct FonstersCommands: Commands {
                 actions?.shareCurrentFonster()
             }
             .keyboardShortcut("p", modifiers: .command)
-            Button("Duplicate Fonster") {
-                actions?.duplicateFonster()
-            }
-            .keyboardShortcut("d", modifiers: .command)
-            Divider()
-            Button("Refresh Fonster") {
-                actions?.refreshCurrentFonster?()
-            }
-            .keyboardShortcut("r", modifiers: .command)
-            Button("Undo") {
-                actions?.undoCurrentFonster?()
-            }
-            .keyboardShortcut("z", modifiers: .command)
-            Button("Redo") {
-                actions?.redoCurrentFonster?()
-            }
-            .keyboardShortcut("z", modifiers: [.command, .shift])
-            Button("Copy Source Text") {
-                actions?.copySource?()
-            }
-            .keyboardShortcut("c", modifiers: .command)
-            Button("Play / Pause") {
-                actions?.togglePlayPause?()
-            }
-            .keyboardShortcut(.space, modifiers: .command)
             Divider()
             Button("Previous Fonster") {
                 actions?.selectPreviousFonster()
@@ -135,10 +107,25 @@ struct FonstersApp: App {
     @UIApplicationDelegateAdaptor(ShakeListenerAppDelegate.self) private var appDelegate
     #endif
     @StateObject private var pendingImportURL = PendingImportURLHolder()
+    @StateObject private var featureFlags = FeatureFlagStore(
+        remoteProvider: FeatureFlagBackendConfiguration.backendURL().map { HTTPFeatureFlagRemoteProvider(url: $0) } ?? NoOpFeatureFlagRemoteProvider()
+    )
     @State private var loadingComplete = false
 
     init() {
         RandomTextFallbacks.registerDefaults()
+        #if canImport(Tips)
+        do {
+            try Tips.configure([
+                .displayFrequency(.immediate),
+                .datastoreLocation(.applicationDefault)
+            ])
+        } catch {
+            #if DEBUG
+            NSLog("Fonsters: TipKit configuration failed: \(error)")
+            #endif
+        }
+        #endif
     }
 
     var sharedModelContainer: ModelContainer = {
@@ -175,6 +162,8 @@ struct FonstersApp: App {
             if loadingComplete {
                 ContentView()
                     .environmentObject(pendingImportURL)
+                    .environmentObject(featureFlags)
+                    .task { featureFlags.refreshFromRemote() }
                     #if !os(tvOS) && !os(visionOS)
                     .onOpenURL { url in
                         pendingImportURL.url = url

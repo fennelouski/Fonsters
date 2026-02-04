@@ -1,0 +1,99 @@
+{
+  "" : {
+    "diagnostics" : "/Users/nathanfennel/Documents/GitHub/Fonsters/build/Fonsters.build/Debug-watchsimulator/Fonsters Watch Clock Extension.build/Objects-normal/arm64/Fonsters Watch Clock Extension-primary.dia",
+    "emit-module-dependencies" : "/Users/nathanfennel/Documents/GitHub/Fonsters/build/Fonsters.build/Debug-watchsimulator/Fonsters Watch Clock Extension.build/Objects-normal/arm64/Fonsters Watch Clock Extension-primary-emit-module.d",
+    "emit-module-diagnostics" : "/Users/nathanfennel/Documents/GitHub/Fonsters/build/Fonsters.build/Debug-watchsimulator/Fonsters Watch Clock Extension.build/Objects-normal/arm64/Fonsters Watch Clock Extension-primary-emit-module.dia",
+    "pch" : "/Users/nathanfennel/Documents/GitHub/Fonsters/build/Fonsters.build/Debug-watchsimulator/Fonsters Watch Clock Extension.build/Objects-normal/arm64/Fonsters Watch Clock Extension-primary-Bridging-header.pch",
+    "swift-dependencies" : "/Users/nathanfennel/Documents/GitHub/Fonsters/build/Fonsters.build/Debug-watchsimulator/Fonsters Watch Clock Extension.build/Objects-normal/arm64/Fonsters Watch Clock Extension-primary.swiftdeps"
+  },
+  "/Users/nathanfennel/Documents/GitHub/Fonsters/Fonsters Watch Clock Extension/ClockWidget.swift" : {
+    "const-values" : "/Users/nathanfennel/Documents/GitHub/Fonsters/build/Fonsters.build/Debug-watchsimulator/Fonsters Watch Clock Extension.build/Objects-normal/arm64/ClockWidget.swiftconstvalues",
+    "dependencies" : "/Users/nathanfennel/Documents/GitHub/Fonsters/build/Fonsters.build/Debug-watchsimulator/Fonsters Watch Clock Extension.build/Objects-normal/arm64/ClockWidget.d",
+    "diagnostics" : "/Users/nathanfennel/Documents/GitHub/Fonsters/build/Fonsters.build/Debug-watchsimulator/Fonsters Watch Clock Extension.build/Objects-normal/arm64/ClockWidget.dia",
+    "index-unit-output-path" : "/Fonsters.build/Debug-watchsimulator/Fonsters Watch Clock Extension.build/Objects-normal/arm64/ClockWidget.o",
+    "llvm-bc" : "/Users/nathanfennel/Documents/GitHub/Fonsters/build/Fonsters.build/Debug-watchsimulator/Fonsters Watch Clock Extension.build/Objects-normal/arm64/ClockWidget.bc",
+    "object" : "/Users/nathanfennel/Documents/GitHub/Fonsters/build/Fonsters.build/Debug-watchsimulator/Fonsters Watch Clock Extension.build/Objects-normal/arm64/ClockWidget.o",
+    "swift-dependencies" : "/Users/nathanfennel/Documents/GitHub/Fonsters/build/Fonsters.build/Debug-watchsimulator/Fonsters Watch Clock Extension.build/Objects-normal/arm64/ClockWidget.swiftdeps",
+    "swiftmodule" : "/Users/nathanfennel/Documents/GitHub/Fonsters/build/Fonsters.build/Debug-watchsimulator/Fonsters Watch Clock Extension.build/Objects-normal/arm64/ClockWidget~partial.swiftmodule"
+  },
+  "/Users/nathanfennel/Documents/GitHub/Fonsters/Fonsters/ClockSeed.swift" : {
+    "const-values" : "/Users/nathanfennel/Documents/GitHub/Fonsters/build/Fonsters.build/Debug-watchsimulator/Fonsters Watch Clock Extension.build/Objects-normal/arm64/ClockSeed.swiftconstvalues",
+    "dependencies" : "/Users/nathanfennel/Documents/GitHub/Fonsters/build/Fonsters.build/Debug-watchsimulator/Fonsters Watch Clock Extension.build/Objects-normal/arm64/ClockSeed.d",
+    "diagnostics" : "/Users/nathanfennel/Documents/GitHub/Fonsters/build/Fonsters.build/Debug-watchsimulator/Fonsters Watch Clock Extension.build/Objects-normal/arm64/ClockSeed.dia",
+    "index-unit-output-path" : "/Fonsters.build/Debug-watchsimulator/Fonsters Watch Clock Extension.build/Objects-normal/arm64/ClockSeed.o",
+    "llvm-bc" : "/Users/nathanfennel/Documents/GitHub/Fonsters/build/Fonsters.build/Debug-watchsimulator/Fonsters Watch Clock Extension.build/Objects-normal/arm64/ClockSeed.bc",
+    "object" : "/Users/nathanfennel/Documents/GitHub/Fonsters/build/Fonsters.build/Debug-watchsimulator/Fonsters Watch Clock Extension.build/Objects-normal/arm64/ClockSeed.o",
+    "swift-dependencies" : "/Users/nathanfennel/Documents/GitHub/Fonsters/build/Fonsters.build/Debug-watchsimulator/Fonsters Watch Clock Extension.build/Objects-normal/arm64/ClockSeed.swiftdeps",
+    "swiftmodule" : "/Users/nathanfennel/Documents/GitHub/Fonsters/build/Fonsters.build/Debug-watchsimulator/Fonsters Watch Clock Extension.build/Objects-normal/arm64/ClockSeed~partial.swiftmodule"
+  },
+  "/Users/nathanfennel/Documents/GitHub/Fonsters/Fonsters/CreatureAvatar/CreatureAvatarView.swift" : {
+    "const-values" : "/Users/nathanfennel/Documents/GitHub/Fonsters/build/Fonsters.build/Debug-watchsimulator/Fonsters Watch Clock Extension.build/Objects-normal/arm64/CreatureAvatarView.swiftconstvalues",
+    "dependencies" : "/Users/nathanfennel/Documents/GitHub/Fonsters/build/Fonsters.build/Debug-watchsimulator/Fonsters Watch Clock Extension.build/Objects-normal/arm64/CreatureAvatarView.d",
+    "diagnostics" : "/Users/nathanfennel/Documents/GitHub/Fonsters/build/Fonsters.build/Debug-watchsimulator/Fonsters Watch Clock Extension.build/Objects-normal/arm64/CreatureAvatarView.dia",
+    "index-unit-output-path" : "/Fonsters.build/Debug-watchsimulator/Fonsters Watch Clock Extension.build/Objects-normal/arm64/CreatureAvatarView.o",
+    "llvm-bc" : "/Users/nathanfennel/Documents/GitHub/Fonsters/build/Fonsters.build/Debug-watchsimulator/Fonsters Watch Clock Extension.build/Objects-normal/arm64/CreatureAvatarView.bc",
+    "object" : "/Users/nathanfennel/Documents/GitHub/Fonsters/build/Fonsters.build/Debug-watchsimulator/Fonsters Watch Clock Extension.build/Objects-normal/arm64/CreatureAvatarView.o",
+    "swift-dependencies" : "/Users/nathanfennel/Documents/GitHub/Fonsters/build/Fonsters.build/Debug-watchsimulator/Fonsters Watch Clock Extension.build/Objects-normal/arm64/CreatureAvatarView.swiftdeps",
+    "swiftmodule" : "/Users/nathanfennel/Documents/GitHub/Fonsters/build/Fonsters.build/Debug-watchsimulator/Fonsters Watch Clock Extension.build/Objects-normal/arm64/CreatureAvatarView~partial.swiftmodule"
+  },
+  "/Users/nathanfennel/Documents/GitHub/Fonsters/Fonsters/CreatureAvatar/CreatureConstants.swift" : {
+    "const-values" : "/Users/nathanfennel/Documents/GitHub/Fonsters/build/Fonsters.build/Debug-watchsimulator/Fonsters Watch Clock Extension.build/Objects-normal/arm64/CreatureConstants.swiftconstvalues",
+    "dependencies" : "/Users/nathanfennel/Documents/GitHub/Fonsters/build/Fonsters.build/Debug-watchsimulator/Fonsters Watch Clock Extension.build/Objects-normal/arm64/CreatureConstants.d",
+    "diagnostics" : "/Users/nathanfennel/Documents/GitHub/Fonsters/build/Fonsters.build/Debug-watchsimulator/Fonsters Watch Clock Extension.build/Objects-normal/arm64/CreatureConstants.dia",
+    "index-unit-output-path" : "/Fonsters.build/Debug-watchsimulator/Fonsters Watch Clock Extension.build/Objects-normal/arm64/CreatureConstants.o",
+    "llvm-bc" : "/Users/nathanfennel/Documents/GitHub/Fonsters/build/Fonsters.build/Debug-watchsimulator/Fonsters Watch Clock Extension.build/Objects-normal/arm64/CreatureConstants.bc",
+    "object" : "/Users/nathanfennel/Documents/GitHub/Fonsters/build/Fonsters.build/Debug-watchsimulator/Fonsters Watch Clock Extension.build/Objects-normal/arm64/CreatureConstants.o",
+    "swift-dependencies" : "/Users/nathanfennel/Documents/GitHub/Fonsters/build/Fonsters.build/Debug-watchsimulator/Fonsters Watch Clock Extension.build/Objects-normal/arm64/CreatureConstants.swiftdeps",
+    "swiftmodule" : "/Users/nathanfennel/Documents/GitHub/Fonsters/build/Fonsters.build/Debug-watchsimulator/Fonsters Watch Clock Extension.build/Objects-normal/arm64/CreatureConstants~partial.swiftmodule"
+  },
+  "/Users/nathanfennel/Documents/GitHub/Fonsters/Fonsters/CreatureAvatar/CreatureGenerator.swift" : {
+    "const-values" : "/Users/nathanfennel/Documents/GitHub/Fonsters/build/Fonsters.build/Debug-watchsimulator/Fonsters Watch Clock Extension.build/Objects-normal/arm64/CreatureGenerator.swiftconstvalues",
+    "dependencies" : "/Users/nathanfennel/Documents/GitHub/Fonsters/build/Fonsters.build/Debug-watchsimulator/Fonsters Watch Clock Extension.build/Objects-normal/arm64/CreatureGenerator.d",
+    "diagnostics" : "/Users/nathanfennel/Documents/GitHub/Fonsters/build/Fonsters.build/Debug-watchsimulator/Fonsters Watch Clock Extension.build/Objects-normal/arm64/CreatureGenerator.dia",
+    "index-unit-output-path" : "/Fonsters.build/Debug-watchsimulator/Fonsters Watch Clock Extension.build/Objects-normal/arm64/CreatureGenerator.o",
+    "llvm-bc" : "/Users/nathanfennel/Documents/GitHub/Fonsters/build/Fonsters.build/Debug-watchsimulator/Fonsters Watch Clock Extension.build/Objects-normal/arm64/CreatureGenerator.bc",
+    "object" : "/Users/nathanfennel/Documents/GitHub/Fonsters/build/Fonsters.build/Debug-watchsimulator/Fonsters Watch Clock Extension.build/Objects-normal/arm64/CreatureGenerator.o",
+    "swift-dependencies" : "/Users/nathanfennel/Documents/GitHub/Fonsters/build/Fonsters.build/Debug-watchsimulator/Fonsters Watch Clock Extension.build/Objects-normal/arm64/CreatureGenerator.swiftdeps",
+    "swiftmodule" : "/Users/nathanfennel/Documents/GitHub/Fonsters/build/Fonsters.build/Debug-watchsimulator/Fonsters Watch Clock Extension.build/Objects-normal/arm64/CreatureGenerator~partial.swiftmodule"
+  },
+  "/Users/nathanfennel/Documents/GitHub/Fonsters/Fonsters/CreatureAvatar/CreatureHash.swift" : {
+    "const-values" : "/Users/nathanfennel/Documents/GitHub/Fonsters/build/Fonsters.build/Debug-watchsimulator/Fonsters Watch Clock Extension.build/Objects-normal/arm64/CreatureHash.swiftconstvalues",
+    "dependencies" : "/Users/nathanfennel/Documents/GitHub/Fonsters/build/Fonsters.build/Debug-watchsimulator/Fonsters Watch Clock Extension.build/Objects-normal/arm64/CreatureHash.d",
+    "diagnostics" : "/Users/nathanfennel/Documents/GitHub/Fonsters/build/Fonsters.build/Debug-watchsimulator/Fonsters Watch Clock Extension.build/Objects-normal/arm64/CreatureHash.dia",
+    "index-unit-output-path" : "/Fonsters.build/Debug-watchsimulator/Fonsters Watch Clock Extension.build/Objects-normal/arm64/CreatureHash.o",
+    "llvm-bc" : "/Users/nathanfennel/Documents/GitHub/Fonsters/build/Fonsters.build/Debug-watchsimulator/Fonsters Watch Clock Extension.build/Objects-normal/arm64/CreatureHash.bc",
+    "object" : "/Users/nathanfennel/Documents/GitHub/Fonsters/build/Fonsters.build/Debug-watchsimulator/Fonsters Watch Clock Extension.build/Objects-normal/arm64/CreatureHash.o",
+    "swift-dependencies" : "/Users/nathanfennel/Documents/GitHub/Fonsters/build/Fonsters.build/Debug-watchsimulator/Fonsters Watch Clock Extension.build/Objects-normal/arm64/CreatureHash.swiftdeps",
+    "swiftmodule" : "/Users/nathanfennel/Documents/GitHub/Fonsters/build/Fonsters.build/Debug-watchsimulator/Fonsters Watch Clock Extension.build/Objects-normal/arm64/CreatureHash~partial.swiftmodule"
+  },
+  "/Users/nathanfennel/Documents/GitHub/Fonsters/Fonsters/CreatureAvatar/CreatureRaster.swift" : {
+    "const-values" : "/Users/nathanfennel/Documents/GitHub/Fonsters/build/Fonsters.build/Debug-watchsimulator/Fonsters Watch Clock Extension.build/Objects-normal/arm64/CreatureRaster.swiftconstvalues",
+    "dependencies" : "/Users/nathanfennel/Documents/GitHub/Fonsters/build/Fonsters.build/Debug-watchsimulator/Fonsters Watch Clock Extension.build/Objects-normal/arm64/CreatureRaster.d",
+    "diagnostics" : "/Users/nathanfennel/Documents/GitHub/Fonsters/build/Fonsters.build/Debug-watchsimulator/Fonsters Watch Clock Extension.build/Objects-normal/arm64/CreatureRaster.dia",
+    "index-unit-output-path" : "/Fonsters.build/Debug-watchsimulator/Fonsters Watch Clock Extension.build/Objects-normal/arm64/CreatureRaster.o",
+    "llvm-bc" : "/Users/nathanfennel/Documents/GitHub/Fonsters/build/Fonsters.build/Debug-watchsimulator/Fonsters Watch Clock Extension.build/Objects-normal/arm64/CreatureRaster.bc",
+    "object" : "/Users/nathanfennel/Documents/GitHub/Fonsters/build/Fonsters.build/Debug-watchsimulator/Fonsters Watch Clock Extension.build/Objects-normal/arm64/CreatureRaster.o",
+    "swift-dependencies" : "/Users/nathanfennel/Documents/GitHub/Fonsters/build/Fonsters.build/Debug-watchsimulator/Fonsters Watch Clock Extension.build/Objects-normal/arm64/CreatureRaster.swiftdeps",
+    "swiftmodule" : "/Users/nathanfennel/Documents/GitHub/Fonsters/build/Fonsters.build/Debug-watchsimulator/Fonsters Watch Clock Extension.build/Objects-normal/arm64/CreatureRaster~partial.swiftmodule"
+  },
+  "/Users/nathanfennel/Documents/GitHub/Fonsters/Fonsters/CreatureAvatar/CreatureTypes.swift" : {
+    "const-values" : "/Users/nathanfennel/Documents/GitHub/Fonsters/build/Fonsters.build/Debug-watchsimulator/Fonsters Watch Clock Extension.build/Objects-normal/arm64/CreatureTypes.swiftconstvalues",
+    "dependencies" : "/Users/nathanfennel/Documents/GitHub/Fonsters/build/Fonsters.build/Debug-watchsimulator/Fonsters Watch Clock Extension.build/Objects-normal/arm64/CreatureTypes.d",
+    "diagnostics" : "/Users/nathanfennel/Documents/GitHub/Fonsters/build/Fonsters.build/Debug-watchsimulator/Fonsters Watch Clock Extension.build/Objects-normal/arm64/CreatureTypes.dia",
+    "index-unit-output-path" : "/Fonsters.build/Debug-watchsimulator/Fonsters Watch Clock Extension.build/Objects-normal/arm64/CreatureTypes.o",
+    "llvm-bc" : "/Users/nathanfennel/Documents/GitHub/Fonsters/build/Fonsters.build/Debug-watchsimulator/Fonsters Watch Clock Extension.build/Objects-normal/arm64/CreatureTypes.bc",
+    "object" : "/Users/nathanfennel/Documents/GitHub/Fonsters/build/Fonsters.build/Debug-watchsimulator/Fonsters Watch Clock Extension.build/Objects-normal/arm64/CreatureTypes.o",
+    "swift-dependencies" : "/Users/nathanfennel/Documents/GitHub/Fonsters/build/Fonsters.build/Debug-watchsimulator/Fonsters Watch Clock Extension.build/Objects-normal/arm64/CreatureTypes.swiftdeps",
+    "swiftmodule" : "/Users/nathanfennel/Documents/GitHub/Fonsters/build/Fonsters.build/Debug-watchsimulator/Fonsters Watch Clock Extension.build/Objects-normal/arm64/CreatureTypes~partial.swiftmodule"
+  },
+  "/Users/nathanfennel/Documents/GitHub/Fonsters/Fonsters/CreatureAvatar/CreatureVoxelView.swift" : {
+    "const-values" : "/Users/nathanfennel/Documents/GitHub/Fonsters/build/Fonsters.build/Debug-watchsimulator/Fonsters Watch Clock Extension.build/Objects-normal/arm64/CreatureVoxelView.swiftconstvalues",
+    "dependencies" : "/Users/nathanfennel/Documents/GitHub/Fonsters/build/Fonsters.build/Debug-watchsimulator/Fonsters Watch Clock Extension.build/Objects-normal/arm64/CreatureVoxelView.d",
+    "diagnostics" : "/Users/nathanfennel/Documents/GitHub/Fonsters/build/Fonsters.build/Debug-watchsimulator/Fonsters Watch Clock Extension.build/Objects-normal/arm64/CreatureVoxelView.dia",
+    "index-unit-output-path" : "/Fonsters.build/Debug-watchsimulator/Fonsters Watch Clock Extension.build/Objects-normal/arm64/CreatureVoxelView.o",
+    "llvm-bc" : "/Users/nathanfennel/Documents/GitHub/Fonsters/build/Fonsters.build/Debug-watchsimulator/Fonsters Watch Clock Extension.build/Objects-normal/arm64/CreatureVoxelView.bc",
+    "object" : "/Users/nathanfennel/Documents/GitHub/Fonsters/build/Fonsters.build/Debug-watchsimulator/Fonsters Watch Clock Extension.build/Objects-normal/arm64/CreatureVoxelView.o",
+    "swift-dependencies" : "/Users/nathanfennel/Documents/GitHub/Fonsters/build/Fonsters.build/Debug-watchsimulator/Fonsters Watch Clock Extension.build/Objects-normal/arm64/CreatureVoxelView.swiftdeps",
+    "swiftmodule" : "/Users/nathanfennel/Documents/GitHub/Fonsters/build/Fonsters.build/Debug-watchsimulator/Fonsters Watch Clock Extension.build/Objects-normal/arm64/CreatureVoxelView~partial.swiftmodule"
+  }
+}

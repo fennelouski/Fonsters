@@ -15,6 +15,8 @@ struct TappableCreatureView: View {
     let seed: String
     var size: CGFloat = 128
     var onTap: (() -> Void)?
+    /// When this value changes (e.g. parent increments for birthday celebration), run a dance animation.
+    var triggerBirthdayDanceID: Int = 0
 
     @State private var animationProgress: CGFloat = 0
     @State private var activeAnimation: CreatureTapAnimation?
@@ -35,11 +37,13 @@ struct TappableCreatureView: View {
                 .overlay { overlayView(for: state.overlay, size: size) }
         }
         .buttonStyle(CreatureFocusableButtonStyle())
+        .onChange(of: triggerBirthdayDanceID) { _, _ in triggerAnimation() }
         #else
         creatureWithTransform(state: state)
             .overlay { overlayView(for: state.overlay, size: size) }
             .contentShape(Rectangle())
             .onTapGesture { triggerAnimation() }
+            .onChange(of: triggerBirthdayDanceID) { _, _ in triggerAnimation() }
         #endif
     }
 

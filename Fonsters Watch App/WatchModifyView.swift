@@ -25,7 +25,7 @@ struct WatchModifyView: View {
 
     var body: some View {
         List {
-            Section("Load random") {
+            Section("Get random") {
                 Button("Random") {
                     let seed = watchLocalRandomSeed()
                     fonster.randomSource = nil
@@ -33,7 +33,7 @@ struct WatchModifyView: View {
                 }
             }
         }
-        .navigationTitle("Modify")
+        .navigationTitle("Edit")
         .navigationBarTitleDisplayMode(.inline)
     }
 }

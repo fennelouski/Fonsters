@@ -100,7 +100,7 @@ struct WatchListView: View {
 
     private func addFonster() {
         withAnimation {
-            let f = Fonster(name: "", seed: "", createdAtISO8601: Fonster.currentCreatedAtISO8601())
+            let f = Fonster(name: InitialCreatureNames.oneName(), seed: InstallationSeeds.currentTimeSeed(), createdAtISO8601: Fonster.currentCreatedAtISO8601())
             modelContext.insert(f)
         }
     }
@@ -146,7 +146,7 @@ struct WatchListView: View {
         await Task.yield()
         if fonsters.isEmpty {
             withAnimation {
-                let f = Fonster(name: "", seed: InstallationSeeds.currentTimeSeed(), createdAtISO8601: Fonster.currentCreatedAtISO8601())
+                let f = Fonster(name: InitialCreatureNames.oneName(), seed: InstallationSeeds.currentTimeSeed(), createdAtISO8601: Fonster.currentCreatedAtISO8601())
                 modelContext.insert(f)
             }
         }

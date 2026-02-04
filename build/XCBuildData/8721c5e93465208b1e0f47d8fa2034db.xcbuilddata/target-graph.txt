@@ -1,0 +1,2 @@
+Target dependency graph (1 target)
+Target 'Fonsters Watch Clock Extension' in project 'Fonsters' (no dependencies)
