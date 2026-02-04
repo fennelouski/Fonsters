@@ -916,6 +916,7 @@ struct FonsterDetailView: View {
                             .background(Color.accentColor.opacity(0.2))
                             .clipShape(RoundedRectangle(cornerRadius: 4))
                             .lineLimit(2)
+                        Spacer(minLength: 8)
                         Button("Use this") {
                             let newSeed = String(trimmedSeed.prefix(usedLen))
                             fonster.seed = newSeed
@@ -928,11 +929,12 @@ struct FonsterDetailView: View {
                     }
                     .frame(maxWidth: .infinity, alignment: .leading)
                     .padding(.horizontal)
-                    .padding(.top, 8)
+                    .padding(.top, 16)
                 }
                 Spacer(minLength: 16)
                 actionButtons
                     .padding(.horizontal)
+                    .padding(.vertical, 8)
                 #if canImport(Tips)
                     .modifier(ConditionalPopoverTip(step: 6, tip: ExportTip(), coordinator: onboardingCoordinator))
                 #endif
@@ -1412,10 +1414,10 @@ struct FonsterDetailView: View {
 
     private var animationSpeedSlider: some View {
         HStack(spacing: 8) {
-            Text("Speed")
+            Label("Speed", systemImage: "speedometer")
                 .font(.caption)
                 .foregroundStyle(.secondary)
-                .frame(width: 36, alignment: .leading)
+                .frame(width: 80, alignment: .leading)
             Slider(value: $animationSpeedMultiplier, in: 0.1...1.0, step: 0.05)
             Text("\(Int(animationSpeedMultiplier * 100))%")
                 .font(.caption)
@@ -1426,16 +1428,35 @@ struct FonsterDetailView: View {
     }
 
     private var playStopButtons: some View {
-        HStack(spacing: 4) {
-            Button {
-                isPlaying.toggle()
-            } label: {
-                Image(systemName: isPlaying ? "pause.circle.fill" : "play.circle.fill")
-                    .font(.title)
-                    .symbolRenderingMode(.hierarchical)
+        let progress: Double = {
+            let s = trimmedSeed
+            if s.isEmpty { return 0 }
+            let count = s.count
+            return min(1, max(0, Double(playFrameIndex) / Double(count)))
+        }()
+        let progressRingColor: Color = {
+            let seed = trimmedSeed.isEmpty ? " " : trimmedSeed
+            let colors = opaquePaletteColors(seed: seed)
+            return colors.first ?? Color.secondary
+        }()
+        return HStack(spacing: 4) {
+            ZStack {
+                Circle()
+                    .trim(from: 0, to: progress)
+                    .stroke(progressRingColor, lineWidth: 1.5)
+                    .rotationEffect(.degrees(-90))
+                    .frame(width: 26, height: 26)
+                Button {
+                    isPlaying.toggle()
+                } label: {
+                    Image(systemName: isPlaying ? "pause.circle.fill" : "play.circle.fill")
+                        .font(.title)
+                        .symbolRenderingMode(.hierarchical)
+                }
+                .buttonStyle(.plain)
+                .disabled(trimmedSeed.isEmpty)
             }
-            .buttonStyle(.plain)
-            .disabled(trimmedSeed.isEmpty)
+            .frame(width: 28, height: 28)
             Button {
                 isPlaying = false
                 if !trimmedSeed.isEmpty {
@@ -1467,7 +1488,7 @@ struct FonsterDetailView: View {
 
     @ViewBuilder
     private var actionButtons: some View {
-        WrapLayout(spacing: 8, lineSpacing: 8) {
+        HStack(spacing: 0) {
             #if !os(tvOS)
             Button {
                 exportPNG()
@@ -1475,6 +1496,9 @@ struct FonsterDetailView: View {
                 Label("PNG", systemImage: "square.and.arrow.down")
             }
             .buttonStyle(.bordered)
+            .tint(Color.blue.opacity(0.85))
+
+            Spacer(minLength: 8)
 
             Button {
                 Task { await exportGIF() }
@@ -1487,7 +1511,11 @@ struct FonsterDetailView: View {
                 }
             }
             .buttonStyle(.bordered)
+            .tint(Color.cyan.opacity(0.85))
             .disabled(gifLoading || fonster.seed.trimmingCharacters(in: .whitespaces).isEmpty)
+
+            Spacer(minLength: 8)
+
             #if os(macOS)
             Button {
                 exportJPEG()
@@ -1495,6 +1523,9 @@ struct FonsterDetailView: View {
                 Label("JPEG", systemImage: "photo")
             }
             .buttonStyle(.bordered)
+            .tint(Color.orange.opacity(0.85))
+
+            Spacer(minLength: 8)
             #endif
             #endif
 
@@ -1504,8 +1535,11 @@ struct FonsterDetailView: View {
                 Label("Add", systemImage: "plus")
             }
             .buttonStyle(.bordered)
+            .tint(Color.green.opacity(0.85))
 
             if fonster.randomSource != nil {
+                Spacer(minLength: 8)
+
                 Button {
                     Task { await refreshRandom() }
                 } label: {
@@ -1517,7 +1551,10 @@ struct FonsterDetailView: View {
                     }
                 }
                 .buttonStyle(.bordered)
+                .tint(Color.indigo.opacity(0.85))
                 .disabled(randomLoading != nil)
+
+                Spacer(minLength: 8)
 
                 Button {
                     _ = fonster.undo()
@@ -1525,7 +1562,10 @@ struct FonsterDetailView: View {
                     Label("Undo", systemImage: "arrow.uturn.backward")
                 }
                 .buttonStyle(.bordered)
+                .tint(Color.orange.opacity(0.8))
                 .disabled(fonster.history.isEmpty)
+
+                Spacer(minLength: 8)
 
                 Button {
                     _ = fonster.redo()
@@ -1533,6 +1573,7 @@ struct FonsterDetailView: View {
                     Label("Redo", systemImage: "arrow.uturn.forward")
                 }
                 .buttonStyle(.bordered)
+                .tint(Color.purple.opacity(0.85))
                 .disabled(fonster.future.isEmpty)
             }
         }

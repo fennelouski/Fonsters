@@ -215,7 +215,9 @@ struct FeatureFlagDebugSheet: View {
                 }
             }
             .navigationTitle("Feature Flags")
+            #if !os(macOS)
             .navigationBarTitleDisplayMode(.inline)
+            #endif
             .toolbar {
                 ToolbarItem(placement: .confirmationAction) {
                     Button("Done") { dismiss() }

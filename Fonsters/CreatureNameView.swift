@@ -14,14 +14,14 @@ import SwiftUI
 /// AppStorage key for the selected creature name font.
 let creatureNameFontIdKey = "creatureNameFontId"
 
-/// Default font id when none is set (system title2).
-let creatureNameFontIdDefault = "system"
+/// Default font id when none is set (fun display font).
+let creatureNameFontIdDefault = "Chalkduster"
 
 struct CreatureNameFontOption: Identifiable {
     let id: String
     let displayName: String
     func font(size: CGFloat) -> Font {
-        if id == creatureNameFontIdDefault {
+        if id == "system" {
             return .title2
         }
         if !CreatureNameFont.knownIds.contains(id) {
@@ -35,7 +35,7 @@ struct CreatureNameFontOption: Identifiable {
 enum CreatureNameFont {
     static let knownIds: Set<String> = Set(options.map(\.id))
     static let options: [CreatureNameFontOption] = [
-        CreatureNameFontOption(id: creatureNameFontIdDefault, displayName: "System"),
+        CreatureNameFontOption(id: "system", displayName: "System"),
         CreatureNameFontOption(id: "Chalkduster", displayName: "Chalkduster"),
         CreatureNameFontOption(id: "Papyrus", displayName: "Papyrus"),
         CreatureNameFontOption(id: "Noteworthy-Bold", displayName: "Noteworthy Bold"),
@@ -48,7 +48,7 @@ enum CreatureNameFont {
 
 // MARK: - Creature name view
 
-private let nameBaseSize: CGFloat = 22
+private let nameBaseSize: CGFloat = 34
 private let nameFirstLetterScale: CGFloat = 1.2
 private let nameSmallLetterScale: CGFloat = 0.9
 private let nameLastCrookedDegrees: Double = 12
@@ -58,12 +58,19 @@ struct CreatureNameView: View {
     let displayName: String
     let seed: String
     @AppStorage(creatureNameFontIdKey) private var fontId: String = creatureNameFontIdDefault
+    @Environment(\.colorScheme) private var colorScheme
 
     @State private var tapJiggle: Bool = false
 
     private var paletteColors: [Color] {
-        let colors = opaquePaletteColors(seed: seed)
+        let colors = opaquePaletteColorsForDisplay(seed: seed, isDarkMode: colorScheme == .dark)
         return colors.isEmpty ? [.primary] : colors
+    }
+
+    /// Sign tilt in degrees: ±20° so the name looks like a sign above a door.
+    private var signTiltDegrees: Double {
+        let u = segmentHash(seed: effectiveSeed, segmentId: "name_sign_tilt")
+        return -20 + u * 40
     }
 
     private var lastLetterCrooked: Bool {
@@ -95,13 +102,24 @@ struct CreatureNameView: View {
                     isLast: index == lastIndex,
                     color: paletteColors[index % paletteColors.count]
                 )
+                .rotationEffect(.degrees(jiggleRotation(for: index)))
+                .animation(
+                    tapJiggle ? .easeInOut(duration: 0.06).repeatCount(4, autoreverses: true).delay(Double(index) * 0.02) : .default,
+                    value: tapJiggle
+                )
             }
         }
-        .rotationEffect(.degrees(tapJiggle ? 3 : 0))
-        .animation(tapJiggle ? .easeInOut(duration: 0.05).repeatCount(4, autoreverses: true) : .default, value: tapJiggle)
+        .rotationEffect(.degrees(signTiltDegrees))
         .onTapGesture {
             triggerJiggle()
         }
+    }
+
+    /// Per-letter jiggle rotation (each letter animates separately; direction and amount from seed).
+    private func jiggleRotation(for index: Int) -> Double {
+        guard tapJiggle else { return 0 }
+        let u = segmentHash(seed: effectiveSeed, segmentId: "name_jiggle_\(index)")
+        return (u * 2 - 1) * 8
     }
 
     @ViewBuilder
