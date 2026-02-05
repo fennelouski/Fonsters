@@ -9,6 +9,7 @@
 import UIKit
 import Messages
 import SwiftData
+import CloudKit
 
 private let stickerSize: MSStickerSize = .regular
 
@@ -49,15 +50,32 @@ final class MessagesViewController: MSMessagesAppViewController {
         guard let cacheDir = cacheDirectory else { return }
         try? FileManager.default.createDirectory(at: cacheDir, withIntermediateDirectories: true)
 
+        let schema = Schema([Fonster.self])
+        var useCloudKit = false
+        let semaphore = DispatchSemaphore(value: 0)
+        CKContainer.default().accountStatus { status, _ in
+            useCloudKit = (status == .available)
+            semaphore.signal()
+        }
+        _ = semaphore.wait(timeout: .now() + 1.0)
+
         let container: ModelContainer
         do {
-            let schema = Schema([Fonster.self])
-            let config = ModelConfiguration(
-                "Synced",
-                schema: schema,
-                cloudKitDatabase: .automatic
-            )
-            container = try ModelContainer(for: schema, configurations: [config])
+            if useCloudKit {
+                let config = ModelConfiguration(
+                    "Synced",
+                    schema: schema,
+                    cloudKitDatabase: .automatic
+                )
+                container = try ModelContainer(for: schema, configurations: [config])
+            } else {
+                let config = ModelConfiguration(
+                    "Local",
+                    schema: schema,
+                    cloudKitDatabase: .none
+                )
+                container = try ModelContainer(for: schema, configurations: [config])
+            }
             modelContainer = container
         } catch {
             browserViewController.stickers = []

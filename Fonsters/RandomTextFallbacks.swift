@@ -2,9 +2,9 @@
 //  RandomTextFallbacks.swift
 //  Fonsters
 //
-//  Locally defined fallbacks when the random-text API fails. Register sources
-//  with a closure that returns optional text; the fetch layer tries API first,
-//  then uses the fallback for that source if present.
+//  Random text sources: "quote" uses Quotable API (api.quotable.io) with local fallback;
+//  "words", "uuid", and "lorem" are local-only. Register sources with a closure that
+//  returns optional text; the fetch layer uses API for quote, local for the rest.
 //
 
 import Foundation
@@ -48,7 +48,7 @@ enum RandomTextFallbacks {
 // MARK: - Default fallbacks
 
 extension RandomTextFallbacks {
-    /// Registers the built-in fallbacks: "words" (random word list) and "uuid".
+    /// Registers the built-in fallbacks: "words", "uuid", "quote", and "lorem".
     static func registerDefaults() {
         register(source: "uuid") { UUID().uuidString }
         register(source: "words") {
@@ -60,31 +60,61 @@ extension RandomTextFallbacks {
             let count = 4 + (words.count % 5)
             return (0..<count).map { _ in words.randomElement()! }.joined(separator: " ")
         }
+        register(source: "quote") {
+            let quotes = [
+                "The only way to do great work is to love what you do. — Steve Jobs",
+                "In the middle of difficulty lies opportunity. — Albert Einstein",
+                "It is during our darkest moments that we must focus to see the light. — Aristotle",
+                "The journey of a thousand miles begins with a single step. — Lao Tzu",
+                "Be the change that you wish to see in the world. — Mahatma Gandhi",
+                "The only impossible journey is the one you never begin. — Tony Robbins",
+                "Everything you can imagine is real. — Pablo Picasso",
+                "What we think, we become. — Buddha",
+                "The best time to plant a tree was 20 years ago. The second best time is now. — Chinese proverb",
+                "Do what you can, with what you have, where you are. — Theodore Roosevelt"
+            ]
+            return quotes.randomElement()
+        }
+        register(source: "lorem") {
+            "Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat. Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur."
+        }
     }
 }
 
 // MARK: - Fetch with fallback
 
-private let randomTextAPIBase = "https://nathanfennel.com/api/creature-avatar/random-text"
+private let quotableAPIURL = URL(string: "https://api.quotable.io/random")!
 
-/// Fetches random text from the API; on failure uses the local fallback for that source if registered.
-/// Returns (text, usedFallback). Call from main app or Watch; ensure RandomTextFallbacks.registerDefaults() has been called at app launch if you want built-in "words" and "uuid" fallbacks.
+/// Fetches random text: for "quote" uses Quotable API with local fallback; for "words", "uuid", "lorem" uses local only.
+/// Returns (text, usedFallback). Call from main app or Watch; ensure RandomTextFallbacks.registerDefaults() has been called at app launch.
 func fetchRandomTextWithFallback(source: String) async -> (String?, Bool) {
-    let urlString = "\(randomTextAPIBase)?source=\(source.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? source)"
-    guard let url = URL(string: urlString) else {
-        let fallback = RandomTextFallbacks.localText(for: source)
-        return (fallback, fallback != nil)
+    switch source {
+    case "quote":
+        return await fetchQuoteWithFallback()
+    case "words", "uuid", "lorem":
+        let text = RandomTextFallbacks.localText(for: source)
+        return (text, text != nil)
+    default:
+        let text = RandomTextFallbacks.localText(for: source)
+        return (text, text != nil)
     }
+}
+
+private func fetchQuoteWithFallback() async -> (String?, Bool) {
     do {
-        let (data, response) = try await URLSession.shared.data(from: url)
+        let (data, response) = try await URLSession.shared.data(from: quotableAPIURL)
         guard let http = response as? HTTPURLResponse, (200...299).contains(http.statusCode) else {
-            let fallback = RandomTextFallbacks.localText(for: source)
+            let fallback = RandomTextFallbacks.localText(for: "quote")
             return (fallback, fallback != nil)
         }
         let json = try JSONSerialization.jsonObject(with: data) as? [String: Any]
-        if let text = json?["text"] as? String { return (text, false) }
+        if let content = json?["content"] as? String, !content.isEmpty {
+            let author = json?["author"] as? String
+            let text = author.map { "\(content) — \($0)" } ?? content
+            return (text, false)
+        }
     } catch { }
-    let fallback = RandomTextFallbacks.localText(for: source)
+    let fallback = RandomTextFallbacks.localText(for: "quote")
     return (fallback, fallback != nil)
 }
 

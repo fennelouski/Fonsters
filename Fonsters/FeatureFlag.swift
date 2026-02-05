@@ -215,7 +215,7 @@ struct FeatureFlagDebugSheet: View {
                 }
             }
             .navigationTitle("Feature Flags")
-            #if !os(macOS)
+            #if os(iOS)
             .navigationBarTitleDisplayMode(.inline)
             #endif
             .toolbar {

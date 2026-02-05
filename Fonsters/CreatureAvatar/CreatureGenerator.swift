@@ -97,7 +97,7 @@ public func resolveConfig(seed: String) -> CreatureConfig {
     let hasHorn = tier >= 4 && segmentRoll(seed: seed, segmentId: "horn", p: CreaturePROB.hasHorn)
     let hasAntlers = tier >= 4 && segmentRoll(seed: seed, segmentId: "antlers", p: CreaturePROB.hasAntlers)
 
-    var hasAppendages = tier >= 3 && segmentRoll(seed: seed, segmentId: "appendages", p: 0.55)
+    let hasAppendages = tier >= 3 && segmentRoll(seed: seed, segmentId: "appendages", p: 0.55)
     let appendageCount = hasAppendages ? [4, 6, 8][segmentPick(seed: seed, segmentId: "appendage_count", n: 3)] : 4
     let appendageStyle = hasAppendages ? ["tentacle", "arm", "leg"][segmentPick(seed: seed, segmentId: "appendage_style", n: 3)] : "arm"
     let appendageRadial = hasAppendages && segmentRoll(seed: seed, segmentId: "appendage_radial", p: 0.6)

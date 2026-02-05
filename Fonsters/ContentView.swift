@@ -8,7 +8,7 @@
 //  Implemented:
 //  - Master: list with preview + name, Add, Share (URL), Import (paste URL), delete.
 //  - Detail: name and seed fields, Load random (with local fallback), Prepend random,
-//    Play (evolution animation), PNG / GIF / JPEG (macOS) export (share/save), Add, Refresh/Undo/Redo.
+//    Play (evolution animation), PNG / GIF / JPEG (macOS) export (share/save), Refresh/Undo/Redo.
 //  - PNG/GIF hidden on tvOS; Share/Import; open from URL via fonsters:// (and universal links if configured).
 //  - visionOS: 3D voxel creature in detail (CreatureVoxelView); watchOS has separate target (Fonsters Watch App).
 //
@@ -156,11 +156,11 @@ struct ContentView: View {
 
     private var sidebarColumnContent: some View {
         VStack(alignment: .leading, spacing: 0) {
-            #if !os(iOS)
+            #if os(macOS)
             sidebarHeader
             #endif
             sidebarFonstersList
-            #if !os(iOS)
+            #if os(macOS)
             sidebarFooter
             #endif
         }
@@ -249,7 +249,9 @@ struct ContentView: View {
         .frame(maxWidth: .infinity, alignment: .leading)
         .padding(.horizontal, 12)
         .padding(.vertical, 8)
+        #if !os(tvOS)
         .background(.quaternary.opacity(0.4))
+        #endif
         #else
         Button {
             showHelpSheet = true
@@ -261,7 +263,9 @@ struct ContentView: View {
         .frame(maxWidth: .infinity, alignment: .leading)
         .padding(.horizontal, 12)
         .padding(.vertical, 8)
+        #if !os(tvOS)
         .background(.quaternary.opacity(0.4))
+        #endif
         #endif
         #endif
     }
@@ -289,6 +293,16 @@ struct ContentView: View {
                 #if os(iOS)
                 .listRowBackground(colorScheme == .dark ? Color(white: 0.2) : Color(uiColor: .secondarySystemGroupedBackground))
                 #endif
+                #if os(tvOS)
+                .listRowInsets(
+                    EdgeInsets(
+                        top: 18,
+                        leading: 16,
+                        bottom: 18,
+                        trailing: 16
+                    )
+                )
+                #endif
                 #if os(macOS)
                 .contextMenu {
                     Button {
@@ -307,6 +321,26 @@ struct ContentView: View {
                 #endif
             }
             .onDelete(perform: deleteFonsters)
+            #if os(tvOS)
+            Section {
+                Button {
+                    showHelpSheet = true
+                } label: {
+                    Label("How to use Fonsters", systemImage: "questionmark.circle")
+                        .font(.body)
+                }
+                .buttonStyle(.plain)
+            }
+            .listRowInsets(
+                EdgeInsets(
+                    top: 18,
+                    leading: 8,
+                    bottom: 18,
+                    trailing: 8
+                )
+            )
+            .focusSection()
+            #endif
             #if os(iOS)
             Section {
                 #if canImport(Tips)
@@ -347,11 +381,26 @@ struct ContentView: View {
     }
 
     private func sidebarRow(for fonster: Fonster) -> some View {
-        HStack(spacing: 12) {
+        #if os(tvOS)
+        sidebarRowContent(for: fonster)
+            .padding(.vertical, 8)
+            .padding(.horizontal, 8)
+        #else
+        sidebarRowContent(for: fonster)
+        #endif
+    }
+
+    private func sidebarRowContent(for fonster: Fonster) -> some View {
+        HStack(alignment: .top, spacing: 12) {
             CreatureAvatarView(seed: fonster.seed, size: 48)
                 .clipShape(RoundedRectangle(cornerRadius: 6))
             Text(displayName(for: fonster))
+                #if os(tvOS)
+                .lineLimit(2)
+                .fixedSize(horizontal: false, vertical: true)
+                #else
                 .lineLimit(1)
+                #endif
             if fonster.isBirthdayAnniversary {
                 Text("Birthday!")
                     .font(.caption)
@@ -373,7 +422,7 @@ struct ContentView: View {
         }
         #endif
         #if canImport(Tips)
-        #if !os(iOS)
+        #if !os(iOS) && !os(tvOS)
         ToolbarItem {
             Group {
                 if onboardingCoordinator.shouldShowTip(for: 1) {
@@ -385,7 +434,7 @@ struct ContentView: View {
             }
         }
         #endif
-        #if !os(iOS)
+        #if !os(iOS) && !os(tvOS)
         ToolbarItem {
             Group {
                 if onboardingCoordinator.shouldShowTip(for: 2) {
@@ -403,7 +452,7 @@ struct ContentView: View {
         }
         #endif
         #else
-        #if !os(iOS)
+        #if !os(iOS) && !os(tvOS)
         ToolbarItem {
             Button(action: addFonster) {
                 Label("Add Fonster", systemImage: "plus")
@@ -431,12 +480,20 @@ struct ContentView: View {
             .keyboardShortcut(KeyEquivalent("`"), modifiers: [.command, .option])
         }
         #endif
-        #if DEBUG
+        #if DEBUG && !os(tvOS)
         ToolbarItem(placement: .primaryAction) {
             Button {
                 showFeatureFlagDebug = true
             } label: {
                 Label("Feature Flags", systemImage: "flag")
+            }
+        }
+        #endif
+        #if os(tvOS)
+        ToolbarItem(placement: .primaryAction) {
+            Button(action: addFonster) {
+                Image(systemName: "plus")
+                    .padding(12)
             }
         }
         #endif
@@ -796,9 +853,15 @@ struct FonsterDetailView: View {
     #if os(iOS) || os(macOS)
     @State private var showFontPicker = false
     #endif
-    #if os(macOS)
+    #if os(macOS) || os(tvOS)
     @State private var nameLabelLastTapTime: Date?
     @State private var nameLabelSingleTapTask: Task<Void, Never>?
+    @State private var nameLabelJiggleTrigger: Int = 0
+    @State private var showEditNameSheet = false
+    #endif
+    #if os(tvOS)
+    @State private var showEditSeedSheet = false
+    @State private var seedWhenEditSeedSheetOpened: String?
     #endif
 
     var body: some View {
@@ -806,6 +869,176 @@ struct FonsterDetailView: View {
         iosDetailBody
         #else
         ZStack {
+        #if os(tvOS)
+        ZStack(alignment: .topLeading) {
+            HStack(alignment: .top, spacing: 0) {
+                // Left column: form and controls (narrower), birthday pinned to bottom
+                VStack(alignment: .leading, spacing: 0) {
+                    ScrollView(.vertical) {
+                        VStack(alignment: .leading, spacing: 24) {
+                            if fonster.isBirthdayAnniversary {
+                                HStack(spacing: 8) {
+                                    Image(systemName: "birthday.cake")
+                                    Text(birthdayBannerText)
+                                        .font(.subheadline.weight(.medium))
+                                }
+                                .frame(maxWidth: .infinity)
+                                .padding(.vertical, 10)
+                                .padding(.horizontal, 12)
+                                #if !os(tvOS)
+                                .background(.quaternary.opacity(0.6))
+                                #endif
+                            }
+
+                            VStack(alignment: .leading, spacing: 12) {
+                                HStack(alignment: .center, spacing: 8) {
+                                    Text("Name")
+                                        .font(.subheadline)
+                                        .foregroundStyle(.secondary)
+                                    Spacer(minLength: 32)
+                                    Spacer(minLength: 0)
+                                    Button {
+                                        showEditNameSheet = true
+                                    } label: {
+                                        Image(systemName: "pencil")
+                                    }
+                                    .buttonStyle(.plain)
+                                    Spacer(minLength: 8)
+                                }
+                                // Spacer to reserve space for name
+                                Color.clear
+                                    .frame(height: 100)
+                            }
+                            .padding(.vertical, 4)
+
+                        randomButtonRow(
+                            label: "Get random:",
+                            sources: ["quote", "words", "uuid", "lorem"],
+                            action: { source in Task { await loadRandom(source: source) } },
+                            disabled: randomLoading != nil,
+                            trailingEditAction: {
+                                seedWhenEditSeedSheetOpened = seedText
+                                showEditSeedSheet = true
+                            }
+                        )
+                        randomButtonRow(
+                            label: "Add random to start:",
+                            sources: ["quote", "words", "uuid", "lorem"],
+                            action: { source in Task { await prependRandom(source: source) } },
+                            disabled: randomLoading != nil
+                        )
+
+                        Spacer(minLength: 24)
+
+                        actionButtons
+
+                        Spacer(minLength: 24)
+                    }
+                    .padding(
+                        EdgeInsets(
+                            top: 20,
+                            leading: 32,
+                            bottom: 20,
+                            trailing: 0
+                        )
+                    )
+                    .frame(minWidth: 480, alignment: .leading)
+                }
+                .frame(maxWidth: .infinity)
+
+                if featureFlags.isEnabled(.showBirthdayOverlay) {
+                    Button {
+                        showBirthdayCelebration = true
+                        triggerBirthdayDanceID += 1
+                    } label: {
+                        HStack(spacing: 6) {
+                            Text("🎂")
+                            Text(fonsterBirthdayMonthDayString(for: fonster))
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                        }
+                        .fixedSize(horizontal: true, vertical: false)
+                    }
+                    .buttonStyle(.plain)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .padding(.horizontal, 32)
+                    .padding(.vertical, 12)
+                }
+            }
+            .frame(maxWidth: 480)
+            
+            // Overlay name so it can extend beyond left column bounds
+            VStack(alignment: .leading, spacing: 0) {
+                if fonster.isBirthdayAnniversary {
+                    Spacer()
+                        .frame(height: 20 + 50) // top padding + birthday banner
+                } else {
+                    Spacer()
+                        .frame(height: 20) // top padding
+                }
+                HStack(spacing: 0) {
+                    Spacer()
+                        .frame(width: 32) // leading padding
+                    VStack(alignment: .leading, spacing: 12) {
+                        Spacer()
+                            .frame(height: 30) // "Name" label height
+                        CreatureNameView(
+                            displayName: displayName,
+                            seed: fonster.seed.trimmingCharacters(in: .whitespaces).isEmpty ? " " : fonster.seed,
+                            externalJiggleTrigger: $nameLabelJiggleTrigger
+                        )
+                        .fixedSize(horizontal: true, vertical: false)
+                        .contentShape(Rectangle())
+                        .onTapGesture(count: 2) {
+                            nameLabelSingleTapTask?.cancel()
+                            nameLabelSingleTapTask = nil
+                            showEditNameSheet = true
+                        }
+                        .onTapGesture(count: 1) {
+                            let now = Date()
+                            nameLabelJiggleTrigger += 1
+                            nameLabelSingleTapTask?.cancel()
+                            nameLabelSingleTapTask = nil
+                            if let last = nameLabelLastTapTime, now.timeIntervalSince(last) < 0.35 {
+                                nameLabelLastTapTime = nil
+                                showEditNameSheet = true
+                                return
+                            }
+                            nameLabelLastTapTime = now
+                        }
+                    }
+                    Spacer()
+                }
+                Spacer()
+            }
+            .allowsHitTesting(true)
+
+            // Right column: creature in maximal square with padding around it, controls below
+            VStack(spacing: 0) {
+                GeometryReader { geo in
+                    let side = min(geo.size.width, geo.size.height)
+                    creatureSection
+                        .frame(width: side, height: side)
+                        .frame(maxWidth: .infinity, maxHeight: .infinity)
+                }
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+                
+                // Play/stop buttons and speed controls below the creature image
+                // Centered horizontally under the creature image and vertically aligned with the birthday label
+                HStack(alignment: .center, spacing: 32) {
+                    tvOSPlayStopRow
+                    animationSpeedSlider
+                }
+                .frame(maxWidth: .infinity)
+                .padding(.top, 16) // Spacing from creature image
+                .padding(.bottom, 12) // Match birthday label vertical padding
+            }
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
+            .padding(16)
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        }
+        #else
         VStack(spacing: 0) {
             ScrollView {
                 VStack(alignment: .leading, spacing: 0) {
@@ -829,20 +1062,13 @@ struct FonsterDetailView: View {
                     Text("Name")
                         .font(.subheadline)
                         .foregroundStyle(.secondary)
-                    #if os(macOS)
+                    #if os(macOS) || os(tvOS)
                     nameFieldOrLabel
                     #else
                     TextField("Fonster name", text: $fonster.name)
-                        #if os(tvOS)
-                        .textFieldStyle(.plain)
-                        #else
                         .textFieldStyle(.roundedBorder)
-                        #endif
                         .focused($nameFocused)
                         .onKeyPress(keys: [.escape]) { _ in nameFocused = false; return .handled }
-                        #if os(tvOS)
-                        .onExitCommand { nameFocused = false }
-                        #endif
                     #endif
                     }
 
@@ -876,6 +1102,7 @@ struct FonsterDetailView: View {
                                     seedWhenFocused = nil
                                 }
                             }
+                        #if !os(tvOS)
                         randomButtonRow(
                             label: "Get random:",
                             sources: ["quote", "words", "uuid", "lorem"],
@@ -888,6 +1115,7 @@ struct FonsterDetailView: View {
                             action: { source in Task { await prependRandom(source: source) } },
                             disabled: randomLoading != nil
                         )
+                        #endif
                     }
                 }
                 #if canImport(Tips)
@@ -902,6 +1130,7 @@ struct FonsterDetailView: View {
                 #if canImport(Tips)
                     .modifier(ConditionalPopoverTip(step: 5, tip: PlayTip(), coordinator: onboardingCoordinator))
                 #endif
+                #if !os(tvOS)
                 // What shapes your creature: show beneath the image only while playing
                 if isPlaying, let usedLen = usedPrefixLength, usedLen < trimmedSeed.count {
                     let prefix = String(trimmedSeed.prefix(usedLen))
@@ -931,6 +1160,7 @@ struct FonsterDetailView: View {
                     .padding(.horizontal)
                     .padding(.top, 16)
                 }
+                #endif
                 Spacer(minLength: 16)
                 actionButtons
                     .padding(.horizontal)
@@ -993,7 +1223,9 @@ struct FonsterDetailView: View {
             #endif
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
-
+        #endif
+        
+        ZStack {
             if featureFlags.isEnabled(.showBirthdayOverlay), showBirthdayCelebration {
                 GeometryReader { geo in
                     BirthdayCelebrationOverlay(
@@ -1005,8 +1237,12 @@ struct FonsterDetailView: View {
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
             }
         }
-        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        #if os(tvOS)
+        .navigationTitle("")
+        #else
         .navigationTitle(displayName)
+        #endif
+        }
         .toolbar {
             ToolbarItem(placement: .primaryAction) {
                 Image("Logo")
@@ -1024,6 +1260,24 @@ struct FonsterDetailView: View {
             }
             #endif
         }
+        #if os(macOS) || os(tvOS)
+        .sheet(isPresented: $showEditNameSheet) {
+            EditFonsterNameSheet(name: $fonster.name)
+        }
+        #endif
+        #if os(tvOS)
+        .sheet(isPresented: $showEditSeedSheet) {
+            EditFonsterSeedSheet(seedText: $seedText)
+        }
+        .onChange(of: showEditSeedSheet) { _, showing in
+            if !showing {
+                if let prev = seedWhenEditSeedSheetOpened, prev != seedText {
+                    fonster.pushPreviousAndSetSeed(previous: prev, newSeed: seedText)
+                }
+                seedWhenEditSeedSheetOpened = nil
+            }
+        }
+        #endif
         #if os(macOS)
         .sheet(isPresented: $showFontPicker) {
             CreatureNameFontPickerView(sampleName: displayName)
@@ -1033,6 +1287,12 @@ struct FonsterDetailView: View {
         .scrollDismissesKeyboard(.interactively)
         #endif
         .onKeyPress(keys: [.space]) { _ in
+            #if os(macOS) || os(tvOS)
+            if showEditNameSheet { return .ignored }
+            #endif
+            #if os(tvOS)
+            if showEditSeedSheet { return .ignored }
+            #endif
             if nameFocused || seedFocused {
                 return .ignored
             }
@@ -1043,6 +1303,12 @@ struct FonsterDetailView: View {
             return .handled
         }
         .onKeyPress(keys: [.return]) { _ in
+            #if os(macOS) || os(tvOS)
+            if showEditNameSheet { return .ignored }
+            #endif
+            #if os(tvOS)
+            if showEditSeedSheet { return .ignored }
+            #endif
             if nameFocused || seedFocused {
                 return .ignored
             }
@@ -1065,7 +1331,7 @@ struct FonsterDetailView: View {
         #endif
         #if os(tvOS)
         .background(PlayPauseHandlerView(onPlayPause: {
-            if !nameFocused && !seedFocused && !fonster.seed.trimmingCharacters(in: .whitespaces).isEmpty {
+            if !showEditNameSheet && !showEditSeedSheet && !nameFocused && !seedFocused && !fonster.seed.trimmingCharacters(in: .whitespaces).isEmpty {
                 isPlaying.toggle()
             }
         }))
@@ -1080,6 +1346,20 @@ struct FonsterDetailView: View {
             let s = fonster.seed.trimmingCharacters(in: .whitespaces)
             playFrameIndex = s.isEmpty ? 0 : s.count
         }
+        #if os(tvOS)
+        .onDisappear {
+            // When leaving (e.g. back on remote), return to full/original state so next time we show the complete creature.
+            if isPlaying || playFrameIndex < fonster.seed.trimmingCharacters(in: .whitespaces).count {
+                isPlaying = false
+                playTask?.cancel()
+                playTask = nil
+                let s = fonster.seed.trimmingCharacters(in: .whitespaces)
+                playFrameIndex = s.isEmpty ? 0 : s.count
+            }
+            // Always re-enable screensaver when leaving the view
+            UIApplication.shared.isIdleTimerDisabled = false
+        }
+        #endif
         .onChange(of: fonster.id) { _, _ in
             // When a different Fonster is selected (same as Stop button).
             isPlaying = false
@@ -1102,6 +1382,10 @@ struct FonsterDetailView: View {
             playFrameIndex = s.isEmpty ? 0 : s.count
         }
         .onChange(of: isPlaying) { _, playing in
+            #if os(tvOS)
+            // Prevent screensaver while animation is playing
+            UIApplication.shared.isIdleTimerDisabled = playing
+            #endif
             if !playing {
                 playTask?.cancel()
                 playTask = nil
@@ -1193,7 +1477,11 @@ struct FonsterDetailView: View {
             }
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
+        #if os(tvOS)
+        .navigationTitle("")
+        #else
         .navigationTitle(displayName)
+        #endif
         .toolbar {
             ToolbarItem(placement: .primaryAction) {
                 HStack(spacing: 12) {
@@ -1225,43 +1513,59 @@ struct FonsterDetailView: View {
         if !fonster.name.trimmingCharacters(in: .whitespaces).isEmpty {
             return fonster.name
         }
-        return "Fonster"
+        let seed = fonster.seed.trimmingCharacters(in: .whitespaces).isEmpty ? " " : fonster.seed
+        let idx = segmentPick(
+            seed: seed,
+            segmentId: "default_display_name",
+            n: InitialCreatureNames.premade.count
+        )
+        return InitialCreatureNames.premade[idx]
     }
 
-    #if os(macOS)
-    /// macOS: Show name as a styled label (single-click = creature animation, double-click = edit), or show TextField when editing.
+    #if os(macOS) || os(tvOS)
+    /// macOS/tvOS: Styled name label (single tap = jiggle, double tap = edit popup), plus edit button that opens the same popup.
     @ViewBuilder
     private var nameFieldOrLabel: some View {
-        if nameFocused {
-            TextField("Fonster name", text: $fonster.name)
-                .textFieldStyle(.roundedBorder)
-                .focused($nameFocused)
-                .onKeyPress(keys: [.escape]) { _ in nameFocused = false; return .handled }
-                .onExitCommand { nameFocused = false }
-        } else {
+        HStack(alignment: .center, spacing: 8) {
             CreatureNameView(
                 displayName: displayName,
-                seed: fonster.seed.trimmingCharacters(in: .whitespaces).isEmpty ? " " : fonster.seed
+                seed: fonster.seed.trimmingCharacters(in: .whitespaces).isEmpty ? " " : fonster.seed,
+                externalJiggleTrigger: $nameLabelJiggleTrigger
             )
+            #if os(tvOS)
+            .fixedSize(horizontal: false, vertical: true)
+            #else
             .frame(maxWidth: .infinity, alignment: .leading)
-                .contentShape(Rectangle())
-                .onTapGesture {
-                    let now = Date()
-                    nameLabelSingleTapTask?.cancel()
-                    nameLabelSingleTapTask = nil
-                    if let last = nameLabelLastTapTime, now.timeIntervalSince(last) < 0.35 {
-                        nameLabelLastTapTime = nil
-                        nameFocused = true
-                        return
-                    }
-                    nameLabelLastTapTime = now
-                    nameLabelSingleTapTask = Task { @MainActor in
-                        try? await Task.sleep(nanoseconds: 250_000_000)
-                        guard !Task.isCancelled else { return }
-                        triggerBirthdayDanceID += 1
-                        nameLabelSingleTapTask = nil
-                    }
+            #endif
+            .contentShape(Rectangle())
+            .onTapGesture(count: 2) {
+                nameLabelSingleTapTask?.cancel()
+                nameLabelSingleTapTask = nil
+                showEditNameSheet = true
+            }
+            .onTapGesture(count: 1) {
+                let now = Date()
+                nameLabelJiggleTrigger += 1
+                nameLabelSingleTapTask?.cancel()
+                nameLabelSingleTapTask = nil
+                if let last = nameLabelLastTapTime, now.timeIntervalSince(last) < 0.35 {
+                    nameLabelLastTapTime = nil
+                    showEditNameSheet = true
+                    return
                 }
+                nameLabelLastTapTime = now
+            }
+            Button {
+                showEditNameSheet = true
+            } label: {
+                Image(systemName: "pencil")
+            }
+            #if os(macOS)
+            .buttonStyle(.bordered)
+            .help("Edit name")
+            #else
+            .buttonStyle(.plain)
+            #endif
         }
     }
     #endif
@@ -1293,12 +1597,14 @@ struct FonsterDetailView: View {
 
     /// When stopped (playFrameIndex >= count) or not playing and at full length, show full seed; otherwise show prefix for current frame.
     /// Uses seedText when showing the full seed so the creature updates in real time as the user types.
+    /// When seedText is not yet synced (e.g. before onAppear), use fonster.seed so the creature is visible by default.
     private var effectiveSeedForDisplay: String {
         let s = trimmedSeed
         if s.isEmpty && seedText.trimmingCharacters(in: .whitespaces).isEmpty { return " " }
         if !isPlaying && playFrameIndex >= s.count {
             let live = seedText.trimmingCharacters(in: .whitespaces)
-            return live.isEmpty ? " " : seedText
+            if live.isEmpty { return s.isEmpty ? " " : fonster.seed }
+            return seedText
         }
         if s.isEmpty { return " " }
         let prefixes = (1...s.count).map { i in String(s.prefix(i)) }
@@ -1314,7 +1620,7 @@ struct FonsterDetailView: View {
         return min(playFrameIndex + 1, s.count)
     }
 
-    /// User-friendly display name for random source buttons (uuid, lorem are technical).
+    /// User-friendly display name for random source buttons (uuid, lorem are technical); used as accessibility label.
     private func randomSourceDisplayName(for source: String) -> String {
         switch source {
         case "uuid": return "Random code"
@@ -1323,25 +1629,77 @@ struct FonsterDetailView: View {
         }
     }
 
+    /// SF Symbol name for each random source (used for button icon).
+    private func randomSourceSymbol(for source: String) -> String {
+        switch source {
+        case "quote": return "quote.bubble"
+        case "words": return "text.word.spacing"
+        case "uuid": return "number"
+        case "lorem": return "doc.text"
+        default: return "questionmark.circle"
+        }
+    }
+
     /// Random button row: label on top; buttons wrap to next line when horizontal space is limited.
     private func randomButtonRow(
         label: String,
         sources: [String],
         action: @escaping (String) -> Void,
-        disabled: Bool
+        disabled: Bool,
+        trailingEditAction: (() -> Void)? = nil
     ) -> some View {
         VStack(alignment: .leading, spacing: 6) {
+            #if os(tvOS)
+            if let trailingEditAction {
+                HStack(alignment: .center, spacing: 8) {
+                    Text(label)
+                        .font(.subheadline)
+                        .foregroundStyle(.secondary)
+                    Spacer(minLength: 32)
+                    Spacer(minLength: 0)
+                    Button(action: trailingEditAction) {
+                        Image(systemName: "pencil")
+                    }
+                    .buttonStyle(.plain)
+                    .accessibilityLabel("Edit source text")
+                    Spacer(minLength: 8)
+                }
+            } else {
+                Text(label)
+                    .font(.subheadline)
+                    .foregroundStyle(.secondary)
+            }
+            #else
             Text(label)
                 .font(.subheadline)
                 .foregroundStyle(.secondary)
-            WrapLayout(spacing: 8, lineSpacing: 8) {
+            #endif
+            #if os(tvOS)
+            WrapLayout(spacing: 16, lineSpacing: 16) {
                 ForEach(sources, id: \.self) { source in
-                    Button(randomSourceDisplayName(for: source)) { action(source) }
-                        .buttonStyle(.bordered)
-                        .controlSize(.small)
-                        .disabled(disabled)
+                    Button { action(source) } label: {
+                        Image(systemName: randomSourceSymbol(for: source))
+                    }
+                    .padding(16)
+                    .buttonStyle(.plain)
+                    .controlSize(.small)
+                    .disabled(disabled)
+                    .accessibilityLabel(randomSourceDisplayName(for: source))
                 }
             }
+            #else
+            WrapLayout(spacing: 8, lineSpacing: 8) {
+                ForEach(sources, id: \.self) { source in
+                    Button { action(source) } label: {
+                        Image(systemName: randomSourceSymbol(for: source))
+                    }
+                    .buttonStyle(.bordered)
+                    .controlSize(.small)
+                    .disabled(disabled)
+                    .accessibilityLabel(randomSourceDisplayName(for: source))
+                }
+            }
+            #endif
         }
     }
 
@@ -1350,7 +1708,12 @@ struct FonsterDetailView: View {
         GeometryReader { geo in
             let padding: CGFloat = 24
             let availableW = max(0, geo.size.width - padding * 2)
+            #if os(tvOS)
+            // On tvOS, controls are below the creature image, so use full height
+            let availableH = max(0, geo.size.height - padding * 2)
+            #else
             let availableH = max(0, geo.size.height - padding * 2 - 44) // leave room for play/stop
+            #endif
             let creatureSize = max(160, min(availableW, availableH))
             ZStack(alignment: .bottomTrailing) {
                 RoundedRectangle(cornerRadius: 12)
@@ -1359,7 +1722,9 @@ struct FonsterDetailView: View {
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
                     .padding(padding)
                     .clipShape(RoundedRectangle(cornerRadius: 12))
+                #if !os(tvOS)
                 playStopButtons
+                #endif
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity)
             .clipShape(RoundedRectangle(cornerRadius: 12))
@@ -1417,15 +1782,76 @@ struct FonsterDetailView: View {
             Label("Speed", systemImage: "speedometer")
                 .font(.caption)
                 .foregroundStyle(.secondary)
+                .lineLimit(1)
+                #if os(tvOS)
+                .fixedSize(horizontal: true, vertical: false)
+                #else
                 .frame(width: 80, alignment: .leading)
+                #endif
+            #if os(tvOS)
+            Button {
+                animationSpeedMultiplier = max(0.1, animationSpeedMultiplier - 0.05)
+            } label: {
+                Image(systemName: "minus.circle.fill")
+            }
+            .buttonStyle(.plain)
+            Text("\(Int(animationSpeedMultiplier * 100))%")
+                .font(.caption)
+                .foregroundStyle(.secondary)
+                .lineLimit(1)
+                .fixedSize(horizontal: true, vertical: false)
+                .frame(minWidth: 40)
+            Button {
+                animationSpeedMultiplier = min(1.0, animationSpeedMultiplier + 0.05)
+            } label: {
+                Image(systemName: "plus.circle.fill")
+            }
+            .buttonStyle(.plain)
+            #else
             Slider(value: $animationSpeedMultiplier, in: 0.1...1.0, step: 0.05)
             Text("\(Int(animationSpeedMultiplier * 100))%")
                 .font(.caption)
                 .foregroundStyle(.secondary)
+                .lineLimit(1)
                 .frame(width: 28, alignment: .trailing)
+            #endif
         }
         .padding(.vertical, 2)
     }
+
+    #if os(tvOS)
+    /// Play and stop buttons for tvOS, placed below the creature image view.
+    /// Each button fills half the row so focus from the row above or below always lands on play or stop (no dead spacer).
+    private var tvOSPlayStopRow: some View {
+        let playTint = Color(hue: 1/3, saturation: 0.2, brightness: 0.9)
+        let stopTint = Color(hue: 0, saturation: 0.2, brightness: 0.9)
+        return HStack(spacing: 16) {
+            Button {
+                isPlaying.toggle()
+            } label: {
+                Image(systemName: isPlaying ? "pause.circle.fill" : "play.circle.fill")
+                    .font(.title2)
+                    .symbolRenderingMode(.hierarchical)
+            }
+            .buttonStyle(.plain)
+            .tint(playTint)
+            .disabled(trimmedSeed.isEmpty)
+            Button {
+                isPlaying = false
+                if !trimmedSeed.isEmpty {
+                    playFrameIndex = trimmedSeed.count
+                }
+            } label: {
+                Image(systemName: "stop.circle.fill")
+                    .font(.title2)
+                    .symbolRenderingMode(.hierarchical)
+            }
+            .buttonStyle(.plain)
+            .tint(stopTint)
+            .disabled(trimmedSeed.isEmpty)
+        }
+    }
+    #endif
 
     private var playStopButtons: some View {
         let progress: Double = {
@@ -1440,6 +1866,7 @@ struct FonsterDetailView: View {
             return colors.first ?? Color.secondary
         }()
         return HStack(spacing: 4) {
+            #if !os(tvOS)
             ZStack {
                 Circle()
                     .trim(from: 0, to: progress)
@@ -1454,9 +1881,28 @@ struct FonsterDetailView: View {
                         .symbolRenderingMode(.hierarchical)
                 }
                 .buttonStyle(.plain)
+                .tint(Color(hue: 1/3, saturation: 0.2, brightness: 0.9))
                 .disabled(trimmedSeed.isEmpty)
             }
             .frame(width: 28, height: 28)
+            #endif
+            #if os(tvOS)
+            if isPlaying {
+                Button {
+                    isPlaying = false
+                    if !trimmedSeed.isEmpty {
+                        playFrameIndex = trimmedSeed.count
+                    }
+                } label: {
+                    Image(systemName: "stop.circle.fill")
+                        .font(.title)
+                        .symbolRenderingMode(.hierarchical)
+                }
+                .buttonStyle(.plain)
+                .tint(Color(hue: 0, saturation: 0.2, brightness: 0.9))
+                .disabled(trimmedSeed.isEmpty)
+            }
+            #else
             Button {
                 isPlaying = false
                 if !trimmedSeed.isEmpty {
@@ -1468,7 +1914,9 @@ struct FonsterDetailView: View {
                     .symbolRenderingMode(.hierarchical)
             }
             .buttonStyle(.plain)
+            .tint(Color(hue: 0, saturation: 0.2, brightness: 0.9))
             .disabled(trimmedSeed.isEmpty || (!isPlaying && playFrameIndex >= trimmedSeed.count))
+            #endif
         }
         .padding(8)
     }
@@ -1529,51 +1977,84 @@ struct FonsterDetailView: View {
             #endif
             #endif
 
-            Button {
-                addNewFonster()
-            } label: {
-                Label("Add", systemImage: "plus")
-            }
-            .buttonStyle(.bordered)
-            .tint(Color.green.opacity(0.85))
-
             if fonster.randomSource != nil {
+                #if !os(tvOS)
                 Spacer(minLength: 8)
+                #endif
 
                 Button {
                     Task { await refreshRandom() }
                 } label: {
+                    #if os(tvOS)
+                    if randomLoading != nil {
+                        ProgressView()
+                            .scaleEffect(0.8)
+                    } else {
+                        Image(systemName: "arrow.clockwise")
+                            .foregroundStyle(Color.indigo.opacity(0.85))
+                    }
+                    #else
                     if randomLoading != nil {
                         ProgressView()
                             .scaleEffect(0.8)
                     } else {
                         Label("Refresh", systemImage: "arrow.clockwise")
                     }
+                    #endif
                 }
+                #if os(tvOS)
+                .buttonStyle(.plain)
+                .frame(maxWidth: .infinity)
+                #else
                 .buttonStyle(.bordered)
                 .tint(Color.indigo.opacity(0.85))
+                #endif
                 .disabled(randomLoading != nil)
 
+                #if !os(tvOS)
                 Spacer(minLength: 8)
+                #endif
 
                 Button {
                     _ = fonster.undo()
                 } label: {
+                    #if os(tvOS)
+                    Image(systemName: "arrow.uturn.backward")
+                        .foregroundStyle(Color.orange.opacity(0.8))
+                    #else
                     Label("Undo", systemImage: "arrow.uturn.backward")
+                    #endif
                 }
+                #if os(tvOS)
+                .buttonStyle(.plain)
+                .frame(maxWidth: .infinity)
+                #else
                 .buttonStyle(.bordered)
                 .tint(Color.orange.opacity(0.8))
+                #endif
                 .disabled(fonster.history.isEmpty)
 
+                #if !os(tvOS)
                 Spacer(minLength: 8)
+                #endif
 
                 Button {
                     _ = fonster.redo()
                 } label: {
+                    #if os(tvOS)
+                    Image(systemName: "arrow.uturn.forward")
+                        .foregroundStyle(Color.purple.opacity(0.85))
+                    #else
                     Label("Redo", systemImage: "arrow.uturn.forward")
+                    #endif
                 }
+                #if os(tvOS)
+                .buttonStyle(.plain)
+                .frame(maxWidth: .infinity)
+                #else
                 .buttonStyle(.bordered)
                 .tint(Color.purple.opacity(0.85))
+                #endif
                 .disabled(fonster.future.isEmpty)
             }
         }
@@ -1653,12 +2134,6 @@ struct FonsterDetailView: View {
         }
     }
     #endif
-
-    private func addNewFonster() {
-        let f = Fonster(name: InitialCreatureNames.oneName(), seed: InstallationSeeds.currentTimeSeed(), createdAtISO8601: Fonster.currentCreatedAtISO8601())
-        modelContext.insert(f)
-        // Selection will be updated by parent if we use navigation
-    }
 
     private func loadRandom(source: String) async {
         randomLoading = source
@@ -1863,6 +2338,75 @@ struct FonsterEditView: View {
         case "lorem": return "Sample text"
         default: return source
         }
+    }
+}
+#endif
+
+#if os(macOS) || os(tvOS)
+/// Sheet for editing a Fonster's name (macOS and tvOS).
+struct EditFonsterNameSheet: View {
+    @Binding var name: String
+    @Environment(\.dismiss) private var dismiss
+    @FocusState private var nameFocused: Bool
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 16) {
+            Text("Name")
+                .font(.subheadline)
+                .foregroundStyle(.secondary)
+            TextField("Fonster name", text: $name)
+                #if os(tvOS)
+                .textFieldStyle(.plain)
+                #else
+                .textFieldStyle(.roundedBorder)
+                #endif
+                .focused($nameFocused)
+            HStack {
+                Spacer()
+                Button("Done") {
+                    dismiss()
+                }
+                #if os(macOS)
+                .keyboardShortcut(.defaultAction)
+                #endif
+            }
+        }
+        .padding(24)
+        #if os(macOS)
+        .frame(minWidth: 280)
+        #endif
+        .onAppear { nameFocused = true }
+    }
+}
+#endif
+
+#if os(tvOS)
+/// Sheet for editing a Fonster's source/seed text on tvOS. Uses TextField (TextEditor is unavailable on tvOS).
+struct EditFonsterSeedSheet: View {
+    @Binding var seedText: String
+    @Environment(\.dismiss) private var dismiss
+    @FocusState private var seedFocused: Bool
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 16) {
+            Text("Source text")
+                .font(.subheadline)
+                .foregroundStyle(.secondary)
+            TextField("Type anything...", text: $seedText, axis: .vertical)
+                .textFieldStyle(.plain)
+                .lineLimit(3...12)
+                .focused($seedFocused)
+                .frame(minHeight: 120)
+            HStack {
+                Spacer()
+                Button("Done") {
+                    dismiss()
+                }
+                .buttonStyle(.plain)
+            }
+        }
+        .padding(24)
+        .onAppear { seedFocused = true }
     }
 }
 #endif

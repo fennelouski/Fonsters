@@ -54,6 +54,9 @@ public struct CreatureAvatarView: View {
             }
         }
         .accessibilityHidden(true)
+        #if os(iOS)
+        .parallaxMotion(magnitude: min(14, size * 0.12))
+        #endif
     }
 }
 

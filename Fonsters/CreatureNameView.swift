@@ -31,11 +31,10 @@ struct CreatureNameFontOption: Identifiable {
     }
 }
 
-/// Curated "fun" fonts available on iOS (and typically macOS). System is fallback.
+/// Curated human-readable fonts for creature names. Each monster gets one deterministically from its name.
 enum CreatureNameFont {
     static let knownIds: Set<String> = Set(options.map(\.id))
     static let options: [CreatureNameFontOption] = [
-        CreatureNameFontOption(id: "system", displayName: "System"),
         CreatureNameFontOption(id: "Chalkduster", displayName: "Chalkduster"),
         CreatureNameFontOption(id: "Papyrus", displayName: "Papyrus"),
         CreatureNameFontOption(id: "Noteworthy-Bold", displayName: "Noteworthy Bold"),
@@ -43,6 +42,30 @@ enum CreatureNameFont {
         CreatureNameFontOption(id: "MarkerFelt-Wide", displayName: "Marker Felt"),
         CreatureNameFontOption(id: "AvenirNext-Heavy", displayName: "Avenir Next Heavy"),
         CreatureNameFontOption(id: "Georgia-Bold", displayName: "Georgia Bold"),
+        CreatureNameFontOption(id: "AmericanTypewriter-Bold", displayName: "American Typewriter Bold"),
+        CreatureNameFontOption(id: "AvenirNext-Medium", displayName: "Avenir Next Medium"),
+        CreatureNameFontOption(id: "AvenirNext-Bold", displayName: "Avenir Next Bold"),
+        CreatureNameFontOption(id: "Baskerville-Bold", displayName: "Baskerville Bold"),
+        CreatureNameFontOption(id: "Cochin-Bold", displayName: "Cochin Bold"),
+        CreatureNameFontOption(id: "Futura-Medium", displayName: "Futura Medium"),
+        CreatureNameFontOption(id: "Futura-Bold", displayName: "Futura Bold"),
+        CreatureNameFontOption(id: "GillSans-Bold", displayName: "Gill Sans Bold"),
+        CreatureNameFontOption(id: "Helvetica-Bold", displayName: "Helvetica Bold"),
+        CreatureNameFontOption(id: "HelveticaNeue-Bold", displayName: "Helvetica Neue Bold"),
+        CreatureNameFontOption(id: "HoeflerText-Black", displayName: "Hoefler Text Black"),
+        CreatureNameFontOption(id: "Optima-Bold", displayName: "Optima Bold"),
+        CreatureNameFontOption(id: "Palatino-Bold", displayName: "Palatino Bold"),
+        CreatureNameFontOption(id: "TimesNewRomanPS-BoldMT", displayName: "Times New Roman Bold"),
+        CreatureNameFontOption(id: "TrebuchetMS-Bold", displayName: "Trebuchet MS Bold"),
+        CreatureNameFontOption(id: "Verdana-Bold", displayName: "Verdana Bold"),
+        CreatureNameFontOption(id: "Georgia", displayName: "Georgia"),
+        CreatureNameFontOption(id: "Palatino-Roman", displayName: "Palatino"),
+        CreatureNameFontOption(id: "HoeflerText-Regular", displayName: "Hoefler Text"),
+        CreatureNameFontOption(id: "Baskerville-SemiBold", displayName: "Baskerville SemiBold"),
+        CreatureNameFontOption(id: "Didot-Bold", displayName: "Didot Bold"),
+        CreatureNameFontOption(id: "ArialRoundedMTBold", displayName: "Arial Rounded Bold"),
+        CreatureNameFontOption(id: "Noteworthy-Light", displayName: "Noteworthy Light"),
+        CreatureNameFontOption(id: "SavoyeLetPlain", displayName: "Savoye LET"),
     ]
 }
 
@@ -57,20 +80,34 @@ private let nameTLowerOffset: CGFloat = 3
 struct CreatureNameView: View {
     let displayName: String
     let seed: String
-    @AppStorage(creatureNameFontIdKey) private var fontId: String = creatureNameFontIdDefault
+    /// When set, tap is handled by the parent (e.g. macOS detail: single = jiggle + creature, double = edit). When nil, tap triggers jiggle internally.
+    var externalJiggleTrigger: Binding<Int>? = nil
     @Environment(\.colorScheme) private var colorScheme
 
     @State private var tapJiggle: Bool = false
+
+    /// Font for this monster: deterministic from its name so each monster has a stable, distinct style.
+    private var fontIdForMonster: String {
+        let nameSeed = displayName.trimmingCharacters(in: .whitespaces).isEmpty ? effectiveSeed : displayName
+        let idx = segmentPick(seed: nameSeed, segmentId: "name_font", n: CreatureNameFont.options.count)
+        return CreatureNameFont.options[idx].id
+    }
 
     private var paletteColors: [Color] {
         let colors = opaquePaletteColorsForDisplay(seed: seed, isDarkMode: colorScheme == .dark)
         return colors.isEmpty ? [.primary] : colors
     }
 
-    /// Sign tilt in degrees: ±20° so the name looks like a sign above a door.
+    /// Sign tilt in degrees: -20° to -5° for short names; less angle for longer names so they don't overlap the UI below.
     private var signTiltDegrees: Double {
         let u = segmentHash(seed: effectiveSeed, segmentId: "name_sign_tilt")
-        return -20 + u * 40
+        let baseTilt = -20 + u * 15
+        let count = displayName.count
+        let shortThreshold = 12
+        let longThreshold = 28
+        let t = min(1, max(0, Double(count - shortThreshold) / Double(max(1, longThreshold - shortThreshold))))
+        let scale = 1 - t
+        return baseTilt * scale
     }
 
     private var lastLetterCrooked: Bool {
@@ -91,6 +128,15 @@ struct CreatureNameView: View {
         seed.trimmingCharacters(in: .whitespaces).isEmpty ? " " : seed
     }
 
+    /// Base font size for the name; ~2× on tvOS for better readability at a distance.
+    private var effectiveBaseSize: CGFloat {
+        #if os(tvOS)
+        return nameBaseSize * 2
+        #else
+        return nameBaseSize
+        #endif
+    }
+
     var body: some View {
         let chars = Array(displayName)
         let lastIndex = chars.count - 1
@@ -104,15 +150,16 @@ struct CreatureNameView: View {
                 )
                 .rotationEffect(.degrees(jiggleRotation(for: index)))
                 .animation(
-                    tapJiggle ? .easeInOut(duration: 0.06).repeatCount(4, autoreverses: true).delay(Double(index) * 0.02) : .default,
+                    tapJiggle ? .easeInOut(duration: 0.12).repeatCount(4, autoreverses: true).delay(Double(index) * 0.04) : .default,
                     value: tapJiggle
                 )
             }
         }
         .rotationEffect(.degrees(signTiltDegrees))
-        .onTapGesture {
-            triggerJiggle()
+        .onChange(of: externalJiggleTrigger?.wrappedValue ?? 0) { _, _ in
+            if externalJiggleTrigger != nil { triggerJiggle() }
         }
+        .modifier(NameLabelTapModifier(useInternalTap: externalJiggleTrigger == nil, onTap: triggerJiggle))
     }
 
     /// Per-letter jiggle rotation (each letter animates separately; direction and amount from seed).
@@ -125,8 +172,8 @@ struct CreatureNameView: View {
     @ViewBuilder
     private func characterView(character: String, index: Int, isLast: Bool, color: Color) -> some View {
         let sizeScale = characterSizeScale(index: index)
-        let fontSize = nameBaseSize * sizeScale
-        let fontOption = CreatureNameFontOption(id: fontId, displayName: "")
+        let fontSize = effectiveBaseSize * sizeScale
+        let fontOption = CreatureNameFontOption(id: fontIdForMonster, displayName: "")
         let font = fontOption.font(size: fontSize)
         let isT = character == "t" || character == "T"
         let offsetY: CGFloat = (isT && tLower) ? nameTLowerOffset : 0
@@ -150,8 +197,21 @@ struct CreatureNameView: View {
     private func triggerJiggle() {
         tapJiggle = true
         Task { @MainActor in
-            try? await Task.sleep(nanoseconds: 250_000_000)
+            try? await Task.sleep(nanoseconds: 960_000_000)
             tapJiggle = false
+        }
+    }
+}
+
+/// When useInternalTap is true, adds onTapGesture so the name label handles taps (e.g. on iOS). When false, no gesture so the parent can handle single/double tap (e.g. macOS detail).
+private struct NameLabelTapModifier: ViewModifier {
+    var useInternalTap: Bool
+    var onTap: () -> Void
+    func body(content: Content) -> some View {
+        if useInternalTap {
+            content.onTapGesture(perform: onTap)
+        } else {
+            content
         }
     }
 }
@@ -165,30 +225,62 @@ struct CreatureNameFontPickerView: View {
 
     var body: some View {
         NavigationStack {
-            List(CreatureNameFont.options) { option in
-                Button {
-                    fontId = option.id
-                    dismiss()
-                } label: {
-                    HStack {
-                        Text(sampleName)
-                            .font(option.font(size: nameBaseSize))
-                        Spacer()
-                        if option.id == fontId {
-                            Image(systemName: "checkmark.circle.fill")
-                                .foregroundStyle(.secondary)
-                        }
-                    }
-                }
-            }
+            fontPickerList
+                #if os(macOS)
+                .frame(minWidth: 320, minHeight: 360)
+                #endif
             .navigationTitle("Name Font")
-            #if !os(macOS)
+            #if os(iOS)
             .navigationBarTitleDisplayMode(.inline)
             #endif
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
                     Button("Done") { dismiss() }
                 }
+            }
+        }
+    }
+
+    @ViewBuilder
+    private var fontPickerList: some View {
+        #if os(macOS)
+        ScrollView {
+            LazyVStack(alignment: .leading, spacing: 0) {
+                ForEach(CreatureNameFont.options) { option in
+                    Button {
+                        fontId = option.id
+                        dismiss()
+                    } label: {
+                        fontOptionRow(option: option)
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                            .padding(.horizontal, 16)
+                            .padding(.vertical, 10)
+                    }
+                    .buttonStyle(.plain)
+                }
+            }
+            .padding(.vertical, 8)
+        }
+        #else
+        List(CreatureNameFont.options) { option in
+            Button {
+                fontId = option.id
+                dismiss()
+            } label: {
+                fontOptionRow(option: option)
+            }
+        }
+        #endif
+    }
+
+    private func fontOptionRow(option: CreatureNameFontOption) -> some View {
+        HStack {
+            Text(sampleName)
+                .font(option.font(size: nameBaseSize))
+            Spacer()
+            if option.id == fontId {
+                Image(systemName: "checkmark.circle.fill")
+                    .foregroundStyle(.secondary)
             }
         }
     }

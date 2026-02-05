@@ -240,12 +240,7 @@ private struct CreatureFocusableButtonStyle: ButtonStyle {
             .scaleEffect(scale)
             .animation(.easeInOut(duration: 0.2), value: isFocused)
             .animation(.easeInOut(duration: 0.1), value: configuration.isPressed)
-            .overlay {
-                if isFocused {
-                    RoundedRectangle(cornerRadius: 12)
-                        .strokeBorder(.white.opacity(0.6), lineWidth: 3)
-                }
-            }
+            .focusEffectDisabled()
     }
 }
 #endif

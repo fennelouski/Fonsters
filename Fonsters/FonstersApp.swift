@@ -11,6 +11,7 @@
 
 import SwiftUI
 import SwiftData
+import CloudKit
 import Combine
 #if canImport(Tips)
 import Tips
@@ -132,28 +133,41 @@ struct FonstersApp: App {
         let schema = Schema([
             Fonster.self,
         ])
-        let cloudKitConfig = ModelConfiguration(
-            "Synced",
-            schema: schema,
-            cloudKitDatabase: .automatic
-        )
-        do {
-            return try ModelContainer(for: schema, configurations: [cloudKitConfig])
-        } catch {
-            // CloudKit can fail on macOS when iCloud isn't signed in or unavailable; fall back to local-only.
-            #if DEBUG
-            NSLog("Fonsters: CloudKit ModelContainer failed (\(error)); using local-only container.")
-            #endif
-            let localConfig = ModelConfiguration(
-                "Local",
+        // Only use CloudKit when an iCloud account is available; otherwise we get
+        // "Unable to initialize without an iCloud account" and mirroring errors in the console.
+        var useCloudKit = false
+        let semaphore = DispatchSemaphore(value: 0)
+        CKContainer.default().accountStatus { status, _ in
+            useCloudKit = (status == .available)
+            semaphore.signal()
+        }
+        _ = semaphore.wait(timeout: .now() + 1.0)
+
+        if useCloudKit {
+            let cloudKitConfig = ModelConfiguration(
+                "Synced",
                 schema: schema,
-                cloudKitDatabase: .none
+                cloudKitDatabase: .automatic
             )
             do {
-                return try ModelContainer(for: schema, configurations: [localConfig])
+                return try ModelContainer(for: schema, configurations: [cloudKitConfig])
             } catch {
-                fatalError("Could not create ModelContainer: \(error)")
+                #if DEBUG
+                NSLog("Fonsters: CloudKit ModelContainer failed (\(error)); using local-only container.")
+                #endif
+                // Fall through to local-only.
             }
+        }
+
+        let localConfig = ModelConfiguration(
+            "Local",
+            schema: schema,
+            cloudKitDatabase: .none
+        )
+        do {
+            return try ModelContainer(for: schema, configurations: [localConfig])
+        } catch {
+            fatalError("Could not create ModelContainer: \(error)")
         }
     }()
 

@@ -19,18 +19,19 @@ import SwiftData
 
 @Model
 public final class Fonster {
-    @Attribute(.unique) public var id: UUID
+    // No @Attribute(.unique): CloudKit does not support unique constraints.
+    public var id: UUID = UUID()
     /// User-chosen display name; shown in the list and detail header.
-    public var name: String
+    public var name: String = ""
     /// Source text for the creature; editing this changes the creature.
-    public var seed: String
+    public var seed: String = ""
     /// If set, Refresh fetches from random-text API; Undo/Redo are shown.
     public var randomSource: String?
     /// JSON-encoded [String]; max 20 entries for undo stack.
     public var historyData: Data?
     /// JSON-encoded [String]; max 20 entries for redo stack.
     public var futureData: Data?
-    public var createdAt: Date
+    public var createdAt: Date = Date()
     /// Full ISO 8601 date-time with timezone offset at creation (e.g. "2025-02-03T14:30:00-08:00"). Nil for legacy records.
     public var createdAtISO8601: String?
 
