@@ -870,174 +870,7 @@ struct FonsterDetailView: View {
         #else
         ZStack {
         #if os(tvOS)
-        ZStack(alignment: .topLeading) {
-            HStack(alignment: .top, spacing: 0) {
-                // Left column: form and controls (narrower), birthday pinned to bottom
-                VStack(alignment: .leading, spacing: 0) {
-                    ScrollView(.vertical) {
-                        VStack(alignment: .leading, spacing: 24) {
-                            if fonster.isBirthdayAnniversary {
-                                HStack(spacing: 8) {
-                                    Image(systemName: "birthday.cake")
-                                    Text(birthdayBannerText)
-                                        .font(.subheadline.weight(.medium))
-                                }
-                                .frame(maxWidth: .infinity)
-                                .padding(.vertical, 10)
-                                .padding(.horizontal, 12)
-                                #if !os(tvOS)
-                                .background(.quaternary.opacity(0.6))
-                                #endif
-                            }
-
-                            VStack(alignment: .leading, spacing: 12) {
-                                HStack(alignment: .center, spacing: 8) {
-                                    Text("Name")
-                                        .font(.subheadline)
-                                        .foregroundStyle(.secondary)
-                                    Spacer(minLength: 32)
-                                    Spacer(minLength: 0)
-                                    Button {
-                                        showEditNameSheet = true
-                                    } label: {
-                                        Image(systemName: "pencil")
-                                    }
-                                    .buttonStyle(.plain)
-                                    Spacer(minLength: 8)
-                                }
-                                // Spacer to reserve space for name
-                                Color.clear
-                                    .frame(height: 100)
-                            }
-                            .padding(.vertical, 4)
-
-                        randomButtonRow(
-                            label: "Get random:",
-                            sources: ["quote", "words", "uuid", "lorem"],
-                            action: { source in Task { await loadRandom(source: source) } },
-                            disabled: randomLoading != nil,
-                            trailingEditAction: {
-                                seedWhenEditSeedSheetOpened = seedText
-                                showEditSeedSheet = true
-                            }
-                        )
-                        randomButtonRow(
-                            label: "Add random to start:",
-                            sources: ["quote", "words", "uuid", "lorem"],
-                            action: { source in Task { await prependRandom(source: source) } },
-                            disabled: randomLoading != nil
-                        )
-
-                        Spacer(minLength: 24)
-
-                        actionButtons
-
-                        Spacer(minLength: 24)
-                    }
-                    .padding(
-                        EdgeInsets(
-                            top: 20,
-                            leading: 32,
-                            bottom: 20,
-                            trailing: 0
-                        )
-                    )
-                    .frame(minWidth: 480, alignment: .leading)
-                }
-                .frame(maxWidth: .infinity)
-
-                if featureFlags.isEnabled(.showBirthdayOverlay) {
-                    Button {
-                        showBirthdayCelebration = true
-                        triggerBirthdayDanceID += 1
-                    } label: {
-                        HStack(spacing: 6) {
-                            Text("🎂")
-                            Text(fonsterBirthdayMonthDayString(for: fonster))
-                                .font(.caption)
-                                .foregroundStyle(.secondary)
-                        }
-                        .fixedSize(horizontal: true, vertical: false)
-                    }
-                    .buttonStyle(.plain)
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                    .padding(.horizontal, 32)
-                    .padding(.vertical, 12)
-                }
-            }
-            .frame(maxWidth: 480)
-            
-            // Overlay name so it can extend beyond left column bounds
-            VStack(alignment: .leading, spacing: 0) {
-                if fonster.isBirthdayAnniversary {
-                    Spacer()
-                        .frame(height: 20 + 50) // top padding + birthday banner
-                } else {
-                    Spacer()
-                        .frame(height: 20) // top padding
-                }
-                HStack(spacing: 0) {
-                    Spacer()
-                        .frame(width: 32) // leading padding
-                    VStack(alignment: .leading, spacing: 12) {
-                        Spacer()
-                            .frame(height: 30) // "Name" label height
-                        CreatureNameView(
-                            displayName: displayName,
-                            seed: fonster.seed.trimmingCharacters(in: .whitespaces).isEmpty ? " " : fonster.seed,
-                            externalJiggleTrigger: $nameLabelJiggleTrigger
-                        )
-                        .fixedSize(horizontal: true, vertical: false)
-                        .contentShape(Rectangle())
-                        .onTapGesture(count: 2) {
-                            nameLabelSingleTapTask?.cancel()
-                            nameLabelSingleTapTask = nil
-                            showEditNameSheet = true
-                        }
-                        .onTapGesture(count: 1) {
-                            let now = Date()
-                            nameLabelJiggleTrigger += 1
-                            nameLabelSingleTapTask?.cancel()
-                            nameLabelSingleTapTask = nil
-                            if let last = nameLabelLastTapTime, now.timeIntervalSince(last) < 0.35 {
-                                nameLabelLastTapTime = nil
-                                showEditNameSheet = true
-                                return
-                            }
-                            nameLabelLastTapTime = now
-                        }
-                    }
-                    Spacer()
-                }
-                Spacer()
-            }
-            .allowsHitTesting(true)
-
-            // Right column: creature in maximal square with padding around it, controls below
-            VStack(spacing: 0) {
-                GeometryReader { geo in
-                    let side = min(geo.size.width, geo.size.height)
-                    creatureSection
-                        .frame(width: side, height: side)
-                        .frame(maxWidth: .infinity, maxHeight: .infinity)
-                }
-                .frame(maxWidth: .infinity, maxHeight: .infinity)
-                
-                // Play/stop buttons and speed controls below the creature image
-                // Centered horizontally under the creature image and vertically aligned with the birthday label
-                HStack(alignment: .center, spacing: 32) {
-                    tvOSPlayStopRow
-                    animationSpeedSlider
-                }
-                .frame(maxWidth: .infinity)
-                .padding(.top, 16) // Spacing from creature image
-                .padding(.bottom, 12) // Match birthday label vertical padding
-            }
-            .frame(maxWidth: .infinity, maxHeight: .infinity)
-            .padding(16)
-        }
-        .frame(maxWidth: .infinity, maxHeight: .infinity)
-        }
+        tvOSDetailBody
         #else
         VStack(spacing: 0) {
             ScrollView {
@@ -1407,6 +1240,186 @@ struct FonsterDetailView: View {
         #endif
     }
 
+    #if os(tvOS)
+    private var tvOSDetailBody: some View {
+        GeometryReader { geo in
+            let w = geo.size.width
+            // 40% left column, 50% image view, 10% total horizontal spacing (split as padding/gaps)
+            let spacingTotal = w * 0.10
+            let pad = spacingTotal / 3
+            let leftColWidth = w * 0.40
+            let rightColWidth = w * 0.50
+
+            HStack(alignment: .top, spacing: 0) {
+                Spacer().frame(width: pad)
+                tvOSDetailLeftColumn
+                    .frame(width: leftColWidth)
+                Spacer().frame(width: pad)
+                tvOSDetailRightColumn
+                    .frame(width: rightColWidth)
+                Spacer().frame(width: pad)
+            }
+            .overlay(alignment: .topLeading) {
+                tvOSDetailNameOverlay(leadingOffset: pad + 32)
+            }
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+    }
+
+    private var tvOSDetailLeftColumn: some View {
+        VStack(alignment: .leading, spacing: 0) {
+            ScrollView(.vertical) {
+                VStack(alignment: .leading, spacing: 24) {
+                    if fonster.isBirthdayAnniversary {
+                        HStack(spacing: 8) {
+                            Image(systemName: "birthday.cake")
+                            Text(birthdayBannerText)
+                                .font(.subheadline.weight(.medium))
+                        }
+                        .frame(maxWidth: .infinity)
+                        .padding(.vertical, 10)
+                        .padding(.horizontal, 12)
+                    }
+
+                    VStack(alignment: .leading, spacing: 12) {
+                        HStack(alignment: .center, spacing: 8) {
+                            Button {
+                                showEditNameSheet = true
+                            } label: {
+                                Image(systemName: "pencil")
+                            }
+                            .buttonStyle(.plain)
+                            Text("Name")
+                                .font(.subheadline)
+                                .foregroundStyle(.secondary)
+                            Spacer(minLength: 0)
+                        }
+                        Color.clear
+                            .frame(height: 100)
+                    }
+                    .padding(.vertical, 4)
+
+                    randomButtonRow(
+                        label: "Get random:",
+                        sources: ["quote", "words", "uuid", "lorem"],
+                        action: { source in Task { await loadRandom(source: source) } },
+                        disabled: randomLoading != nil,
+                        trailingEditAction: {
+                            seedWhenEditSeedSheetOpened = seedText
+                            showEditSeedSheet = true
+                        }
+                    )
+                    randomButtonRow(
+                        label: "Add random to start:",
+                        sources: ["quote", "words", "uuid", "lorem"],
+                        action: { source in Task { await prependRandom(source: source) } },
+                        disabled: randomLoading != nil
+                    )
+
+                    Spacer(minLength: 24)
+                    actionButtons
+                    Spacer(minLength: 24)
+                }
+                .padding(EdgeInsets(top: 20, leading: 32, bottom: 20, trailing: 0))
+                .frame(maxWidth: .infinity, alignment: .leading)
+            }
+            .frame(maxWidth: .infinity)
+
+            if featureFlags.isEnabled(.showBirthdayOverlay) {
+                Button {
+                    showBirthdayCelebration = true
+                    triggerBirthdayDanceID += 1
+                } label: {
+                    HStack(spacing: 6) {
+                        Text("🎂")
+                        Text(fonsterBirthdayMonthDayString(for: fonster))
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                    }
+                    .fixedSize(horizontal: true, vertical: false)
+                }
+                .buttonStyle(.plain)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .padding(.horizontal, 32)
+                .padding(.vertical, 12)
+            }
+        }
+    }
+
+    private var tvOSDetailRightColumn: some View {
+        VStack(spacing: 0) {
+            GeometryReader { geo in
+                let side = min(geo.size.width, geo.size.height)
+                creatureSection
+                    .frame(width: side, height: side)
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+            }
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
+
+            HStack(alignment: .center, spacing: 32) {
+                tvOSPlayStopRow
+                animationSpeedSlider
+            }
+            .frame(maxWidth: .infinity)
+            .padding(.top, 16)
+            .padding(.bottom, 12)
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .padding(16)
+    }
+
+    private func tvOSDetailNameOverlay(leadingOffset: CGFloat) -> some View {
+        Color.clear
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
+            .overlay(alignment: .topLeading) {
+                VStack(alignment: .leading, spacing: 0) {
+                    if fonster.isBirthdayAnniversary {
+                        Spacer()
+                            .frame(height: 20 + 50)
+                    } else {
+                        Spacer()
+                            .frame(height: 20)
+                    }
+                    HStack(alignment: .top, spacing: 0) {
+                        Spacer()
+                            .frame(width: leadingOffset)
+                        VStack(alignment: .leading, spacing: 12) {
+                            Spacer()
+                                .frame(height: 30)
+                            CreatureNameView(
+                                displayName: displayName,
+                                seed: fonster.seed.trimmingCharacters(in: .whitespaces).isEmpty ? " " : fonster.seed,
+                                externalJiggleTrigger: $nameLabelJiggleTrigger
+                            )
+                            .fixedSize(horizontal: true, vertical: false)
+                            .contentShape(Rectangle())
+                            .onTapGesture(count: 2) {
+                                nameLabelSingleTapTask?.cancel()
+                                nameLabelSingleTapTask = nil
+                                showEditNameSheet = true
+                            }
+                            .onTapGesture(count: 1) {
+                                let now = Date()
+                                nameLabelJiggleTrigger += 1
+                                nameLabelSingleTapTask?.cancel()
+                                nameLabelSingleTapTask = nil
+                                if let last = nameLabelLastTapTime, now.timeIntervalSince(last) < 0.35 {
+                                    nameLabelLastTapTime = nil
+                                    showEditNameSheet = true
+                                    return
+                                }
+                                nameLabelLastTapTime = now
+                            }
+                        }
+                        Spacer(minLength: 0)
+                    }
+                    Spacer()
+                }
+                .allowsHitTesting(true)
+            }
+    }
+    #endif
+
     #if os(iOS)
     private var iosDetailBody: some View {
         let displaySeed = fonster.seed.trimmingCharacters(in: .whitespaces).isEmpty ? " " : fonster.seed
@@ -1652,17 +1665,15 @@ struct FonsterDetailView: View {
             #if os(tvOS)
             if let trailingEditAction {
                 HStack(alignment: .center, spacing: 8) {
-                    Text(label)
-                        .font(.subheadline)
-                        .foregroundStyle(.secondary)
-                    Spacer(minLength: 32)
-                    Spacer(minLength: 0)
                     Button(action: trailingEditAction) {
                         Image(systemName: "pencil")
                     }
                     .buttonStyle(.plain)
                     .accessibilityLabel("Edit source text")
-                    Spacer(minLength: 8)
+                    Text(label)
+                        .font(.subheadline)
+                        .foregroundStyle(.secondary)
+                    Spacer(minLength: 0)
                 }
             } else {
                 Text(label)
