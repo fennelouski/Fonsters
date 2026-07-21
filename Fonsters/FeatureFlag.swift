@@ -259,7 +259,9 @@ private struct FeatureFlagDebugRow: View {
                 Text("On").tag(1)
                 Text("Off").tag(2)
             }
+            #if !os(watchOS)
             .pickerStyle(.segmented)
+            #endif
         }
         .padding(.vertical, 4)
     }

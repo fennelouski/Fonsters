@@ -33,6 +33,7 @@ DerivedData/
 #   AppStore/screenshots — produced by FonstersUITests/FonstersScreenshotTests
 #     (see AppStore/APP_STORE_CONNECT.md for the regeneration commands)
 AppStore/screenshots/
+AppStore/marketing/
 scratchpad-shots/
 
 # Node (api/ is deployed via Vercel)

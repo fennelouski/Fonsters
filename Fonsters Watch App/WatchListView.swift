@@ -11,7 +11,7 @@ import SwiftData
 
 enum WatchListDestination: Hashable {
     case clock
-    case fonster(Fonster.ID)
+    case fonster(UUID)
 }
 
 struct WatchListView: View {

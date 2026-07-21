@@ -113,7 +113,7 @@ First release.
 |---|---|---|
 | **Support URL** | `https://nathanfennel.com` | Required |
 | **Marketing URL** | `https://nathanfennel.com/games/creature-avatar` | Optional |
-| **Privacy Policy URL** | **You must supply this** — see open items | Required |
+| **Privacy Policy URL** | `https://nathanfennel.com/privacy/fonsters` | Required |
 
 ---
 
@@ -175,22 +175,27 @@ committed — they are large binaries and are regenerated on demand).
 
 | Folder | Size | Files | Status |
 |---|---|---|---|
-| `iphone-6.9/` | 1320 × 2868 | `01-creature`, `02-list`, `03-creature-alt`, `04-edit` | ✅ correct size, ready to upload |
-| `ipad-13/` | 2064 × 2752 | `01-creature`, `04-edit` | ✅ correct size, ready to upload |
+| `iphone-6.9/` | 1320 × 2868 | `01-creature`, `02-list`, `03-creature-alt`, `04-edit` | ✅ 9:41 status bar, charming seeds, ready to upload |
+| `ipad-13/` | 2064 × 2752 | `01-creature`, `02-list`, `03-creature-alt`, `04-edit` | ✅ 9:41 status bar, charming seeds, ready to upload |
 | `appletv/` | 3840 × 2160 | `01-creature` | ✅ correct size (tvOS is not in the current ship set) |
+| `vision/` | — | `01-app` | capture via `simctl io … screenshot` after building for the Vision Pro simulator |
+| `watch/` | 410 × 502 | `01-list` | capture via `simctl io … screenshot`; the Clock-widget appex can fail to install on the simulator — install a copy of the .app with `PlugIns/` removed |
 | `mac/` | — | — | ❌ blocked on Mac provisioning (open item 2) |
-| `watch/` | — | — | ❌ blocked on unmounted watchOS runtime (open item 3) |
-| `vision/` | — | — | ❌ blocked on unmounted visionOS runtime (open item 3) |
 
-Two polish notes before uploading these as-is:
+The screenshot UI test now handles both polish notes from earlier drafts itself: it
+replaces the auto-generated first-launch seeds with charming, environment-keyword
+seeds ("A sunny day with two clouds and 3 birds" → *Sunny*, "Fireworks under the
+moon with a butterfly" → *Nova*) and forces portrait orientation. Remember to apply
+the `simctl status_bar override` after every erase/reboot before capturing.
 
-- The iPad shots kept the simulator's real clock instead of 9:41 — the status-bar
-  override has to be re-applied after the device is erased or rebooted. Re-run the
-  `simctl status_bar override` command above and recapture if you want it uniform.
-- `04-edit` shows the auto-generated first-launch seed, which is raw device info
-  (`ram:25769803776_storage_avail:…`). It is honest but not attractive marketing. For
-  store-quality shots, add a step to the UI test that types something charming into
-  the source-text field before capturing.
+### Marketing images
+
+`Scripts/generate_marketing_images.py` (needs Pillow) composes every raw screenshot
+onto a brand-styled canvas — plum gradient background, cream/pink headline caption,
+rounded card with shadow — at the exact upload sizes, written to
+`AppStore/marketing/<platform>/`. These can be uploaded to App Store Connect as the
+screenshot set (captioned screenshots are standard practice) or used on the web.
+Captions are defined at the top of the script.
 
 ### How to regenerate
 
@@ -290,8 +295,10 @@ they could not be done from the repo.
 
 ### Blocking
 
-1. **Privacy Policy URL.** App Store Connect requires one for every app. The app
-   collects nothing, so the policy can be short, but the URL must exist and be live.
+1. **Privacy Policy URL.** ✅ **Done.** A dedicated policy for the app is live at
+   `https://nathanfennel.com/privacy/fonsters` (source:
+   `nathanfennel.com/src/app/privacy/fonsters/page.tsx`). Enter that URL in App
+   Store Connect.
 
 2. **Register this Mac / create a Mac provisioning profile.** The macOS build fails
    signing with: *"Device 'MacBook Pro van Nathan' isn't registered in your developer
@@ -299,27 +306,16 @@ they could not be done from the repo.
    Mac is registered in the developer portal, the Mac app cannot be run or
    screenshotted locally. The code itself compiles cleanly for macOS.
 
-3. **Mount the watchOS and visionOS simulator runtimes.** Both were downloaded
-   successfully, but their disk images are unmounted, so Xcode still reports the
-   platforms as not installed and neither can be built or screenshotted. Mounting is a
-   privileged operation. Fix by opening Xcode once and letting it finish installing
-   components when it asks for your password, or:
-
-   ```bash
-   sudo xcodebuild -runFirstLaunch
-   ```
-
-   Then confirm with `xcrun simctl list runtimes` — watchOS and visionOS should be
-   listed alongside iOS and tvOS.
+3. **Mount the watchOS and visionOS simulator runtimes.** ✅ **Done.** The
+   watchOS 26.5 and visionOS 26.5 runtimes are now installed and listed by
+   `xcrun simctl list runtimes`, alongside iOS 26.5 and tvOS 26.5.
 
 ### Should fix before release
 
-4. **The iMessage extension's deployment target is iOS 26.2, but the app's is 18.6.**
-   Anyone on iOS 18.6–26.1 can install Fonsters but will not get the sticker
-   extension. Either lower `IPHONEOS_DEPLOYMENT_TARGET` on the
-   *Fonsters iMessage Extension* target to `18.6`, or raise the app's minimum
-   deliberately. The same mismatch exists for the Watch app (10.6 vs 11.0), macOS
-   (14.6 vs 26.2) and visionOS (2.6 vs 26.2).
+4. **Deployment-target mismatches.** ✅ **Done.** The *Fonsters iMessage Extension*
+   target is lowered to iOS `18.6` and the *Fonsters Watch Clock Extension* to
+   watchOS `10.6`, matching their host apps. (The remaining 26.2 values in the
+   project belong to the unit/UI **test targets**, which are not shipped.)
 
 5. **`aps-environment` is `development`** in `Fonsters/Fonsters.entitlements`. Xcode
    normally rewrites this to `production` when you archive for App Store
@@ -327,15 +323,14 @@ they could not be done from the repo.
    CloudKit push (used to sync creatures between devices) will not work for real
    users.
 
-6. **Set `LSApplicationCategoryType`** for the Mac build. The Mac App Store requires
-   an application category in `Info.plist`; `public.app-category.entertainment`
-   matches the chosen primary category.
+6. **Set `LSApplicationCategoryType`** for the Mac build. ✅ **Done.**
+   `public.app-category.entertainment` is set in `Fonsters/Info.plist`, matching the
+   chosen primary category.
 
-7. **Universal links are declared but may not resolve.** The entitlements request
-   `applinks:nathanfennel.com`. Universal links only work if an
-   `apple-app-site-association` file is served from that domain. If it is not hosted,
-   the `fonsters://` scheme still works and nothing breaks — but the declared
-   capability will silently do nothing.
+7. **Universal links.** ✅ **Done.**
+   `https://nathanfennel.com/.well-known/apple-app-site-association` is live and
+   serves `{"applinks":{"apps":[],"details":[{"appID":"EJLR2RPSV2.com.nathanfennel.Fonsters","paths":["/games/creature-avatar","/games/creature-avatar/*"]}]}}`,
+   matching the Team ID and bundle ID. See `docs/Universal-Links-AASA-Setup.md`.
 
 ### Worth knowing
 
