@@ -1,0 +1,40 @@
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+Icon?
+
+# Xcode — user-specific state (never shared)
+xcuserdata/
+*.xcuserstate
+*.xcuserdatad/
+*.xcscmblueprint
+*.xccheckout
+*.moved-aside
+
+# Xcode / xcodebuild output
+build/
+DerivedData/
+*.hmap
+*.ipa
+*.dSYM
+*.dSYM.zip
+*.xcarchive
+*.xcresult
+
+# Swift Package Manager
+.build/
+.swiftpm/
+# Note: Package.resolved is intentionally NOT ignored — for an app it should be
+# committed so everyone resolves the same dependency versions.
+
+# Generated screenshots and scratch output.
+# These are large binaries that are regenerated on demand:
+#   AppStore/screenshots — produced by FonstersUITests/FonstersScreenshotTests
+#     (see AppStore/APP_STORE_CONNECT.md for the regeneration commands)
+AppStore/screenshots/
+scratchpad-shots/
+
+# Node (api/ is deployed via Vercel)
+node_modules/
+.vercel

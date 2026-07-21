@@ -1,4 +1,0 @@
-Target dependency graph (2 targets)
-Target 'Fonsters Watch App' in project 'Fonsters'
-➜ Explicit dependency on target 'Fonsters Watch Clock Extension' in project 'Fonsters'
-Target 'Fonsters Watch Clock Extension' in project 'Fonsters' (no dependencies)
