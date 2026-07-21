@@ -28,5 +28,9 @@
 	</array>
 	<key>FeatureFlagBackendURL</key>
 	<string>https://fonsters-pzgc.vercel.app/api/flags</string>
+	<!-- The app only uses standard HTTPS/TLS (URLSession), which is exempt.
+	     Declaring this here avoids the export-compliance prompt on every upload. -->
+	<key>ITSAppUsesNonExemptEncryption</key>
+	<false/>
 </dict>
 </plist>

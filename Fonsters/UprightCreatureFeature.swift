@@ -71,7 +71,9 @@ extension Notification.Name {
 // MARK: - Global shake detection (sendEvent swizzle)
 
 private func installGlobalShakeListener() {
-    guard let appClass = UIApplication.self as? AnyClass else { return }
+    // UIApplication.Type already is an AnyClass, so a conditional cast here always
+    // succeeds and warns; bind it directly instead.
+    let appClass: AnyClass = UIApplication.self
     let originalSel = #selector(UIApplication.sendEvent(_:))
     let swizzledSel = #selector(UIApplication.fonsters_sendEvent(_:))
     guard let originalMethod = class_getInstanceMethod(appClass, originalSel),

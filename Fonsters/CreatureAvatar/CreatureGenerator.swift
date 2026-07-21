@@ -32,7 +32,7 @@ public func resolveConfig(seed: String) -> CreatureConfig {
     let symmetryAxis: SymmetryAxis = segmentRoll(seed: seed, segmentId: "symmetry_axis", p: CreaturePROB.symmetryAxisHorizontal) ? .horizontal : .vertical
 
     let paletteIndex = segmentPick(seed: seed, segmentId: "palette", n: PALETTES.count)
-    var rawPalette = PALETTES[paletteIndex]
+    let rawPalette = PALETTES[paletteIndex]
     let numColors: Int
     if tier == 1 || tier == 2 { numColors = 2 }
     else if tier == 3 { numColors = 2 }

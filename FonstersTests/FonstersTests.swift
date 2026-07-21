@@ -60,12 +60,18 @@ struct FonstersTests {
     }
 
     @Test func featureFlagLocalOverrideWinsOverDefault() async throws {
-        let suite = UserDefaults(suiteName: "test.\(UUID().uuidString)")!
-        let store = FeatureFlagStore(remoteProvider: NoOpFeatureFlagRemoteProvider(), defaults: suite)
-        store.setLocalOverride(false, for: .showBirthdayOverlay)
-        #expect(store.isEnabled(.showBirthdayOverlay) == false)
-        store.setLocalOverride(true, for: .showBirthdayOverlay)
-        #expect(store.isEnabled(.showBirthdayOverlay) == true)
+        // A local override must beat the bundled default. Each direction needs its own
+        // store: `isEnabled` locks a flag's value on first read for the rest of the
+        // session, so re-overriding an already-read flag intentionally has no effect
+        // (see the lock-on-read tests below).
+        func store(overriding value: Bool) -> FeatureFlagStore {
+            let suite = UserDefaults(suiteName: "test.\(UUID().uuidString)")!
+            let store = FeatureFlagStore(remoteProvider: NoOpFeatureFlagRemoteProvider(), defaults: suite)
+            store.setLocalOverride(value, for: .showBirthdayOverlay)
+            return store
+        }
+        #expect(store(overriding: false).isEnabled(.showBirthdayOverlay) == false)
+        #expect(store(overriding: true).isEnabled(.showBirthdayOverlay) == true)
     }
 
     @Test func featureFlagRemoteOverrideWinsOverLocal() async throws {

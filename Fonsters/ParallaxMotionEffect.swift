@@ -57,16 +57,20 @@ private struct ParallaxMotionHostingView<Content: View>: UIViewRepresentable {
     }
 
     func updateUIView(_ uiView: UIView, context: Context) {
-        context.coordinator.hostingController?.rootView = content
+        (context.coordinator.hostingController as? UIHostingController<Content>)?.rootView = content
     }
 
-    func makeCoordinator() -> Coordinator {
-        Coordinator()
+    func makeCoordinator() -> ParallaxMotionCoordinator {
+        ParallaxMotionCoordinator()
     }
+}
 
-    class Coordinator {
-        var hostingController: UIHostingController<Content>?
-    }
+/// Deliberately a non-generic, top-level class rather than a type nested inside
+/// `ParallaxMotionHostingView<Content>`. A nested coordinator inherits the generic
+/// parameter, and optimizing its `deinit` crashes the Swift SIL optimizer
+/// ("EarlyPerfInliner") in tvOS Release builds. Keeping it non-generic avoids that.
+private final class ParallaxMotionCoordinator {
+    var hostingController: UIViewController?
 }
 
 /// View modifier that applies parallax motion to the content (iOS and tvOS only).

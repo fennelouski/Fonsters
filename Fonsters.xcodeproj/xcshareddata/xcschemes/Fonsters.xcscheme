@@ -29,6 +29,28 @@
       selectedLauncherIdentifier = "Xcode.DebuggerFoundation.Launcher.LLDB"
       shouldUseLaunchSchemeArgsEnv = "YES"
       shouldAutocreateTestPlan = "YES">
+      <Testables>
+         <TestableReference
+            skipped = "NO">
+            <BuildableReference
+               BuildableIdentifier = "primary"
+               BlueprintIdentifier = "8003B5312F324B9C0035E183"
+               BuildableName = "FonstersTests.xctest"
+               BlueprintName = "FonstersTests"
+               ReferencedContainer = "container:Fonsters.xcodeproj">
+            </BuildableReference>
+         </TestableReference>
+         <TestableReference
+            skipped = "NO">
+            <BuildableReference
+               BuildableIdentifier = "primary"
+               BlueprintIdentifier = "8003B53B2F324B9C0035E183"
+               BuildableName = "FonstersUITests.xctest"
+               BlueprintName = "FonstersUITests"
+               ReferencedContainer = "container:Fonsters.xcodeproj">
+            </BuildableReference>
+         </TestableReference>
+      </Testables>
    </TestAction>
    <LaunchAction
       buildConfiguration = "Debug"

@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<!-- Fonsters does not track users and does not collect any data.
+	     Creatures are generated on-device from text seeds; the only network
+	     calls are anonymous random-text fetches and a feature-flag lookup,
+	     neither of which sends user data. Fonsters sync through the user's
+	     own private CloudKit database, which is not "collection" by the
+	     developer under Apple's definition. -->
+	<key>NSPrivacyTracking</key>
+	<false/>
+	<key>NSPrivacyTrackingDomains</key>
+	<array/>
+	<key>NSPrivacyCollectedDataTypes</key>
+	<array/>
+	<key>NSPrivacyAccessedAPITypes</key>
+	<array>
+		<dict>
+			<!-- UserDefaults: first-launch seeding flag, feature-flag overrides,
+			     onboarding state, and the selected creature-name font. All of it
+			     is only readable by this app and its own app group. -->
+			<key>NSPrivacyAccessedAPIType</key>
+			<string>NSPrivacyAccessedAPICategoryUserDefaults</string>
+			<key>NSPrivacyAccessedAPITypeReasons</key>
+			<array>
+				<string>CA92.1</string>
+			</array>
+		</dict>
+	</array>
+</dict>
+</plist>
