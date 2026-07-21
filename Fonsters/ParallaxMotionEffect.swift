@@ -75,6 +75,12 @@ struct ParallaxMotionModifier: ViewModifier {
     var magnitude: CGFloat = 12
 
     func body(content: Content) -> some View {
+        // NOTE: Do not wrap this in `.drawingGroup()`. drawingGroup rasterizes the
+        // SwiftUI subtree with Metal, which cannot capture the UIKit-hosted
+        // `ParallaxMotionHostingView` (a UIViewRepresentable / UIHostingController).
+        // The mismatch makes the whole creature fail to render (a yellow "no"
+        // placeholder in the Simulator). The invisible `content` copy only reserves
+        // layout size; the hosting view draws the visible creature.
         ZStack {
             content
                 .opacity(0)
@@ -82,7 +88,6 @@ struct ParallaxMotionModifier: ViewModifier {
             ParallaxMotionHostingView(content: content, magnitude: magnitude)
                 .allowsHitTesting(false)
         }
-        .drawingGroup(opaque: false)
     }
 }
 
