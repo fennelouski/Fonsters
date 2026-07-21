@@ -47,6 +47,8 @@ struct ContentView: View {
         uprightContent
             .environmentObject(uprightCreatureState)
             .environmentObject(onboardingCoordinator)
+            .tint(Theme.accent)
+            .fontDesign(.rounded)
     }
 
     @ViewBuilder
@@ -291,7 +293,12 @@ struct ContentView: View {
                     sidebarRow(for: fonster)
                 }
                 #if os(iOS)
-                .listRowBackground(colorScheme == .dark ? Color(white: 0.2) : Color(uiColor: .secondarySystemGroupedBackground))
+                .listRowBackground(
+                    RoundedRectangle(cornerRadius: 16, style: .continuous)
+                        .fill(colorScheme == .dark ? Color.white.opacity(0.07) : Color.white)
+                        .padding(.vertical, 3)
+                )
+                .listRowSeparator(.hidden)
                 #endif
                 #if os(tvOS)
                 .listRowInsets(
@@ -372,9 +379,20 @@ struct ContentView: View {
                 }
                 #endif
             }
-            .listRowBackground(Rectangle().fill(.ultraThinMaterial))
+            .listRowBackground(
+                RoundedRectangle(cornerRadius: 16, style: .continuous)
+                    .fill(colorScheme == .dark ? Color.white.opacity(0.07) : Color.white)
+                    .padding(.vertical, 3)
+            )
+            .listRowSeparator(.hidden)
             #endif
         }
+        // iOS only: macOS and visionOS sidebars have their own vibrancy/glass that a
+        // flat cream background would fight, so they keep the native material.
+        #if os(iOS)
+        .scrollContentBackground(.hidden)
+        .background(FonsterScreenBackground())
+        #endif
         #if canImport(Tips)
         .modifier(ConditionalPopoverTip(step: 3, tip: ListTip(), coordinator: onboardingCoordinator))
         #endif
@@ -391,22 +409,33 @@ struct ContentView: View {
     }
 
     private func sidebarRowContent(for fonster: Fonster) -> some View {
-        HStack(alignment: .top, spacing: 12) {
-            CreatureAvatarView(seed: fonster.seed, size: 48)
-                .clipShape(RoundedRectangle(cornerRadius: 6))
-            Text(displayName(for: fonster))
-                #if os(tvOS)
-                .lineLimit(2)
-                .fixedSize(horizontal: false, vertical: true)
-                #else
-                .lineLimit(1)
-                #endif
-            if fonster.isBirthdayAnniversary {
-                Text("Birthday!")
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
+        HStack(spacing: 12) {
+            CreatureAvatarView(seed: fonster.seed, size: 44)
+                .padding(6)
+                .frame(width: 56, height: 56)
+                // Same adaptive stage as the detail view, so near-black creatures
+                // stay legible as thumbnails in dark mode too.
+                .background(CreatureStage(seed: fonster.seed, cornerRadius: 13))
+                .shadow(color: Color.black.opacity(colorScheme == .dark ? 0.25 : 0.05), radius: 4, x: 0, y: 2)
+            VStack(alignment: .leading, spacing: 3) {
+                Text(displayName(for: fonster))
+                    .font(.body.weight(.medium))
+                    #if os(tvOS)
+                    .lineLimit(2)
+                    .fixedSize(horizontal: false, vertical: true)
+                    #else
+                    .lineLimit(1)
+                    #endif
+                if fonster.isBirthdayAnniversary {
+                    FonsterPill {
+                        Text("🎂")
+                        Text("Birthday")
+                    }
+                }
             }
+            Spacer(minLength: 0)
         }
+        .padding(.vertical, 4)
     }
 
     @ToolbarContentBuilder
@@ -510,7 +539,22 @@ struct ContentView: View {
             FonsterDetailView(fonster: fonster)
             #endif
         } else {
-            ContentUnavailableView("Select a Fonster", systemImage: "sparkles")
+            ZStack {
+                FonsterScreenBackground()
+                VStack(spacing: 14) {
+                    Image(systemName: "sparkles")
+                        .font(.system(size: 44, weight: .semibold))
+                        .foregroundStyle(Theme.accentGradient)
+                    Text("Pick a Fonster")
+                        .font(.title2.weight(.semibold))
+                    Text("Choose a creature from the list, or tap + to hatch a new one.")
+                        .font(.subheadline)
+                        .foregroundStyle(.secondary)
+                        .multilineTextAlignment(.center)
+                        .frame(maxWidth: 260)
+                }
+                .padding()
+            }
         }
     }
 
@@ -878,14 +922,15 @@ struct FonsterDetailView: View {
                     // Birthday banner when today is this Fonster's birthday (anniversary only)
                     if fonster.isBirthdayAnniversary {
                         HStack(spacing: 8) {
-                            Image(systemName: "birthday.cake")
+                            Text("🎂")
                             Text(birthdayBannerText)
-                                .font(.subheadline.weight(.medium))
+                                .font(.subheadline.weight(.semibold))
                         }
+                        .foregroundStyle(Theme.accent)
                         .frame(maxWidth: .infinity)
-                        .padding(.vertical, 10)
-                        .padding(.horizontal, 12)
-                        .background(.quaternary.opacity(0.6))
+                        .padding(.vertical, 12)
+                        .padding(.horizontal, 14)
+                        .background(Theme.accent.opacity(0.12))
                     }
 
                     // Form: name, seed, random buttons
@@ -893,13 +938,12 @@ struct FonsterDetailView: View {
                     // Name
                     VStack(alignment: .leading, spacing: 6) {
                     Text("Name")
-                        .font(.subheadline)
-                        .foregroundStyle(.secondary)
+                        .fonsterSectionLabel()
                     #if os(macOS) || os(tvOS)
                     nameFieldOrLabel
                     #else
                     TextField("Fonster name", text: $fonster.name)
-                        .textFieldStyle(.roundedBorder)
+                        .textFieldStyle(FonsterFieldStyle(focused: nameFocused))
                         .focused($nameFocused)
                         .onKeyPress(keys: [.escape]) { _ in nameFocused = false; return .handled }
                     #endif
@@ -908,14 +952,9 @@ struct FonsterDetailView: View {
                     // Seed / source
                     VStack(alignment: .leading, spacing: 6) {
                         Text("Source text")
-                            .font(.subheadline)
-                            .foregroundStyle(.secondary)
+                            .fonsterSectionLabel()
                         TextField("Type anything...", text: $seedText, axis: .vertical)
-                            #if os(tvOS)
-                            .textFieldStyle(.plain)
-                            #else
-                            .textFieldStyle(.roundedBorder)
-                            #endif
+                            .textFieldStyle(FonsterFieldStyle(focused: seedFocused))
                             .lineLimit(3...8)
                             .focused($seedFocused)
                             .onKeyPress(keys: [.escape]) { _ in seedFocused = false; return .handled }
@@ -1030,6 +1069,11 @@ struct FonsterDetailView: View {
             }
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity)
+            // macOS only: visionOS windows are glass, and an opaque background
+            // would fight that, so it keeps the system treatment.
+            #if os(macOS)
+            .background(FonsterScreenBackground())
+            #endif
 
             #if os(macOS)
             if featureFlags.isEnabled(.showBirthdayOverlay) {
@@ -1424,59 +1468,66 @@ struct FonsterDetailView: View {
     private var iosDetailBody: some View {
         let displaySeed = fonster.seed.trimmingCharacters(in: .whitespaces).isEmpty ? " " : fonster.seed
         return ZStack {
-            VStack(spacing: 0) {
+            FonsterScreenBackground()
+            // One centered composition (name → creature → actions) rather than pieces
+            // pinned to the top and bottom, so it holds together on large screens too.
+            VStack(spacing: 24) {
+                Spacer(minLength: 0)
                 CreatureNameView(displayName: displayName, seed: displaySeed)
                     .frame(maxWidth: .infinity)
-                    .padding(.top, 16)
-                Spacer(minLength: 0)
-                TappableCreatureView(seed: displaySeed, size: 240, triggerBirthdayDanceID: triggerBirthdayDanceID)
+                TappableCreatureView(seed: displaySeed, size: 256, triggerBirthdayDanceID: triggerBirthdayDanceID)
                     .rotationEffect(
                         uprightCreatureState.isEnabled ? Angle(radians: uprightCreatureState.gravityAngle) : .zero,
                         anchor: .center
                     )
-                    .frame(width: 240, height: 240)
-                Spacer(minLength: 0)
+                    .frame(width: 256, height: 256)
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, 34)
+                    .background(CreatureStage(seed: displaySeed, cornerRadius: 32))
                 if featureFlags.isEnabled(.showBirthdayOverlay) {
-                Button {
-                    showBirthdayCelebration = true
-                    triggerBirthdayDanceID += 1
-                } label: {
-                    HStack(spacing: 6) {
-                        Text("Birthday")
-                            .font(.caption)
-                            .foregroundStyle(.secondary)
-                        Text(fonsterBirthdayMonthDayString(for: fonster))
-                            .font(.caption)
-                            .foregroundStyle(.secondary)
+                    Button {
+                        showBirthdayCelebration = true
+                        triggerBirthdayDanceID += 1
+                    } label: {
+                        FonsterPill(tint: Theme.blue) {
+                            Text("🎂")
+                            Text(fonsterBirthdayMonthDayString(for: fonster))
+                        }
                     }
+                    .buttonStyle(.plain)
                 }
-                .buttonStyle(.plain)
-                .padding(.vertical, 8)
-                }
-            Menu {
-                Button {
-                    onShare?(fonster)
+                Menu {
+                    Button {
+                        onShare?(fonster)
+                    } label: {
+                        Label("Share link", systemImage: "link")
+                    }
+                    Button {
+                        exportPNG()
+                    } label: {
+                        Label("Share image", systemImage: "photo")
+                    }
+                    Button {
+                        Task { await exportGIF() }
+                    } label: {
+                        Label("Share GIF", systemImage: "photo")
+                    }
+                    .disabled(gifLoading || fonster.seed.trimmingCharacters(in: .whitespaces).isEmpty)
                 } label: {
-                    Label("Share link", systemImage: "link")
+                    Label("Share", systemImage: "square.and.arrow.up")
+                        .font(.headline)
+                        .foregroundStyle(.white)
+                        .padding(.vertical, 13)
+                        .padding(.horizontal, 26)
+                        .background(Capsule(style: .continuous).fill(Theme.accentGradient))
+                        .overlay(Capsule(style: .continuous).strokeBorder(Color.white.opacity(0.18)))
+                        .shadow(color: Theme.accent.opacity(0.35), radius: 12, x: 0, y: 6)
                 }
-                Button {
-                    exportPNG()
-                } label: {
-                    Label("Share image", systemImage: "photo")
-                }
-                Button {
-                    Task { await exportGIF() }
-                } label: {
-                    Label("Share GIF", systemImage: "photo")
-                }
-                .disabled(gifLoading || fonster.seed.trimmingCharacters(in: .whitespaces).isEmpty)
-            } label: {
-                Label("Share", systemImage: "square.and.arrow.up")
+                .accessibilityLabel("Share")
+                Spacer(minLength: 0)
             }
-            .buttonStyle(.bordered)
-            .accessibilityLabel("Share")
-            .padding(.bottom, 24)
-            }
+            .padding(.horizontal, 22)
+            .frame(maxWidth: 620)
             .frame(maxWidth: .infinity, maxHeight: .infinity)
             if featureFlags.isEnabled(.showBirthdayOverlay), showBirthdayCelebration {
                 GeometryReader { geo in
@@ -1490,11 +1541,10 @@ struct FonsterDetailView: View {
             }
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
-        #if os(tvOS)
+        // The styled CreatureNameView is the hero title, so the nav bar stays empty
+        // instead of repeating the name directly above it.
         .navigationTitle("")
-        #else
-        .navigationTitle(displayName)
-        #endif
+        .navigationBarTitleDisplayMode(.inline)
         .toolbar {
             ToolbarItem(placement: .primaryAction) {
                 HStack(spacing: 12) {
@@ -1682,8 +1732,7 @@ struct FonsterDetailView: View {
             }
             #else
             Text(label)
-                .font(.subheadline)
-                .foregroundStyle(.secondary)
+                .fonsterSectionLabel()
             #endif
             #if os(tvOS)
             WrapLayout(spacing: 16, lineSpacing: 16) {
@@ -1699,13 +1748,12 @@ struct FonsterDetailView: View {
                 }
             }
             #else
-            WrapLayout(spacing: 8, lineSpacing: 8) {
+            WrapLayout(spacing: 10, lineSpacing: 10) {
                 ForEach(sources, id: \.self) { source in
                     Button { action(source) } label: {
                         Image(systemName: randomSourceSymbol(for: source))
                     }
-                    .buttonStyle(.bordered)
-                    .controlSize(.small)
+                    .buttonStyle(FonsterIconButtonStyle(tint: fonsterRandomSourceTint(for: source), diameter: 38))
                     .disabled(disabled)
                     .accessibilityLabel(randomSourceDisplayName(for: source))
                 }
@@ -1727,18 +1775,17 @@ struct FonsterDetailView: View {
             #endif
             let creatureSize = max(160, min(availableW, availableH))
             ZStack(alignment: .bottomTrailing) {
-                RoundedRectangle(cornerRadius: 12)
-                    .fill(.regularMaterial)
+                CreatureStage(seed: effectiveSeedForDisplay, cornerRadius: 20)
                 creaturePreviewWithUpright(size: creatureSize)
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
                     .padding(padding)
-                    .clipShape(RoundedRectangle(cornerRadius: 12))
+                    .clipShape(RoundedRectangle(cornerRadius: 20, style: .continuous))
                 #if !os(tvOS)
                 playStopButtons
                 #endif
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity)
-            .clipShape(RoundedRectangle(cornerRadius: 12))
+            .clipShape(RoundedRectangle(cornerRadius: 20, style: .continuous))
         }
         .frame(minHeight: 200, maxHeight: .infinity)
     }
@@ -1954,8 +2001,7 @@ struct FonsterDetailView: View {
             } label: {
                 Label("PNG", systemImage: "square.and.arrow.down")
             }
-            .buttonStyle(.bordered)
-            .tint(Color.blue.opacity(0.85))
+            .buttonStyle(FonsterSoftButtonStyle(tint: Theme.blue))
 
             Spacer(minLength: 8)
 
@@ -1969,8 +2015,7 @@ struct FonsterDetailView: View {
                     Label("GIF", systemImage: "photo")
                 }
             }
-            .buttonStyle(.bordered)
-            .tint(Color.cyan.opacity(0.85))
+            .buttonStyle(FonsterSoftButtonStyle(tint: Theme.teal))
             .disabled(gifLoading || fonster.seed.trimmingCharacters(in: .whitespaces).isEmpty)
 
             Spacer(minLength: 8)
@@ -1981,8 +2026,7 @@ struct FonsterDetailView: View {
             } label: {
                 Label("JPEG", systemImage: "photo")
             }
-            .buttonStyle(.bordered)
-            .tint(Color.orange.opacity(0.85))
+            .buttonStyle(FonsterSoftButtonStyle(tint: Theme.amber))
 
             Spacer(minLength: 8)
             #endif
@@ -2017,8 +2061,7 @@ struct FonsterDetailView: View {
                 .buttonStyle(.plain)
                 .frame(maxWidth: .infinity)
                 #else
-                .buttonStyle(.bordered)
-                .tint(Color.indigo.opacity(0.85))
+                .buttonStyle(FonsterSoftButtonStyle(tint: Theme.accent))
                 #endif
                 .disabled(randomLoading != nil)
 
@@ -2040,8 +2083,7 @@ struct FonsterDetailView: View {
                 .buttonStyle(.plain)
                 .frame(maxWidth: .infinity)
                 #else
-                .buttonStyle(.bordered)
-                .tint(Color.orange.opacity(0.8))
+                .buttonStyle(FonsterSoftButtonStyle(tint: Theme.violet))
                 #endif
                 .disabled(fonster.history.isEmpty)
 
@@ -2063,8 +2105,7 @@ struct FonsterDetailView: View {
                 .buttonStyle(.plain)
                 .frame(maxWidth: .infinity)
                 #else
-                .buttonStyle(.bordered)
-                .tint(Color.purple.opacity(0.85))
+                .buttonStyle(FonsterSoftButtonStyle(tint: Theme.violet))
                 #endif
                 .disabled(fonster.future.isEmpty)
             }
@@ -2219,62 +2260,73 @@ struct FonsterEditView: View {
                     let displaySeed = fonster.seed.trimmingCharacters(in: .whitespaces).isEmpty ? " " : fonster.seed
                     TappableCreatureView(seed: displaySeed, size: editCreatureSize)
                         .frame(width: editCreatureSize, height: editCreatureSize)
-                    TextField("Fonster name", text: $fonster.name)
-                        .textFieldStyle(.roundedBorder)
+                        .padding(10)
+                        .background(CreatureStage(seed: displaySeed, cornerRadius: 20))
+                    VStack(alignment: .leading, spacing: 6) {
+                        Text("Name")
+                            .fonsterSectionLabel()
+                        TextField("Fonster name", text: $fonster.name)
+                            .textFieldStyle(FonsterFieldStyle())
+                    }
                 }
                 .padding(.horizontal)
 
-                TextField("Type anything...", text: $seedText, axis: .vertical)
-                    .textFieldStyle(.roundedBorder)
-                    .lineLimit(3...8)
-                    .focused($seedFocused)
-                    .accessibilityLabel("Source text")
-                    .onChange(of: seedText) { _, newValue in
-                        fonster.seed = newValue
-                    }
-                    .onChange(of: seedFocused) { _, focused in
-                        if focused {
-                            seedWhenFocused = seedText
-                        } else {
-                            if let prev = seedWhenFocused, prev != seedText {
-                                fonster.pushPreviousAndSetSeed(previous: prev, newSeed: seedText)
+                VStack(alignment: .leading, spacing: 6) {
+                    Text("Source text")
+                        .fonsterSectionLabel()
+                    TextField("Type anything...", text: $seedText, axis: .vertical)
+                        .textFieldStyle(FonsterFieldStyle(focused: seedFocused))
+                        .lineLimit(3...8)
+                        .focused($seedFocused)
+                        .accessibilityLabel("Source text")
+                        .onChange(of: seedText) { _, newValue in
+                            fonster.seed = newValue
+                        }
+                        .onChange(of: seedFocused) { _, focused in
+                            if focused {
+                                seedWhenFocused = seedText
+                            } else {
+                                if let prev = seedWhenFocused, prev != seedText {
+                                    fonster.pushPreviousAndSetSeed(previous: prev, newSeed: seedText)
+                                }
+                                seedWhenFocused = nil
                             }
-                            seedWhenFocused = nil
                         }
-                    }
-                    .padding(.horizontal)
+                }
+                .padding(.horizontal)
 
-                HStack(spacing: 12) {
-                    Text("Get random:")
-                        .font(.subheadline)
-                        .foregroundStyle(.secondary)
-                    ForEach(randomSources, id: \.self) { source in
-                        Button {
-                            Task { await loadRandom(source: source) }
-                        } label: {
-                            Image(systemName: randomSourceSymbol(for: source))
+                VStack(alignment: .leading, spacing: 8) {
+                    Text("Get random")
+                        .fonsterSectionLabel()
+                    HStack(spacing: 10) {
+                        ForEach(randomSources, id: \.self) { source in
+                            Button {
+                                Task { await loadRandom(source: source) }
+                            } label: {
+                                Image(systemName: randomSourceSymbol(for: source))
+                            }
+                            .buttonStyle(FonsterIconButtonStyle(tint: fonsterRandomSourceTint(for: source), diameter: 40))
+                            .disabled(randomLoading != nil)
+                            .accessibilityLabel(randomSourceAccessibilityLabel(for: source))
                         }
-                        .buttonStyle(.bordered)
-                        .controlSize(.small)
-                        .disabled(randomLoading != nil)
-                        .accessibilityLabel(randomSourceAccessibilityLabel(for: source))
                     }
                 }
                 .padding(.horizontal)
 
-                HStack(spacing: 6) {
+                HStack(spacing: 8) {
                     Text("Birthday")
-                        .font(.subheadline)
-                        .foregroundStyle(.secondary)
-                    Text(creationDateOnlyString(from: fonster.createdAt))
-                        .font(.subheadline)
-                        .foregroundStyle(.secondary)
+                        .fonsterSectionLabel()
+                    FonsterPill(tint: Theme.blue) {
+                        Text("🎂")
+                        Text(creationDateOnlyString(from: fonster.createdAt))
+                    }
                 }
                 .frame(maxWidth: .infinity, alignment: .leading)
                 .padding(.horizontal)
                 .padding(.bottom, 24)
             }
         }
+        .background(FonsterScreenBackground())
         .navigationTitle(editViewTitle)
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {
@@ -2423,6 +2475,18 @@ struct EditFonsterSeedSheet: View {
 #endif
 
 // MARK: - Helpers (file-private; used by ContentView and FonsterDetailView)
+
+/// Harmonious per-source tint for the random-text buttons (quote / words / uuid / lorem),
+/// so the row reads as a considered set rather than a rainbow of system colors.
+private func fonsterRandomSourceTint(for source: String) -> Color {
+    switch source {
+    case "quote": return Theme.accent
+    case "words": return Theme.blue
+    case "uuid": return Theme.violet
+    case "lorem": return Theme.teal
+    default: return Theme.accent
+    }
+}
 
 /// Formatted creation date (date only, no time) for display e.g. "Feb 4, 2025".
 private func creationDateOnlyString(from date: Date) -> String {

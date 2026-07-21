@@ -96,6 +96,7 @@
 				Info.plist,
 				InstallationSeeds.swift,
 				ShareLoadHelpers.swift,
+				Theme.swift,
 			);
 			target = 8003B5632F324B9C0035E183 /* Fonsters Watch App */;
 		};
@@ -112,6 +113,7 @@
 				InitialCreatureNames.swift,
 				InstallationSeeds.swift,
 				ShareLoadHelpers.swift,
+				Theme.swift,
 			);
 			target = 8003B5742F324B9C0035E183 /* Fonsters Watch Clock Extension */;
 		};
