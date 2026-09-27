@@ -1,0 +1,13 @@
+{
+  "name": "fonsters-flags-deployment",
+  "private": true,
+  "scripts": {
+    "test:aws": "node scripts/aws-preview.test.mjs && python3 scripts/deploy-parallel.test.py && node aws/flags.test.mjs",
+    "lint": "node --check aws/flags.mjs && node --check api/flags.js",
+    "deploy:aws": "sst deploy --stage parallel",
+    "deploy:parallel": "python3 scripts/deploy-parallel.py"
+  },
+  "devDependencies": {
+    "sst": "4.17.1"
+  }
+}

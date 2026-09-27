@@ -39,3 +39,10 @@ scratchpad-shots/
 # Node (api/ is deployed via Vercel)
 node_modules/
 .vercel
+
+# AWS deployment
+node_modules/
+.sst/
+sst-env.d.ts
+.aws-preview-password
+__pycache__/
