@@ -42,3 +42,5 @@ instructions in new clones/worktrees and ensure any agent performing a release
 reads them. Working implementations and recorded verification, not this policy
 alone, determine deployment readiness.
 <!-- END aws-deployment-policy -->
+
+During parallel migration, use `npm run deploy:parallel`; see docs/aws-parallel.md.
