@@ -5,7 +5,8 @@
     "test:aws": "node Scripts/aws-preview.test.mjs && python3 Scripts/deploy-parallel.test.py && node aws/flags.test.mjs",
     "lint": "node --check aws/flags.mjs && node --check api/flags.js",
     "deploy:aws": "sst deploy --stage parallel",
-    "deploy:parallel": "python3 Scripts/deploy-parallel.py"
+    "deploy:parallel": "python3 Scripts/deploy-parallel.py",
+    "deploy:aws-only": "python3 Scripts/deploy-parallel.py --aws-only"
   },
   "devDependencies": {
     "sst": "4.17.1"

@@ -28,9 +28,20 @@ Run `npm run test:aws` for adapter/protection/deployment-guard tests. The releas
 command also verifies live flags, methods, cache/CORS, routing and protection.
 Before cutover, verify the native app against AWS, prove rollback, configure
 production routing and remove preview protection from the production path.
-Disable both Vercel projects' automatic deployments and provide a tested AWS-only
-release command. The parallel command refuses to run after the cutoff.
+Disable both Vercel projects' automatic deployments and verify the AWS-only
+release command against the production access policy. The parallel command refuses to run after the cutoff.
 
 Redeploy a known verified revision to roll back. Do not delete the SST stage;
 resources are retained and removal is protected. Review cancellation on 23 October
 before renewal on 24 October at 07:00 UTC, only after all required apps are ready.
+
+## AWS-only command
+
+`npm run deploy:aws-only` runs the same source/account checks, dependency install,
+tests, AWS deployment and live verification, without pushing to GitHub or
+triggering Vercel. It is available for preview repair and rollback now, and for
+regular releases after verified cutover. Source changes must still be committed
+and synchronized to GitHub through the normal source workflow. Disable Vercel
+Git deployments, hooks and workflows before post-cutover source pushes.
+The command does not change DNS, disable Vercel, or prove cutover is complete.
+At cutover, adapt the preview checks to the intended production access policy.

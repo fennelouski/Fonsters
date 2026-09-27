@@ -20,8 +20,10 @@ def check_parallel_window(now):
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--profile", default=os.environ.get("AWS_PROFILE", "fishbowl-head"))
+    parser.add_argument("--aws-only", action="store_true", help="Deploy to AWS without pushing to GitHub or triggering Vercel")
     args = parser.parse_args()
-    check_parallel_window(datetime.now(timezone.utc))
+    if not args.aws_only:
+        check_parallel_window(datetime.now(timezone.utc))
     os.chdir(Path(__file__).resolve().parent.parent)
     if output(["git", "status", "--porcelain"]):
         raise RuntimeError("Commit or stash local changes first so both hosts receive the same revision.")
@@ -44,12 +46,13 @@ def main():
     subprocess.run(["npm", "ci"], check=True)
     subprocess.run(["npm", "run", "test:aws"], check=True)
     subprocess.run(["npm", "run", "lint"], check=True)
-    subprocess.run(["git", "-c", "credential.helper=", "-c", "credential.helper=!gh auth git-credential",
-                    "push", "origin", f"HEAD:refs/heads/{branch}"], check=True)
-    print("GitHub push completed. Vercel builds independently; now deploying the same revision to AWS.", flush=True)
+    if not args.aws_only:
+        subprocess.run(["git", "-c", "credential.helper=", "-c", "credential.helper=!gh auth git-credential",
+                        "push", "origin", f"HEAD:refs/heads/{branch}"], check=True)
+        print("GitHub push completed. Vercel builds independently; now deploying the same revision to AWS.", flush=True)
     subprocess.run(["npm", "run", "deploy:aws"], env=env, check=True)
     subprocess.run(["npx", "sst", "shell", "--stage", "parallel", "--", "node", "Scripts/smoke-aws.mjs"], env=env, check=True)
-    print("AWS deployment and live checks passed. Check Vercel's commit status for its independent build result.")
+    print("AWS deployment and live checks passed." + (" GitHub/Vercel were not changed." if args.aws_only else " Check Vercel's commit status for its independent build result."))
 
 
 if __name__ == "__main__":
