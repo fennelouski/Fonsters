@@ -48,7 +48,7 @@ def main():
                     "push", "origin", f"HEAD:refs/heads/{branch}"], check=True)
     print("GitHub push completed. Vercel builds independently; now deploying the same revision to AWS.", flush=True)
     subprocess.run(["npm", "run", "deploy:aws"], env=env, check=True)
-    subprocess.run(["npx", "sst", "shell", "--stage", "parallel", "--", "node", "scripts/smoke-aws.mjs"], env=env, check=True)
+    subprocess.run(["npx", "sst", "shell", "--stage", "parallel", "--", "node", "Scripts/smoke-aws.mjs"], env=env, check=True)
     print("AWS deployment and live checks passed. Check Vercel's commit status for its independent build result.")
 
 
