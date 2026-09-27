@@ -6,7 +6,7 @@ export default $config({
       providers: { aws: { region: "us-west-2", allowedAccountIds: ["074861507225"] } } };
   },
   async run() {
-    const { previewRequest, previewResponse } = await import("./scripts/aws-preview.mjs");
+    const { previewRequest, previewResponse } = await import("./Scripts/aws-preview.mjs");
     const password = new sst.Secret("PreviewPassword");
     const router = new sst.aws.Router("Router", {
       protection: "oac",
