@@ -31,12 +31,21 @@ The connector's environment-list action returned 403. The installed Vercel CLI's
 updating its existing official Vercel Claude plugin. No backend code or environment was changed.
 
 Keep the key in the already-approved server runtime. A future bounded job can run this tool
-there and return reviewed audio files to Fonsters. Before doing that, Nathan needs to approve:
+there and return reviewed audio files to Fonsters. Nathan has authorized use of the existing
+remaining included API credits, with no top-up, overage, purchase or subscription change.
+Before execution, these secure runtime/account prerequisites still need to be resolved:
 
 1. Reuse of that account/key for Fonsters sound effects, with its existing scope verified by
    the account owner. Any new credential, broader scope or permanent cross-project access needs
    a separate secure user handoff/approval.
-2. The account's paid commercial-use plan and a credit cap, for example the **160-credit pilot**.
+2. Confirm an active paid commercial-use plan and a fresh included-credit balance. Read only
+   `GET /v1/user/subscription` inside the approved runtime, retaining just tier, status,
+   character count/limit, `max_credit_limit_extension` and check time. The canonical extension
+   must already be **0** (usage-based billing disabled); refuse positive or `unlimited` values.
+   Do not change billing settings. The deprecated `allowed_to_extend_character_limit` and
+   `can_extend_character_limit` do not prove overage is disabled. Do not use `GET /v1/user`,
+   whose response can contain a secret API key. The runtime must allocate a bounded batch
+   ceiling within that confirmed balance, starting with the 160-credit pilot if affordable.
 3. The concrete server job/runtime wiring. No new endpoint, deployment, permission or persistent
    credential setup has been made by this task.
 
@@ -46,7 +55,7 @@ supports sound-effects scope restrictions and per-key credit quotas. An account-
 the provider-enforced hard ceiling; changing it requires the owner's approval. Our local ledger
 is a conservative estimate reservation, **not a guarantee about provider billing**.
 
-After those approvals, the operator can run the bounded pilot in its approved runtime:
+After those prerequisites, the operator can run the bounded pilot in its approved runtime:
 
 ```sh
 python3 script/sound_pipeline.py generate --event greet --execute \
@@ -115,3 +124,40 @@ runs, preflight caps, resume, request hashes, charge accounting, timeout/HTTP fa
 unexpected-charge holds, PCM quality, offline MP3 decode/curation and tagged palette repeat avoidance. Actual provider
 authentication, generation, MP3 decode of an actual ElevenLabs response, license evidence from Nathan's account
 and subjective audition remain untested.
+
+## Distinct per-Fonster voices
+
+`python3 script/prepare_personal_sound_bank.py --write docs/prototype/sound-audition/personal-requests.json`
+prepares original prompts for all twelve fixtures, with a different timbre motif per Fonster,
+and eight cues each: hello, delight, rest, blink, curiosity, idle, catch and quiet company.
+The round-robin list gives each creature a hello before adding another event. It contains
+**96 unique base prompts** at one second each, estimated at **3,840 credits**. Three authored
+variants would be 288 base clips and 11,520 credits, only if a later bounded allocation fits
+the remaining included balance and the first batch passes audition. No clip in this list has
+been generated. The original 24-clip/960-credit family pack remains available as a smaller
+first pack. Do not generate both packs merely to spend the balance.
+
+The planner has no network, credential reads, purchases or execute flag. It can consume an
+allowlisted non-secret subscription snapshot less than 15 minutes old with
+`--subscription-metadata FILE`, then choose an affordable round-robin prefix and exclude all
+attempted asset IDs from an optional durable `--ledger FILE`. Unknown/failed/uncertain attempts
+are held, not retried; unexpectedly higher charges block planning. A prompt hash is embedded
+in each safe asset ID and verified on resume. A refreshed provider balance already reflects
+provider charges; the execution ledger must still reserve outstanding uncertain requests and
+avoid overlapping jobs. Use the existing bounded runner in sequential chunks of at most 24
+only after secure runtime wiring is approved; recheck balance and charges between chunks.
+
+`runtime_voice_variant` prepares deterministic local clip-slot, rate and gain choices from a
+random public identity, event and occurrence ordinal. These are playback variations, not
+newly generated base assets. Subtle rates 0.94/1.0/1.06 and gains 0.82/0.9/1.0 can keep a small
+auditioned pack from repeating identically. This helper is not wired to native playback yet;
+the app still plays the fifteen original quiet chirps. Thousands of runtime combinations
+must not be presented as thousands of distinct ElevenLabs generations. All generated assets
+still need human audition and normalization before importing into the native sound bank.
+
+`python3 script/verify_personal_sound_bank.py` passes four offline tests for unique per-character
+prompts/runner compatibility, paid-plan/fresh-balance/no-overage gates, conservative cost
+allocation with ambiguous-call holds, and bounded deterministic playback variation.
+The [subscription schema](https://elevenlabs.io/docs/api-reference/user/subscription/get),
+fixed-duration pricing and paid commercial-use FAQ were checked on 2026-10-07. No live account
+balance, overage state, key scope or paid-plan metadata has been read by this task.

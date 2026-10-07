@@ -46,10 +46,19 @@ control the shared room clock. Rest remains held until an interaction wakes that
 Automatic social events stay quiet and do not add personality memories. Deliberate rituals
 use the same shared local archive as the solo room, with its existing learning debounce.
 
-These are four local preview fixtures. The lobby does not connect other people's devices,
-import production pets, create accounts, synchronize relationships or introduce public
-share identifiers. An online lobby needs a separate product and backend design; it is not
-part of this local preview. All geometry, lighting and props are original procedural assets.
+The lobby also supports **Share Fonster** and **Invite…** with portable `.fonster.json` files.
+The owner chooses whether to include a feeling; sharing it is off by default. A visitor
+replaces Orbit's temporary slot until **End visit**. Choose a buddy, then **Pass ball** or
+**Sit together** to develop a small local friendship. A visitor's private personality history
+stays with its owner. Custom or colliding names use **Visitor** in the controls and typed
+requests; the original public name remains visible underneath. The public visit identity is
+a fresh random UUID, separate from appearance seeds and private personality profile IDs.
+
+Files are local snapshots that recipients can keep. There are no live cross-device updates
+or revocable online visits yet. Existing production pets, old share links, accounts and sync
+are untouched. See [visits-and-friendships.md](visits-and-friendships.md) for the exact public
+format, private social archive and prepared consent/revocation contract. All geometry,
+lighting and props are original procedural assets.
 
 ## A personality that grows beside you
 
@@ -185,6 +194,40 @@ long gaps shortened and no audio, rather than a continuous screen recording.
 Run `./script/verify_phase2.sh` for deterministic offline routing and native controller
 checks, or `./script/verify_phase2.sh --live-model` to also exercise the installed
 on-device model when available. Test archives stay in task-local verification folders.
+
+## Guest visits, feelings and friendships — phase 3
+
+Open **Launch Lobby.command**, or use **Lobby** in the Playroom if the app is already running.
+**Share Fonster** saves a seed-free visit file after review. **Invite…** validates and reviews
+a selected file before hosting it. `evidence/Tide.fonster.json` is a synthetic example created
+through that same encoding/decoding path; it includes the explicitly chosen Cozy label.
+Exported files are not revocable access grants. The sender chooses recipients manually
+outside the app.
+
+Chosen feelings are explicit owner controls: Just here, Bright, Curious, Cozy, Quiet or A
+little low. Quiet feelings slow autonomous walks and soften idle/jump expression, and lead
+nearby idle Fonsters to sit together. They have no punishment or required recovery. Guests'
+feelings are read-only. A missing shared label displays “Feeling not shared”, without inference.
+
+| Check | Result |
+| --- | --- |
+| Visit format and privacy | Passed: all twelve original portraits round-trip; no seed/email/history; strict nested field, version, geometry, raster and 128 KB limits. |
+| Guest identity and local memories | Passed: separate persisted random IDs; appearance-change rejection; corrupt/newer archives preserved; same guest keeps its friendship after ending/reinviting; no private guest learning. |
+| Feelings and games | Passed: optional label round-trip, read-only guest label, two-player parabolic ball/quiet interactions, 100 rapid replacements and static deliberate friendship learning. |
+| Motion and timing | Passed: Pause, Still, Reduce Motion, background and Low Power hold frames, positions, ball and friendship state. Autonomous moments use active time; deliberate moments remain accessible in Still mode. |
+| View recreation | Passed after fixing redundant writes: twenty lobby-controller initializations leave the observed social archive unchanged. Native scene updates then run normally. |
+| Typed guest requests | Passed: known Visitor greeting, bounded custom-name alias, explicit named recipient anchor and multi-peer preflight rejection. The actual installed Apple model interpreted “Make a friendly introduction to Visitor” as Coral greeting Visitor. |
+| Legacy regressions | Passed: original 12 RGBA baselines and 1,635/3,000 trace parity, PNG/GIF exports, legacy link round-trip and original motion-gate/repeated-reaction checks. |
+| Native visual evidence | `phase3-visit-scene/lobby-03.png` and a twelve-frame GIF/H.264 scene demo show an imported Tide snapshot passing a ball with Coral, then keeping quiet company. These are sampled live RealityKit scene exports, not desktop recordings; no audio is recorded. |
+| New native UI | Actual AppKit layout capture in `phase3-visit-window-layout.png` confirms room controls, guest roster, feeling/buddy selectors and sharing entry points fit the Air. Metal content is omitted by that capture. Save/Invite dialog clicks, repeated physical taps, full keyboard/VoiceOver flow and a second physical Mac import remain untested while desktop-control tooling is unavailable. |
+| Online service | Prepared exact recipient/scopes/expiry/mutual consent/revocation-epoch contract; no account creation, credentials, deployment or live transmission. |
+| Personal voice preparation | Four offline checks pass for 96 unique authored prompts (3,840-credit estimate), confirmed included-balance/no-overage gating, held uncertain requests and local deterministic variants. No ElevenLabs generation or account balance/plan verification has occurred. |
+
+Current logs are `evidence/phase3-social.log`, `phase3-phase2-regression.log`,
+`phase3-motion-regression.log`, `phase3-appearance-regression.log` and
+`phase3-personal-sound-tests.log`. `phase3-completion-checks.json` records the native
+build, output sizes and exact remaining limitations. Run `bash script/verify_social.sh`
+and `bash script/verify_phase2.sh --live-model` with Swift compiler plugins permitted.
 
 For a distributed sandboxed Mac app, signing and camera/audio entitlements still require
 their own review. This locally built preview uses the existing unsigned local build path;

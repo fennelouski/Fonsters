@@ -10,10 +10,10 @@ struct GeneratedCreatureCommand {
            .anyOf(["hello", "dance", "rest", "blink", "look", "hop", "spin", "stretch", "highFive", "rub", "fetch", "follow", "roam", "stop", "greetFriend", "unknown"]))
     var action: String
     @Guide(description: "The creature doing the action. Use selected unless the user explicitly names the actor.",
-           .anyOf(["selected", "Coral", "Moss", "Iris", "Tide", "Orbit", "Plum", "Poppy", "Inky", "Pebble", "Nori", "Ember", "Wisp"]))
+           .anyOf(["selected", "Coral", "Moss", "Iris", "Tide", "Orbit", "Plum", "Poppy", "Inky", "Pebble", "Nori", "Ember", "Wisp", "Visitor"]))
     var target: String
     @Guide(description: "For greetFriend only, the named neighbor receiving the greeting. Otherwise none.",
-           .anyOf(["none", "Coral", "Moss", "Iris", "Tide", "Orbit", "Plum", "Poppy", "Inky", "Pebble", "Nori", "Ember", "Wisp"]))
+           .anyOf(["none", "Coral", "Moss", "Iris", "Tide", "Orbit", "Plum", "Poppy", "Inky", "Pebble", "Nori", "Ember", "Wisp", "Visitor"]))
     var peer: String
 }
 
@@ -55,6 +55,7 @@ final class TypedActionInterpreter {
         guard !input.isEmpty && input.count <= 400 else { status = "Try a short request, up to 400 characters."; return }
         guard !CreatureCommandIntent.mentionsAbsentCreature(input, allowed: allowed) else { status = "Choose a Fonster here in this room."; return }
         guard !CreatureCommandIntent.hasConflictingKnownActions(input) else { status = "Try one action at a time."; return }
+        guard !CreatureCommandIntent.hasMultiplePeers(input, selected: selected, allowed: allowed) else { status = "Choose one friend for this little interaction."; return }
         generation += 1; let token = generation
         lastSource = "none"; lastModelAction = nil; lastErrorCode = nil
         isBusy = true; status = "Listening to your idea…"
@@ -74,6 +75,7 @@ final class TypedActionInterpreter {
                     Current selected creature: \(selected). Creatures present: \(allowed.joined(separator: ", ")).
                     ‘Wave to Moss’ means the selected creature greets Moss: greetFriend, peer Moss.
                     ‘Moss, dance’ means Moss is the actor. Never invent an absent target or peer.
+                    A friendly introduction to a neighbor means greetFriend. Visitor is a named guest when present.
                     A creature named at the start is the actor. ‘Coral, wave to Moss’ means actor Coral and peer Moss.
                     Return unknown for unsupported requests or several conflicting actions. Do not answer questions.
                     Do not generate dialog, code, plans, commands, or tool calls. Only classify the user's request.
@@ -82,9 +84,10 @@ final class TypedActionInterpreter {
                                                           options: GenerationOptions(sampling: .greedy, maximumResponseTokens: 100))
                     usedModel = true
                     self.lastModelAction = result.content.action
-                    let actor = CreatureCommandIntent.explicitActor(in: input, allowed: allowed) ?? result.content.target
+                    let anchoredPeer = result.content.action == "greetFriend" ? CreatureCommandIntent.explicitPeer(in: input, allowed: allowed) : nil
+                    let actor = CreatureCommandIntent.explicitActor(in: input, allowed: allowed) ?? (anchoredPeer != nil ? "selected" : result.content.target)
                     intent = CreatureCommandIntent.validate(action: result.content.action, target: actor,
-                                                            peer: result.content.peer, selected: selected, allowed: allowed)
+                                                            peer: anchoredPeer ?? result.content.peer, selected: selected, allowed: allowed)
                 } catch {
                     if Task.isCancelled { return }
                     let nativeError = error as NSError

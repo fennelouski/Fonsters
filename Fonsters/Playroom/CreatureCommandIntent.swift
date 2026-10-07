@@ -2,7 +2,7 @@ import Foundation
 
 /// This value is the entire command surface. Text can never become code or a tool call.
 struct CreatureCommandIntent: Equatable, Sendable {
-    private static let prototypeNames = ["Coral", "Moss", "Iris", "Tide", "Orbit", "Plum", "Poppy", "Inky", "Pebble", "Nori", "Ember", "Wisp"]
+    private static let prototypeNames = ["Coral", "Moss", "Iris", "Tide", "Orbit", "Plum", "Poppy", "Inky", "Pebble", "Nori", "Ember", "Wisp", "Visitor"]
     enum Action: String, CaseIterable, Sendable {
         case hello, dance, rest, blink, look, hop, spin, stretch, highFive, rub, fetch, follow, roam, stop, greetFriend
         var title: String {
@@ -30,6 +30,21 @@ struct CreatureCommandIntent: Equatable, Sendable {
     }
 
     static func hasConflictingKnownActions(_ text: String) -> Bool { knownActions(in: text).count > 1 }
+    /// A recipient explicitly following “to” or “with” stays the recipient.
+    static func explicitPeer(in text: String, allowed: [String]) -> String? {
+        let words = text.lowercased().split { !$0.isLetter && !$0.isNumber }.map(String.init)
+        var peers = Set<String>()
+        for i in words.indices where ["to", "with"].contains(words[i]) && i + 1 < words.count {
+            if let peer = allowed.first(where: { $0.lowercased() == words[i + 1] }) { peers.insert(peer) }
+        }
+        return peers.count == 1 ? peers.first : nil
+    }
+    static func hasMultiplePeers(_ text: String, selected: String, allowed: [String]) -> Bool {
+        let words = Set(text.lowercased().split { !$0.isLetter && !$0.isNumber }.map(String.init))
+        guard words.contains("to") || words.contains("with") else { return false }
+        let actor = explicitActor(in: text, allowed: allowed) ?? selected
+        return allowed.filter { $0 != actor && words.contains($0.lowercased()) }.count > 1
+    }
 
     private static func knownActions(in text: String) -> Set<Action> {
         let words = text.lowercased().split { !$0.isLetter && !$0.isNumber }.map(String.init)
@@ -71,7 +86,8 @@ struct CreatureCommandIntent: Equatable, Sendable {
         let matches = knownActions(in: text)
         guard matches.count == 1, let action = matches.first else { return nil }
         if action == .hello && (set.contains("to") || set.contains("with")) {
-            guard let friend = named.first(where: { $0 != explicitTarget }) else { return nil }
+            let peers = named.filter { $0 != explicitTarget }
+            guard peers.count == 1, let friend = peers.first else { return nil }
             return validate(action: "greetFriend", target: explicitTarget, peer: friend, selected: selected, allowed: allowed)
         }
         return validate(action: action.rawValue, target: explicitTarget, peer: nil, selected: selected, allowed: allowed)

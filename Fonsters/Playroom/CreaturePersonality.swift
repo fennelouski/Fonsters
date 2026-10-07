@@ -22,6 +22,11 @@ struct CreaturePersonality: Codable, Equatable {
         default: baseWarmth = 0.5; baseEnergy = 0.55; naturalQuirk = "A curious little soul, finding its own rhythm."
         }
     }
+    /// A visitor brings only two public tendencies, never the owner's memory archive.
+    init(visitorID: UUID, warmth: Double, energy: Double) {
+        publicID = visitorID; baseWarmth = warmth; baseEnergy = energy
+        naturalQuirk = "A visiting little friend."
+    }
     var interactionCount: Int { hellos + games + rests + discoveries }
     var greetingWarmth: Double { min(0.95, baseWarmth + Double(hellos) * 0.025) }
     var playEnergy: Double { (baseEnergy * 12 + Double(games)) / Double(12 + games + rests) }

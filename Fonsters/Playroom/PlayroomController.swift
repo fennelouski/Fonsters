@@ -14,6 +14,7 @@ final class PlayroomController {
     @ObservationIgnored private let soundBank = CreatureSoundBank()
     var isSpeaking: Bool { soundBank.isPlaying }
     private(set) var personality: CreaturePersonality?
+    private(set) var feeling: CreatureFeeling = .neutral
     private(set) var memoryStatus = "Memories stay on this Mac."
     @ObservationIgnored private var memories: PersonalityMemoryStore?
     var paused = false
@@ -67,6 +68,16 @@ final class PlayroomController {
     func likeSound(_ variant: Int) {
         guard let memories else { return }
         personality = memories.likeSound(variant, name: companionName); memoryStatus = memories.status
+    }
+    func useVisitorTemperament(_ card: FonsterVisitCard) {
+        guard memories == nil else { return }
+        personality = .init(visitorID: card.publicID, warmth: card.temperament.warmth, energy: card.temperament.energy)
+        memoryStatus = "This guest's private memories stay with its owner."
+        setFeeling(card.feeling ?? .neutral)
+    }
+    func setFeeling(_ chosen: CreatureFeeling) {
+        feeling = chosen; userRevision += 1
+        refreshStillPose()
     }
     func auditionSound(_ variant: Int) {
         guard soundEnabled && !paused && !backgrounded else { return }
@@ -239,6 +250,9 @@ final class PlayroomController {
                           yaw: sin(t * 0.53) * 0.035,
                           nod: sin(t * 1.1) * 0.018,
                           squash: moving ? sin(t * 1.9) * 0.012 : 0)
+        if feeling.prefersQuietCompany {
+            result.nod += 0.035; result.eyes = 0.82; result.y -= 0.02
+        } else if feeling == .curious { result.nod -= 0.025; result.tilt += 0.025 }
         if moving {
             let blink = t.truncatingRemainder(dividingBy: 4.7)
             if blink > 4.43 { result.eyes = max(0.055, abs(blink - 4.56) / 0.13) }
@@ -250,7 +264,7 @@ final class PlayroomController {
             result.tilt = -0.10; result.arms = moving ? sin(a * 13) * (0.27 + warmth * 0.3) + 0.22 : 0.3 + warmth * 0.3
             result.nod = moving ? -0.08 + sin(a * 5) * 0.09 : -0.1; result.mouth = 1.25
         case .play:
-            let energy = Float(personality?.playEnergy ?? 0.5)
+            let energy = Float(personality?.playEnergy ?? 0.5) * feeling.energy
             result.y = moving ? abs(sin(a * 5)) * (0.13 + energy * 0.24) : 0.08
             result.tilt = moving ? sin(a * 5) * 0.18 : 0.16
             result.squash = moving ? -cos(a * 10) * 0.08 : 0
@@ -264,7 +278,7 @@ final class PlayroomController {
         case .look:
             result.yaw = 0.12; result.tilt = -0.11; result.eyes = 1.12
         case .hop:
-            result.y = moving ? max(0, sin(a * 4.5)) * 0.36 : 0.10
+            result.y = moving ? max(0, sin(a * 4.5)) * 0.36 * feeling.energy : 0.10
             result.squash = moving ? -cos(a * 9) * 0.055 : 0
             result.arms = 0.30; result.mouth = 1.25
         case .spin:

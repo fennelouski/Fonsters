@@ -15,7 +15,8 @@ import FoundationModels
                 ("Coral, wave to Moss.", "Iris", present, .init(action: .greetFriend, targetName: "Coral", peerName: "Moss"), "known_command_fallback"),
                 ("Moss, settle down for a nap.", "Coral", present, .init(action: .rest, targetName: "Moss", peerName: nil), "known_command_fallback"),
                 ("Build a spaceship.", "Coral", present, nil, "apple_on_device_model"),
-                ("Moss, get some shut-eye.", "Coral", present, .init(action: .rest, targetName: "Moss", peerName: nil), "apple_on_device_model")
+                ("Moss, get some shut-eye.", "Coral", present, .init(action: .rest, targetName: "Moss", peerName: nil), "apple_on_device_model"),
+                ("Make a friendly introduction to Visitor.", "Coral", ["Coral", "Moss", "Iris", "Visitor"], .init(action: .greetFriend, targetName: "Coral", peerName: "Visitor"), "apple_on_device_model")
             ]
             for (index, item) in cases.enumerated() {
                 var result: CreatureCommandIntent?
@@ -42,6 +43,9 @@ import FoundationModels
         precondition(CreatureCommandIntent.fallback("hop and nap", selected: "Coral", allowed: names) == nil)
         precondition(CreatureCommandIntent.fallback("wave to Moss and nap", selected: "Coral", allowed: names) == nil)
         precondition(CreatureCommandIntent.fallback("wave to Tide", selected: "Coral", allowed: names) == nil)
+        precondition(CreatureCommandIntent.fallback("wave to Moss and Iris", selected: "Coral", allowed: names) == nil)
+        precondition(CreatureCommandIntent.hasMultiplePeers("Make a friendly introduction to Moss and Iris", selected: "Coral", allowed: names))
+        precondition(CreatureCommandIntent.explicitPeer(in: "Make a friendly introduction to Visitor.", allowed: ["Coral", "Visitor"]) == "Visitor")
         precondition(CreatureCommandIntent.fallback("Tide, dance", selected: "Coral", allowed: names) == nil)
         precondition(CreatureCommandIntent.fallback("restless", selected: "Coral", allowed: names) == nil)
         precondition(CreatureCommandIntent.validate(action: "unknown", target: "selected", peer: nil, selected: "Coral", allowed: names) == nil)
@@ -61,7 +65,9 @@ import FoundationModels
         try await Task.sleep(for: .milliseconds(40)); precondition(applied == 1 && !interpreter.isBusy)
         interpreter.submit("wave to Moss and nap", selected: "Coral", allowed: names, revision: 1, currentRevision: { revision }, apply: { _ in applied += 1 })
         try await Task.sleep(for: .milliseconds(40)); precondition(applied == 1 && !interpreter.isBusy)
-        print("PASS: typed-command fallback executes once; cancellation and newer interaction discard stale requests")
+        interpreter.submit("Make a friendly introduction to Moss and Iris", selected: "Coral", allowed: names, revision: 1, currentRevision: { revision }, apply: { _ in applied += 1 })
+        precondition(applied == 1 && !interpreter.isBusy)
+        print("PASS: typed-command fallback executes once; cancellation, multiple peers and newer interaction discard stale requests")
         let fixture = PlayroomCompanion.fixtures[4]
         let controller = PlayroomController(); controller.lowPower = false
         controller.install(try CreatureRig(fixture.descriptor), name: fixture.name)
@@ -100,7 +106,7 @@ import FoundationModels
         precondition(simulation.agents[0].reaction == "rest")
         print("PASS: 12,000 lobby steps keep four separated agents in bounds; peers greet/copy hops; gather works and deliberate rest is respected")
         let lobby = LocalLobbyController(); lobby.lowPower = false
-        for member in lobby.members { member.controller.install(try CreatureRig(member.companion.descriptor), name: member.companion.name) }
+        for member in lobby.members { member.controller.install(try CreatureRig(member.descriptor), name: member.name) }
         lobby.ready = true; lobby.refreshGates()
         let memories = lobby.members.map { $0.controller.personality!.interactionCount }
         let follow = CreatureCommandIntent.validate(action: "follow", target: "Coral", peer: nil, selected: "Coral", allowed: names)!
