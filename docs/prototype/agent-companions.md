@@ -2,7 +2,7 @@
 
 Open `Launch Agent Studio.command` on the Air. It builds the existing macOS target and opens twelve fluffy Fonsters with separate preview memories. Prepare a little plan, review the actions, and choose **Let them explore**. The status strip shows its source and progress. Open Agent Studio again to see the action history and the source of learned rituals. Escape or any direct creature interaction takes control back immediately.
 
-This implements the owner's choice of **Everything** for Fonster influence: movement, expressive reactions, chosen Fonster feelings, local friendships, and gradual personality learning. Each scope has its own switch. Changes invalidate an already reviewed plan. Starting a new plan always requires a deliberate local action; there is no unattended connection or default agent at launch.
+This implements the owner's choice of **Everything** for Fonster influence: movement, expressive reactions, chosen Fonster feelings, local friendships, and gradual personality learning. Each scope has its own switch. Changes invalidate an already reviewed plan. Agent Studio plans require a deliberate local start; there is no unattended connection or default agent at launch. The separately enabled [Fonster Social companion](social-presence.md) can renew finite local plans while the app is active. It always excludes human reflection, and direct creature interaction stops it.
 
 ## What is real now
 

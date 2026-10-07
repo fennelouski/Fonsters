@@ -62,7 +62,7 @@ final class FonsterAgentDirector {
         program = plan; self.source = source; cursor = 0
         message = "\(source.title) · \(plan.actions.count) actions ready to review."
     }
-    func prepareDemo(lobby: LocalLobbyController, now: Date = .now) throws {
+    func prepareDemo(lobby: LocalLobbyController, now: Date = .now, includeReflections: Bool = true) throws {
         let member = lobby.selectedMember, peer = lobby.members[lobby.peerIndex]
         let area = lobby.world.areas.contains(.park) ? "park" : "garden"
         var actions: [FonsterAgentAction] = [
@@ -73,7 +73,7 @@ final class FonsterAgentDirector {
         ]
         if lobby.world.benches.isEmpty { actions.removeLast() }
         for field in HumanReflectionField.allCases {
-            if let rule = reflections[field], rule.enabled { actions.append(.init(kind: .reflect, peerID: rule.audience == .localCompanions ? peer.id : nil, reflectionField: field, cue: rule.cue)) }
+            if includeReflections, let rule = reflections[field], rule.enabled { actions.append(.init(kind: .reflect, peerID: rule.audience == .localCompanions ? peer.id : nil, reflectionField: field, cue: rule.cue)) }
         }
         let filtered = actions.filter { (try? validateAction($0, lobby: lobby)) != nil }
         guard !filtered.isEmpty else { throw FonsterAgentError.denied }
@@ -106,6 +106,7 @@ final class FonsterAgentDirector {
         try validateTarget(program, lobby: lobby)
         let action = program.actions[cursor]; try validateAction(action, lobby: lobby)
         try lobby.applyAgent(action, id: program.fonsterID, reflection: action.reflectionField.flatMap { reflections[$0] })
+        lobby.presence.observe(action, id: program.fonsterID, source: source, now: now)
         var learned = false
         if scopes.contains(.learning), let ritual = action.ritual {
             learned = memories.learn(ritual, id: program.fonsterID, source: source, now: now)

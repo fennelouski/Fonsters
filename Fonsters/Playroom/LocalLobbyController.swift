@@ -19,6 +19,7 @@ final class LocalLobbyController {
     private(set) var members: [Member]
     let social: FriendshipMemoryStore
     let agent = FonsterAgentDirector()
+    let presence: FonsterSocialDirector
     var activeTime: Double { activeSeconds }
     @ObservationIgnored private var worldMemory: LobbyWorldMemory
     var focusArea: LobbyWorld.Area?
@@ -49,6 +50,7 @@ final class LocalLobbyController {
     var wander = true
     var sounds = false
     var ready = false
+    var reviewingControls = false
     var error: String?
     private(set) var userRevision = 0
     private(set) var roomRevision = 0
@@ -60,7 +62,7 @@ final class LocalLobbyController {
     @ObservationIgnored private(set) var frames = 0
     @ObservationIgnored private var activeSeconds: Double = 0
     @ObservationIgnored private let session = UUID()
-    var shouldAnimate: Bool { ready && !paused && !still && !reduceMotion && !backgrounded && !lowPower }
+    var shouldAnimate: Bool { ready && !paused && !still && !reduceMotion && !backgrounded && !lowPower && !reviewingControls }
     var selectedMember: Member { members[selected] }
     var names: [String] { members.map(\.name) }
     var peerIndex: Int { buddy != selected && members.indices.contains(buddy) ? buddy : (selected + 1) % members.count }
@@ -71,7 +73,8 @@ final class LocalLobbyController {
         if reduceMotion { return "Reduce Motion · still" }; if still { return "Still mode" }
         return paused ? "Paused" : "Together, at their own pace"
     }
-    init() {
+    init(presenceStore: FonsterSocialStore? = nil) {
+        presence = FonsterSocialDirector(store: presenceStore)
         let social = FriendshipMemoryStore.localPreview(); self.social = social
         let memory = LobbyWorldMemory(); worldMemory = memory
         let fixtures = PlayroomCompanion.fixtures
@@ -91,6 +94,14 @@ final class LocalLobbyController {
         for member in members {
             member.controller.agentRituals = agent.memories.profile(member.id)
             try? social.register(card(for: member, includeFeeling: false))
+        }
+        if ProcessInfo.processInfo.arguments.contains("--presence-preview") {
+            for member in members where !member.isVisitor {
+                if let profile = try? presence.store.create(id: member.id, name: member.name, owned: true),
+                   let introduction = profile.posts.first(where: { $0.event.kind == .introduction && $0.state == .draft }) {
+                    try? FonsterLocalFeedAdapter().publish(introduction.id, profileID: member.id, store: presence.store)
+                }
+            }
         }
         let launchArgs = ProcessInfo.processInfo.arguments
         if let i = launchArgs.firstIndex(of: "--world-area"), i + 1 < launchArgs.count, let area = LobbyWorld.Area(rawValue: launchArgs[i + 1]), world.areas.contains(area) { focusArea = area; cameraOrbit = area == .neighborhood ? -0.5 : 0; simulation.travel(to: area, actor: selected, peer: peerIndex, instant: true) }
@@ -174,6 +185,7 @@ final class LocalLobbyController {
         simulation.travel(to: area, actor: selected, peer: peerIndex, instant: still || reduceMotion)
         for i in [selected, peerIndex] { members[i].controller.perform(.idle, name: names[i], learn: false, audible: false) }
         message = "\(selectedMember.name) and \(names[peerIndex]) explore \(area.title.lowercased())."
+        if !selectedMember.isVisitor { presence.store.record(.init(kind: .explore, area: area.rawValue, source: .ownerAction), id: selectedMember.id) }
         applyLayout(); writeProbe()
     }
     func sitOnBench() {
@@ -221,7 +233,7 @@ final class LocalLobbyController {
     func refreshGates() {
         for member in members {
             let c = member.controller
-            c.paused = paused; c.staticMode = still; c.systemReduceMotion = reduceMotion
+            c.paused = paused || reviewingControls; c.staticMode = still; c.systemReduceMotion = reduceMotion
             c.backgrounded = backgrounded; c.lowPower = lowPower; c.soundEnabled = sounds
             c.refreshStillPose()
         }
@@ -233,12 +245,14 @@ final class LocalLobbyController {
         interruptPair()
         ownerActed()
         dispatch(simulation.act(action.rawValue, actor: index), deliberate: true)
+        if !members[index].isVisitor { presence.ownerMoment(reaction: action.rawValue, id: members[index].id) }
     }
     func waveToFriend() {
         greet(actor: selected, peer: peerIndex)
     }
     func greet(actor: Int, peer: Int) {
         interruptPair(); ownerActed(); dispatch(simulation.greet(actor: actor, peer: peer), deliberate: true)
+        if members.indices.contains(actor), !members[actor].isVisitor { presence.ownerMoment(reaction: "greet", id: members[actor].id) }
         applyLayout()
     }
     func playTogether() { interruptPair(); ownerActed(); dispatch(simulation.playTogether(), deliberate: true) }
@@ -247,6 +261,7 @@ final class LocalLobbyController {
         interruptPair(); ownerActed()
         let peer = peerIndex
         dispatch(simulation.together(actor: selected, peer: peer, quiet: quiet), deliberate: true)
+        if !selectedMember.isVisitor { presence.ownerMoment(reaction: quiet ? "rest" : "play", id: selectedMember.id) }
         message = quiet ? "\(names[selected]) and \(names[peer]) share a quiet moment. No need to cheer up." : "\(names[selected]) and \(names[peer]) pass the ball back and forth."
         applyLayout()
     }
@@ -274,7 +289,12 @@ final class LocalLobbyController {
         if ProcessInfo.processInfo.arguments.contains("--agent-demo"), frames == 20 {
             try? agent.prepareDemo(lobby: self, now: now); try? agent.start(lobby: self, now: now)
         }
+        if ProcessInfo.processInfo.arguments.contains("--presence-demo"), frames == 20 {
+            _ = try? presence.store.create(id: selectedMember.id, name: selectedMember.name, owned: !selectedMember.isVisitor, now: now)
+            try? presence.start(lobby: self, now: now)
+        }
         agent.advance(lobby: self, now: now)
+        presence.advance(lobby: self, now: now)
         let events = simulation.step(dt: dt, wander: wander)
         if !events.isEmpty { dispatch(events, deliberate: false) }
         for (i, member) in members.enumerated() { member.controller.worldWalking = simulation.agents[i].walking; member.controller.advance(dt: dt) }
@@ -313,7 +333,7 @@ final class LocalLobbyController {
         writeProbe()
     }
     func takeOwnerControl() { ownerActed() }
-    private func ownerActed() { userRevision += 1; agent.takeOver(lobby: self) }
+    private func ownerActed() { userRevision += 1; agent.takeOver(lobby: self); presence.ownerTookOver() }
     func cancelAgentMotion(id: UUID) {
         guard let actor = members.firstIndex(where: { $0.id == id }) else { return }
         interruptPair()
@@ -375,6 +395,10 @@ final class LocalLobbyController {
             "cameraPosition": camera.map { [Double($0.position.x), Double($0.position.y), Double($0.position.z)] } ?? [],
             "agentRunning": agent.running, "agentSource": agent.source.rawValue, "agentCursor": agent.cursor, "agentHistory": agent.history.map { $0.title }, "agentRituals": members.map { $0.controller.agentRituals.total },
             "humanReflectionEnabled": HumanReflectionField.allCases.filter { agent.reflections[$0]?.enabled == true }.map(\.rawValue),
+            "profileAgentRunning": presence.running, "profileCount": presence.store.profiles.count,
+            "profileDrafts": presence.store.profiles.reduce(0) { $0 + $1.posts.filter { $0.state == .draft }.count },
+            "localFeedPosts": presence.store.profiles.reduce(0) { $0 + $1.posts.filter { $0.state == .localFeed }.count },
+            "reviewingControls": reviewingControls,
             "socialEvents": socialCount, "localMembers": members.count, "revision": userRevision,
             "visitors": members.filter(\.isVisitor).count, "pairGame": simulation.pairGame != nil,
             "chosenFeelings": members.map { $0.feelingLabel }, "selectedFriendshipMoments": selectedFriendship.meaningfulMoments,

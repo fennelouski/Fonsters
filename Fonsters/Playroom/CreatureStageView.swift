@@ -7,6 +7,7 @@ import AppKit
 struct CreatureStageView: View {
     let companion: PlayroomCompanion
     let controller: PlayroomController
+    var onSceneReady: (([Entity]) -> Void)? = nil
     @State private var rubbing = false
 
     var body: some View {
@@ -47,6 +48,7 @@ struct CreatureStageView: View {
                     ball.name = "little-play-ball"; ball.position = [0.68, -0.93, 0.32]
                     content.add(ball); controller.toyBall = ball
                     content.add(try await CreatureSceneLighting.studio(for: Array(content.entities)))
+                    onSceneReady?(Array(content.entities))
                     NativeSceneExport.verificationTask(entities: Array(content.entities), label: "solo")
 
                 } catch {

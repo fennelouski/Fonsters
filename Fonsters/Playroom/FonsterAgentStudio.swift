@@ -140,7 +140,7 @@ struct FonsterAgentStudio: View {
                         Button("Import actions…") { importing = true }
                     }.font(.system(size: 11))
                     HStack {
-                        Button("Save agent template…") { attempt { document = try .init(program: agent.program!); exporting = true } }
+                        Button("Save agent template…") { attempt { guard let program = agent.program else { throw FonsterAgentError.invalid }; document = try .init(program: program); exporting = true } }
                             .disabled(agent.program == nil || agent.running)
                         Spacer()
                         Button(agent.running ? "Return to world" : "Let them explore") {

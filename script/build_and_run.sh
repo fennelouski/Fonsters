@@ -25,6 +25,7 @@ for ARGUMENT in "${LAUNCH_ARGS[@]}"; do
   case "$ARGUMENT" in
     --social-demo) HAS_SOCIAL_DEMO=true ;;
     --agent-demo) HAS_AGENT_DEMO=true ;;
+    --presence-demo|--presence-preview) HAS_AGENT_DEMO=true ;;
     --personality-file) HAS_PERSONALITY_FILE=true ;;
   esac
 done

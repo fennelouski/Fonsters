@@ -13,6 +13,8 @@ struct LocalLobbyView: View {
     @State private var typingRequest = false
     @State private var agentStudio = false
     @State private var initialAgentStudioShown = false
+    @State private var socialStudio = false
+    @State private var initialSocialStudioShown = false
     @State private var sharing = false
     @State private var importing = false
     @State private var reviewing = false
@@ -29,6 +31,7 @@ struct LocalLobbyView: View {
                     Text(lobby.growthDescription).font(.system(size: 13)).foregroundStyle(.secondary)
                 }
                 Spacer()
+                Button { socialStudio = true } label: { Label("Fonster Social", systemImage: "sparkles.rectangle.stack") }
                 Menu {
                     ForEach(lobby.availableCompanions) { fixture in
                         Button("Add \(fixture.name)") { interpreter.cancel(); lobby.addCompanion(fixture) }
@@ -41,6 +44,14 @@ struct LocalLobbyView: View {
                 if lobby.hasVisitor { Button("End visit") { interpreter.cancel(); lobby.endVisit() } }
             }
             FonsterAgentStatus(lobby: lobby) { agentStudio = true }
+            if lobby.presence.running {
+                HStack {
+                    Label("Local profile agent · \(lobby.presence.mode.title)", systemImage: "sparkles").font(.system(size: 11, weight: .medium))
+                    Text(lobby.presence.message).font(.system(size: 10)).foregroundStyle(.secondary).lineLimit(1)
+                    Spacer()
+                    Button("Pause profile agent") { lobby.presence.stop(lobby: lobby) }.font(.system(size: 11))
+                }.padding(10).background(Color.green.opacity(0.07), in: RoundedRectangle(cornerRadius: 12))
+            }
             LobbyWorldToolbar(lobby: lobby, typing: typingRequest)
             HStack(spacing: 16) {
                 ZStack(alignment: .bottomLeading) {
@@ -124,6 +135,7 @@ struct LocalLobbyView: View {
         .background(Color(red: 0.98, green: 0.97, blue: 0.95)).foregroundStyle(ink).preferredColorScheme(.light)
         .background(VerificationWindowCapture().frame(width: 0, height: 0))
         .sheet(isPresented: $agentStudio) { FonsterAgentStudio(lobby: lobby) }
+        .sheet(isPresented: $socialStudio) { FonsterSocialStudio(lobby: lobby) }
         .sheet(isPresented: $sharing) { VisitShareSheet(lobby: lobby, member: lobby.selectedMember) }
         .sheet(isPresented: $reviewing) {
             if let card = pendingCard { VisitReviewSheet(card: card) { interpreter.cancel(); try lobby.invite(card) } }
@@ -151,14 +163,19 @@ struct LocalLobbyView: View {
         .onChange(of: lobby.lowPower) { lobby.refreshGates() }
         .onChange(of: lobby.sounds) { lobby.refreshGates() }
         .onChange(of: lobby.roomRevision) { interpreter.cancel() }
+        .onChange(of: agentStudio || socialStudio || sharing || reviewing || importing) {
+            lobby.reviewingControls = agentStudio || socialStudio || sharing || reviewing || importing
+            lobby.refreshGates()
+        }
         .onChange(of: lobby.ready) {
             if lobby.ready && !initialAgentStudioShown && ProcessInfo.processInfo.arguments.contains("--agent-studio") { initialAgentStudioShown = true; agentStudio = true }
+            if lobby.ready && !initialSocialStudioShown && ProcessInfo.processInfo.arguments.contains("--presence-studio") { initialSocialStudioShown = true; socialStudio = true }
         }
         .onReceive(NotificationCenter.default.publisher(for: Notification.Name.NSProcessInfoPowerStateDidChange)) { _ in
             lobby.lowPower = ProcessInfo.processInfo.isLowPowerModeEnabled
         }
         .onDisappear {
-            interpreter.cancel(); lobby.agent.revoke(lobby: lobby); lobby.ready = false; lobby.containers = []; lobby.ball = nil; lobby.camera = nil; lobby.fountainDrops = []
+            interpreter.cancel(); lobby.presence.stop(lobby: lobby); lobby.agent.revoke(lobby: lobby); lobby.ready = false; lobby.containers = []; lobby.ball = nil; lobby.camera = nil; lobby.fountainDrops = []
             for member in lobby.members { member.controller.silence(); member.controller.rig = nil; member.controller.rendererReady = false }
         }
     }
