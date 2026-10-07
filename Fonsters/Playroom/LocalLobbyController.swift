@@ -18,8 +18,27 @@ final class LocalLobbyController {
     }
     private(set) var members: [Member]
     let social: FriendshipMemoryStore
+    @ObservationIgnored private var worldMemory: LobbyWorldMemory
+    var focusArea: LobbyWorld.Area?
+    var followSelected = false
+    var cameraZoom: Float = 1
+    var cameraOrbit: Float = 0
+    @ObservationIgnored var camera: PerspectiveCamera?
+    @ObservationIgnored var fountainDrops: [Entity] = []
+    @ObservationIgnored var dragOrbit: Float?
+    var world: LobbyWorld { LobbyWorld(population: members.count) }
+    var worldTemporaryReason: String? { worldMemory.temporaryReason }
+    var availableCompanions: [PlayroomCompanion] {
+        PlayroomCompanion.fixtures.filter { fixture in
+            !worldMemory.names.contains(fixture.name) && !members.contains { $0.name.caseInsensitiveCompare(fixture.name) == .orderedSame }
+        }
+    }
+    var growthDescription: String {
+        if let next = world.nextArea { return "\(members.count) Fonsters · \(next.title) at \(next.population)" }
+        return "\(members.count) Fonsters · A whole little neighborhood"
+    }
     var buddy = 1
-    var selected = 0 { didSet { if oldValue != selected { userRevision += 1 } } }
+    var selected = 0 { didSet { if oldValue != selected { userRevision += 1; if followSelected { updateCamera() } } } }
     var paused = false
     var still = false
     var reduceMotion = false
@@ -52,9 +71,11 @@ final class LocalLobbyController {
     }
     init() {
         let social = FriendshipMemoryStore.localPreview(); self.social = social
+        let memory = LobbyWorldMemory(); worldMemory = memory
         let fixtures = PlayroomCompanion.fixtures
         let memories = PersonalityMemoryStore.localPreview()
-        let newMembers = [0, 1, 2, 4].map { i in
+        let newMembers = memory.names.compactMap { name -> Member? in
+            guard let i = fixtures.firstIndex(where: { $0.name == name }) else { return nil }
             let controller = PlayroomController()
             controller.autonomyEnabled = false; controller.roaming = false; controller.writesProbe = false
             controller.enablePersonalityLearning(memories)
@@ -66,6 +87,8 @@ final class LocalLobbyController {
         simulation = .init(names: newMembers.map(\.name))
         for (i, member) in members.enumerated() { simulation.setFeeling(member.controller.feeling, actor: i) }
         for member in members { try? social.register(card(for: member, includeFeeling: false)) }
+        let launchArgs = ProcessInfo.processInfo.arguments
+        if let i = launchArgs.firstIndex(of: "--world-area"), i + 1 < launchArgs.count, let area = LobbyWorld.Area(rawValue: launchArgs[i + 1]), world.areas.contains(area) { focusArea = area; cameraOrbit = area == .neighborhood ? -0.5 : 0; simulation.travel(to: area, actor: selected, peer: peerIndex, instant: true) }
         if ProcessInfo.processInfo.arguments.contains("--social-demo") {
             let fixture = fixtures[3]
             let sample = FonsterVisitCard(publicID: social.identity(for: "SyntheticTideVisitor"), name: fixture.name, appearance: fixture.descriptor,
@@ -93,37 +116,102 @@ final class LocalLobbyController {
     }
     func invite(_ card: FonsterVisitCard) throws {
         try card.validate()
-        guard !members.prefix(3).contains(where: { $0.id == card.publicID }),
-              members[3].id != card.publicID || members[3].isVisitor else { throw VisitCardError.alreadyHere }
+        let slot = min(3, members.count - 1)
+        guard !members.enumerated().contains(where: { $0.offset != slot && $0.element.id == card.publicID }),
+              members[slot].id != card.publicID || members[slot].isVisitor else { throw VisitCardError.alreadyHere }
         try social.register(card)
         invalidateRoom()
         let controller = PlayroomController()
         controller.autonomyEnabled = false; controller.roaming = false; controller.writesProbe = false
         controller.useVisitorTemperament(card)
         let knownName = PlayroomCompanion.fixtures.contains { $0.name == card.name }
-        let collision = members.prefix(3).contains { $0.name.caseInsensitiveCompare(card.name) == .orderedSame }
+        let collision = members.enumerated().contains { $0.offset != slot && $0.element.name.caseInsensitiveCompare(card.name) == .orderedSame }
         let alias = knownName && !collision ? card.name : "Visitor"
-        members[3] = .init(id: card.publicID, name: alias, localCompanion: nil, visitCard: card, controller: controller)
-        rebuildSimulation(); buddy = 3; message = "\(card.name) is visiting from a shared snapshot."
+        members[slot] = .init(id: card.publicID, name: alias, localCompanion: nil, visitCard: card, controller: controller)
+        rebuildSimulation(); buddy = slot; message = "\(card.name) is visiting from a shared snapshot."
     }
     func endVisit() {
         guard hasVisitor else { return }
         invalidateRoom()
-        let fixture = PlayroomCompanion.fixtures[4], id = social.identity(for: "Orbit")
+        let slot = members.firstIndex(where: \.isVisitor)!
+        let fixture = PlayroomCompanion.fixtures.first { $0.name == worldMemory.names[slot] }!, id = social.identity(for: fixture.name)
         let controller = PlayroomController()
         controller.autonomyEnabled = false; controller.roaming = false; controller.writesProbe = false
         controller.enablePersonalityLearning(PersonalityMemoryStore.localPreview()); controller.setFeeling(social.feeling(for: id))
-        members[3] = .init(id: id, name: fixture.name, localCompanion: fixture, visitCard: nil, controller: controller)
+        members[slot] = .init(id: id, name: fixture.name, localCompanion: fixture, visitCard: nil, controller: controller)
         rebuildSimulation(); message = "The visit ended. Shared memories stay on this Mac."
     }
     private func invalidateRoom() {
         ready = false; roomRevision += 1; userRevision += 1
-        containers = []; ball = nil
+        containers = []; ball = nil; camera = nil; fountainDrops = []; error = nil
         for member in members { member.controller.silence(); member.controller.rig = nil; member.controller.rendererReady = false }
     }
     private func rebuildSimulation() {
         simulation = .init(names: names)
         for (i, member) in members.enumerated() { simulation.setFeeling(member.controller.feeling, actor: i) }
+    }
+    func addCompanion(_ fixture: PlayroomCompanion) {
+        guard members.count < 12, availableCompanions.contains(where: { $0.name == fixture.name }) else { return }
+        invalidateRoom()
+        let controller = PlayroomController()
+        controller.autonomyEnabled = false; controller.roaming = false; controller.writesProbe = false
+        controller.enablePersonalityLearning(PersonalityMemoryStore.localPreview())
+        let id = social.identity(for: fixture.name); controller.setFeeling(social.feeling(for: id))
+        let member = Member(id: id, name: fixture.name, localCompanion: fixture, visitCard: nil, controller: controller)
+        members.append(member); worldMemory.enroll(fixture.name)
+        try? social.register(card(for: member, includeFeeling: false))
+        rebuildSimulation()
+        message = "\(fixture.name) joins the world. \(growthDescription)."
+    }
+    func explore(_ area: LobbyWorld.Area) {
+        guard world.areas.contains(area), ready, !paused, !backgrounded, !lowPower else { return }
+        interruptPair(); userRevision += 1; focusArea = area; followSelected = false; cameraZoom = 1; cameraOrbit = area == .neighborhood ? -0.5 : 0
+        simulation.travel(to: area, actor: selected, peer: peerIndex, instant: still || reduceMotion)
+        for i in [selected, peerIndex] { members[i].controller.perform(.idle, name: names[i], learn: false, audible: false) }
+        message = "\(selectedMember.name) and \(names[peerIndex]) explore \(area.title.lowercased())."
+        applyLayout(); writeProbe()
+    }
+    func sitOnBench() {
+        guard ready, !world.benches.isEmpty, !paused, !backgrounded, !lowPower else { return }
+        interruptPair(); userRevision += 1
+        simulation.sit(actor: selected, instant: still || reduceMotion)
+        selectedMember.controller.perform(still || reduceMotion ? .rest : .idle, name: selectedMember.name, learn: false, audible: false)
+        message = "\(selectedMember.name) finds a soft afternoon on the bench."
+        applyLayout(); writeProbe()
+    }
+    func showOverview() { focusArea = nil; followSelected = false; cameraZoom = 1; cameraOrbit = 0; updateCamera(); writeProbe() }
+    func lookAtSelected() { followSelected = true; cameraZoom = 1; updateCamera(); writeProbe() }
+    func rotateCamera(_ angle: Float) { cameraOrbit += angle; updateCamera() }
+    func zoomCamera(_ factor: Float) { cameraZoom = min(1.7, max(0.65, cameraZoom * factor)); updateCamera() }
+    func updateCamera() {
+        guard let camera else { return }
+        let overview = focusArea == nil && !followSelected
+        let target2 = followSelected ? simulation.agents[selected].position : (focusArea?.center ?? SIMD2<Float>(0, -0.25))
+        let target: SIMD3<Float> = [target2.x, overview ? 0.10 : 0.50, target2.y]
+        let distance = (overview ? world.radius * 1.68 : 5.9) * cameraZoom
+        let height = (overview ? world.radius * 1.15 : 4.1) * cameraZoom
+        let offset: SIMD3<Float> = [sin(cameraOrbit) * distance, height, cos(cameraOrbit) * distance]
+        camera.look(at: target, from: target + offset, relativeTo: nil)
+    }
+    func walk(at point: CGPoint, size: CGSize) {
+        guard let camera, ready, !paused, !backgrounded, !lowPower, size.width > 0, size.height > 0 else { return }
+        let x = Float(point.x / size.width * 2 - 1), y = Float(1 - point.y / size.height * 2)
+        let tangent = tan(Float(camera.camera.fieldOfViewInDegrees) * .pi / 360)
+        let local: SIMD3<Float> = [x * Float(size.width / size.height) * tangent, y * tangent, -1]
+        let ray = camera.orientation.act(simd_normalize(local))
+        guard ray.y < -0.001 else { return }
+        let intersection = camera.position + ray * (-camera.position.y / ray.y)
+        // Clicking beyond the world doesn't draw a long unintended route.
+        guard simd_length(SIMD2<Float>(intersection.x, intersection.z)) <= world.radius else { return }
+        walk(to: [intersection.x, intersection.z])
+    }
+    func walk(to destination: SIMD2<Float>) {
+        guard destination.x.isFinite, destination.y.isFinite, ready, !paused, !backgrounded, !lowPower else { return }
+        interruptPair(); userRevision += 1
+        simulation.walk(to: destination, actor: selected, instant: still || reduceMotion)
+        selectedMember.controller.perform(.idle, name: selectedMember.name, learn: false, audible: false)
+        message = "\(selectedMember.name) takes a little walk."
+        applyLayout(); writeProbe()
     }
     func refreshGates() {
         for member in members {
@@ -180,7 +268,8 @@ final class LocalLobbyController {
         activeSeconds += Double(min(0.06, dt))
         let events = simulation.step(dt: dt, wander: wander)
         if !events.isEmpty { dispatch(events, deliberate: false) }
-        for member in members { member.controller.advance(dt: dt) }
+        for (i, member) in members.enumerated() { member.controller.worldWalking = simulation.agents[i].walking; member.controller.advance(dt: dt) }
+        LobbyWorldScene.animate(fountainDrops, time: Float(activeSeconds))
         applyLayout(); frames += 1
         if ProcessInfo.processInfo.arguments.contains("--social-demo") {
             if frames == 20 { selected = 0; buddy = 3; chooseFeeling(.cozy); pair(quiet: false) }
@@ -217,10 +306,11 @@ final class LocalLobbyController {
     func applyLayout() {
         for (i, container) in containers.enumerated() where simulation.agents.indices.contains(i) {
             let agent = simulation.agents[i]
-            container.position = [agent.position.x, 0.594, agent.position.y]
+            container.position = [agent.position.x, 0.594 + (agent.seated ? 0.42 : 0), agent.position.y - (agent.seated ? 0.78 : 0)]
             container.orientation = simd_quatf(angle: agent.heading, axis: [0, 1, 0])
         }
         ball?.position = simulation.ballPosition
+        updateCamera()
     }
     private func writeProbe() {
         let args = ProcessInfo.processInfo.arguments
@@ -228,6 +318,9 @@ final class LocalLobbyController {
         let state: [String: Any] = ["frames": frames, "animating": shouldAnimate, "paused": paused,
             "rendererReady": ready, "rendererError": error ?? "",
             "still": still, "reduceMotion": reduceMotion, "background": backgrounded, "lowPower": lowPower,
+            "worldRadius": world.radius, "worldAreas": world.areas.map(\.rawValue), "focusArea": focusArea?.rawValue ?? "overview",
+            "walking": simulation.agents.map(\.walking), "seated": simulation.agents.map(\.seated),
+            "cameraPosition": camera.map { [Double($0.position.x), Double($0.position.y), Double($0.position.z)] } ?? [],
             "socialEvents": socialCount, "localMembers": members.count, "revision": userRevision,
             "visitors": members.filter(\.isVisitor).count, "pairGame": simulation.pairGame != nil,
             "chosenFeelings": members.map { $0.feelingLabel }, "selectedFriendshipMoments": selectedFriendship.meaningfulMoments,

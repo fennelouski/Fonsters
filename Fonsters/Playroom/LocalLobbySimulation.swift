@@ -1,7 +1,7 @@
 import Foundation
 import simd
 
-/// A bounded local room. No network, accounts or appearance seeds.
+/// A walkable local world. No network, accounts or appearance seeds.
 struct LocalLobbySimulation {
     struct Agent {
         let name: String
@@ -14,8 +14,15 @@ struct LocalLobbySimulation {
         var goalHold: Float = 0
         var wandering = true
         var feeling = CreatureFeeling.neutral
+        var route: [SIMD2<Float>] = []
+        var nextWalk: Float = 0
+        var walking = false
+        var blocked: Float = 0
+        var seatRequested = false
+        var seated = false
     }
     struct Event { let actor: Int; let peer: Int?; let action: String }
+    let world: LobbyWorld
     private(set) var agents: [Agent]
     private(set) var socialEvents = 0
     private var elapsed: Float = 0
@@ -25,19 +32,74 @@ struct LocalLobbySimulation {
     private(set) var pairGame: (actor: Int, peer: Int, time: Float)?
     var ballPosition: SIMD3<Float> = [0, 0.14, 0.65]
 
-    init(names: [String]) {
-        let homes: [SIMD2<Float>] = [[-1.42, 0.30], [-0.48, -0.30], [0.48, -0.30], [1.42, 0.30]]
-        agents = Array(names.prefix(4).enumerated()).map { i, name in
-            .init(name: name, home: homes[i], position: homes[i], goal: homes[i])
+    init(names: [String], population: Int? = nil) {
+        let layout = LobbyWorld(population: population ?? names.count)
+        world = layout
+        agents = Array(names.prefix(12).enumerated()).map { i, name in
+            let home = layout.home(i)
+            return .init(name: name, home: home, position: home, goal: home, nextWalk: Float(i) * 1.1 + 2)
         }
+    }
+    private mutating func setGoal(_ destination: SIMD2<Float>, actor: Int, hold: Float = 12) {
+        agents[actor].seated = false; agents[actor].seatRequested = false
+        var target = world.nearestWalkable(to: destination)
+        if agents.indices.filter({ $0 != actor }).contains(where: { simd_distance(target, agents[$0].position) < 0.92 }) {
+            search: for ring in 1...12 { for spoke in 0..<16 {
+                let a = Float(spoke) / 16 * .pi * 2
+                let p = target + SIMD2<Float>(sin(a), cos(a)) * Float(ring) * 0.25
+                if world.walkable(p, clearance: 0.46) && agents.indices.filter({ $0 != actor }).allSatisfy({ simd_distance(p, agents[$0].position) >= 0.94 }) { target = p; break search }
+            } }
+        }
+        agents[actor].goal = target
+        agents[actor].route = world.route(from: agents[actor].position, to: agents[actor].goal, avoiding: agents.indices.filter { $0 != actor }.map { agents[$0].position })
+        agents[actor].blocked = 0
+        agents[actor].goalHold = hold
+    }
+    mutating func travel(to area: LobbyWorld.Area, actor: Int, peer: Int? = nil, instant: Bool = false) {
+        guard world.areas.contains(area), agents.indices.contains(actor) else { return }
+        interruptGame()
+        let travelers = [actor] + (peer.flatMap { agents.indices.contains($0) && $0 != actor ? $0 : nil }.map { [$0] } ?? [])
+        for (slot, i) in travelers.enumerated() {
+            agents[i].reaction = "idle"; agents[i].remaining = 0
+            setGoal(world.destination(in: area, slot: slot), actor: i, hold: 30)
+            if instant { settleInstantly(actor: i) }
+        }
+        nextSocial = elapsed + 12
+    }
+    mutating func walk(to position: SIMD2<Float>, actor: Int, instant: Bool = false) {
+        guard agents.indices.contains(actor) else { return }
+        interruptGame(); agents[actor].reaction = "idle"; agents[actor].remaining = 0
+        setGoal(position, actor: actor, hold: 30)
+        if instant { settleInstantly(actor: actor) }
+        nextSocial = elapsed + 10
+    }
+    private mutating func settleInstantly(actor: Int) {
+        // Explicit navigation in Still/Reduce Motion uses a clear, static placement.
+        let target = agents[actor].goal
+        for ring in 0...12 { for spoke in 0..<16 {
+            let a = Float(spoke) / 16 * .pi * 2
+            let p = target + SIMD2<Float>(sin(a), cos(a)) * Float(ring) * 0.25
+            if world.walkable(p, clearance: 0.46) && agents.indices.filter({ $0 != actor }).allSatisfy({ simd_distance(p, agents[$0].position) >= 0.90 }) {
+                agents[actor].position = p; agents[actor].goal = p; agents[actor].route = []; agents[actor].walking = false; return
+            }
+        } }
+    }
+    mutating func sit(actor: Int, instant: Bool = false) {
+        guard agents.indices.contains(actor), let bench = world.benches.min(by: { simd_distance($0, agents[actor].position) < simd_distance($1, agents[actor].position) }) else { return }
+        interruptGame(); agents[actor].reaction = "idle"; agents[actor].remaining = 0
+        let spots = [bench + SIMD2<Float>(-0.50, 0.78), bench + SIMD2<Float>(0.50, 0.78)]
+        guard let spot = spots.first(where: { p in agents.indices.filter { $0 != actor }.allSatisfy { simd_distance(p, agents[$0].goal) >= 0.9 && simd_distance(p, agents[$0].position) >= 0.94 } }) else { return }
+        setGoal(spot, actor: actor, hold: 1000); agents[actor].seatRequested = true
+        if instant { settleInstantly(actor: actor); agents[actor].seated = true; agents[actor].reaction = "rest" }
+        nextSocial = elapsed + 8
     }
     mutating func act(_ action: String, actor: Int) -> [Event] {
         guard agents.indices.contains(actor) else { return [] }
         interruptGame()
         agents[actor].reaction = action; agents[actor].remaining = action == "rest" ? 1000 : 4
-        agents[actor].goal = agents[actor].position
+        agents[actor].goal = agents[actor].position; agents[actor].route = []; agents[actor].seated = false; agents[actor].seatRequested = false
         nextSocial = elapsed + 7
-        if action == "fetch" { ballTime = 0; agents[actor].goal = [0, 0.45] }
+        if action == "fetch" { ballTime = 0; setGoal([0, 1.1], actor: actor) }
         return [.init(actor: actor, peer: nil, action: action)]
     }
     mutating func greet(actor: Int, peer: Int) -> [Event] {
@@ -48,7 +110,7 @@ struct LocalLobbySimulation {
         agents[peer].heading = atan2(-delta.x, -delta.y)
         agents[actor].reaction = "greet"; agents[peer].reaction = "greet"
         agents[actor].remaining = 3; agents[peer].remaining = 3
-        agents[actor].goal = agents[actor].position; agents[peer].goal = agents[peer].position
+        for i in [actor, peer] { agents[i].goal = agents[i].position; agents[i].route = []; agents[i].seatRequested = false; agents[i].seated = false }
         nextSocial = elapsed + 7; socialEvents += 1
         return [.init(actor: actor, peer: peer, action: "greet"), .init(actor: peer, peer: actor, action: "greet")]
     }
@@ -56,21 +118,21 @@ struct LocalLobbySimulation {
         interruptGame()
         nextSocial = elapsed + 8
         return agents.indices.map { i in
-            agents[i].reaction = "play"; agents[i].remaining = 4
+            agents[i].reaction = "play"; agents[i].remaining = 4; agents[i].seated = false; agents[i].seatRequested = false; agents[i].route = []; agents[i].goal = agents[i].position
             return .init(actor: i, peer: nil, action: "play")
         }
     }
     mutating func gather() {
         interruptGame()
-        for i in agents.indices { agents[i].goal = agents[i].home * 0.82; agents[i].goalHold = 5 }
+        for i in agents.indices { agents[i].reaction = "idle"; agents[i].remaining = 0; setGoal(agents[i].home * 0.82, actor: i, hold: 10) }
         nextSocial = elapsed + 5
     }
-    mutating func freezeGoals() { for i in agents.indices { agents[i].goal = agents[i].position } }
+    mutating func freezeGoals() { for i in agents.indices { agents[i].goal = agents[i].position; agents[i].route = []; agents[i].walking = false; agents[i].seatRequested = false } }
     mutating func setWandering(_ enabled: Bool, actor: Int) {
         guard agents.indices.contains(actor) else { return }
         interruptGame()
         agents[actor].wandering = enabled; agents[actor].reaction = "idle"; agents[actor].remaining = 0
-        agents[actor].goal = agents[actor].position
+        agents[actor].goal = agents[actor].position; agents[actor].route = []; agents[actor].walking = false; agents[actor].seatRequested = false; agents[actor].seated = false
     }
     mutating func setFeeling(_ feeling: CreatureFeeling, actor: Int) {
         guard agents.indices.contains(actor) else { return }
@@ -106,27 +168,64 @@ struct LocalLobbySimulation {
         guard rawDT.isFinite && rawDT > 0 else { return [] }
         let dt = min(0.06, rawDT)
         elapsed += dt
+        var arrivals: [Event] = []
         for i in agents.indices {
+            agents[i].walking = false
             if agents[i].reaction != "rest" { agents[i].remaining = max(0, agents[i].remaining - dt) }
             agents[i].goalHold = max(0, agents[i].goalHold - dt)
-            if agents[i].remaining == 0 {
+            if agents[i].remaining == 0 && !agents[i].seated {
                 agents[i].reaction = "idle"
-                agents[i].heading *= max(0, 1 - dt * 2)
-                if wander && agents[i].wandering && agents[i].goalHold == 0 {
-                    agents[i].goal = agents[i].home + [sin(elapsed * 0.29 + Float(i) * 1.7) * 0.32,
-                                                      cos(elapsed * 0.23 + Float(i) * 2) * 0.20]
+                if wander && agents[i].wandering && agents[i].goalHold == 0 && elapsed >= agents[i].nextWalk && agents[i].route.isEmpty {
+                    let area = world.areas[(round + i + Int(elapsed / 9)) % world.areas.count]
+                    let destination = world.destination(in: area, slot: i)
+                    setGoal(destination, actor: i, hold: 0)
+                    agents[i].nextWalk = elapsed + 12 + Float(i % 4) * 2
                 }
             }
-            if agents[i].reaction != "rest" {
-                let delta = agents[i].goal - agents[i].position, length = simd_length(delta)
-                if length > 0.001 {
-                    let candidate = agents[i].position + delta / length * min(length, dt * 0.20 * agents[i].feeling.energy)
-                    let clear = agents.indices.filter { $0 != i }.allSatisfy { simd_distance(candidate, agents[$0].position) >= 0.88 }
-                    if clear { agents[i].position = [min(1.5, max(-1.5, candidate.x)), min(0.88, max(-0.88, candidate.y))] }
+            guard agents[i].reaction != "rest", !agents[i].seated else { continue }
+            if let waypoint = agents[i].route.first {
+                let delta = waypoint - agents[i].position, distance = simd_length(delta)
+                if distance < 0.001 { agents[i].position = waypoint; agents[i].route.removeFirst() }
+                else {
+                    let direction = delta / distance
+                    let candidate = agents[i].position + direction * min(distance, dt * 0.65 * agents[i].feeling.energy)
+                    let clear = agents.indices.filter { $0 != i }.allSatisfy { simd_distance(candidate, agents[$0].position) >= 0.90 }
+                    if clear && world.segmentClear(agents[i].position, candidate) {
+                        agents[i].position = candidate; agents[i].walking = true; agents[i].blocked = 0
+                        let desired = atan2(direction.x, direction.y)
+                        let difference = atan2(sin(desired - agents[i].heading), cos(desired - agents[i].heading))
+                        agents[i].heading += difference * min(1, dt * 7)
+                    } else {
+                        agents[i].blocked += dt
+                        // A small local side step lets approaching companions pass.
+                        let side = SIMD2<Float>(direction.y, -direction.x) * (i % 2 == 0 ? 1 : -1)
+                        let aside = agents[i].position + side * dt * 0.4
+                        if world.segmentClear(agents[i].position, aside) && agents.indices.filter({ $0 != i }).allSatisfy({ simd_distance(aside, agents[$0].position) >= 0.90 }) {
+                            agents[i].position = aside; agents[i].walking = true
+                        }
+                        if agents[i].blocked > 0.8 {
+                            agents[i].route = world.route(from: agents[i].position, to: agents[i].goal, avoiding: agents.indices.filter { $0 != i }.map { agents[$0].position })
+                            agents[i].blocked = 0
+                        }
+                    }
                 }
+            } else if simd_distance(agents[i].position, agents[i].goal) > 0.08 {
+                agents[i].blocked += dt
+                if agents[i].blocked > 1 {
+                    let oldGoal = agents[i].goal, seat = agents[i].seatRequested, hold = agents[i].goalHold
+                    if seat {
+                        agents[i].route = world.route(from: agents[i].position, to: oldGoal, avoiding: agents.indices.filter { $0 != i }.map { agents[$0].position })
+                        agents[i].blocked = 0
+                    } else { setGoal(oldGoal, actor: i, hold: hold) }
+                }
+            } else if agents[i].seatRequested {
+                agents[i].seated = true; agents[i].seatRequested = false; agents[i].reaction = "rest"; agents[i].remaining = 1000; agents[i].heading = 0
+                arrivals.append(.init(actor: i, peer: nil, action: "rest"))
+            } else if agents[i].reaction == "idle" {
+                agents[i].heading *= max(0, 1 - dt * 0.6)
             }
         }
-        var catches: [Event] = []
+        var catches: [Event] = arrivals
         if var game = pairGame {
             let previousTrip = Int(game.time / 1.1)
             game.time += dt; pairGame = game
@@ -145,10 +244,11 @@ struct LocalLobbySimulation {
         } else { ballPosition = [0, 0.14, 0.65] }
         guard wander && elapsed >= nextSocial && agents.count > 1 else { return catches }
         round += 1; nextSocial = elapsed + 8
-        let free = agents.indices.filter { agents[$0].reaction == "idle" }
+        let free = agents.indices.filter { agents[$0].reaction == "idle" && agents[$0].goalHold == 0 && !agents[$0].seatRequested }
         guard free.count >= 2 else { return catches }
         let actor = free[round % free.count]
         let peer = free.filter { $0 != actor }.min { simd_distance(agents[actor].position, agents[$0].position) < simd_distance(agents[actor].position, agents[$1].position) }!
+        guard simd_distance(agents[actor].position, agents[peer].position) < 2.6 else { return catches }
         if agents[actor].feeling.prefersQuietCompany || agents[peer].feeling.prefersQuietCompany {
             return together(actor: actor, peer: peer, quiet: true)
         }

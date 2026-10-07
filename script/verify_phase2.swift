@@ -92,7 +92,7 @@ import FoundationModels
             _ = simulation.step(dt: 1.0 / 30, wander: true)
             for i in simulation.agents.indices {
                 let position = simulation.agents[i].position
-                precondition(position.x.isFinite && position.y.isFinite && abs(position.x) <= 1.5 && abs(position.y) <= 0.88)
+                precondition(position.x.isFinite && position.y.isFinite && simulation.world.walkable(position))
                 for j in simulation.agents.indices where j > i { precondition(simd_distance(position, simulation.agents[j].position) >= 0.87) }
             }
         }

@@ -4,6 +4,20 @@ ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 MODE="${1:-run}"
 if [[ $# -gt 0 ]]; then shift; fi
 LAUNCH_ARGS=("$@")
+# Finder/open does not inherit the shell's working directory. Resolve explicit
+# archive/evidence paths before handing them to the native app.
+EXPECT_PATH=false
+for INDEX in "${!LAUNCH_ARGS[@]}"; do
+  ARGUMENT="${LAUNCH_ARGS[$INDEX]}"
+  if $EXPECT_PATH; then
+    if [[ "$ARGUMENT" != /* ]]; then LAUNCH_ARGS[$INDEX]="$ROOT_DIR/$ARGUMENT"; fi
+    EXPECT_PATH=false
+  else
+    case "$ARGUMENT" in
+      --personality-file|--social-file|--probe-file|--lobby-probe-file|--scene-export-dir|--window-export-file|--sample-visit-file) EXPECT_PATH=true ;;
+    esac
+  fi
+done
 HAS_SOCIAL_DEMO=false
 HAS_PERSONALITY_FILE=false
 for ARGUMENT in "${LAUNCH_ARGS[@]}"; do

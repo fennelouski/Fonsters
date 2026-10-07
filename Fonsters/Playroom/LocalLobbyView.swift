@@ -23,25 +23,33 @@ struct LocalLobbyView: View {
         VStack(alignment: .leading, spacing: 12) {
             HStack {
                 VStack(alignment: .leading, spacing: 5) {
-                    Text("A little company.").font(.system(size: 30, weight: .bold, design: .rounded))
-                    Text(lobby.hasVisitor ? "A visiting friend, one shared afternoon." : "Little friendships, at their own pace.").font(.system(size: 13)).foregroundStyle(.secondary)
+                    Text("A world that grows with you.").font(.system(size: 30, weight: .bold, design: .rounded))
+                    Text(lobby.growthDescription).font(.system(size: 13)).foregroundStyle(.secondary)
                 }
                 Spacer()
+                Menu {
+                    ForEach(lobby.availableCompanions) { fixture in
+                        Button("Add \(fixture.name)") { interpreter.cancel(); lobby.addCompanion(fixture) }
+                    }
+                } label: { Label("Add local Fonster", systemImage: "plus.circle") }
+                    .disabled(lobby.availableCompanions.isEmpty || !lobby.ready)
                 Button { sharing = true } label: { Label("Share Fonster", systemImage: "square.and.arrow.up") }
                     .disabled(lobby.selectedMember.isVisitor)
                 Button { importing = true } label: { Label("Invite…", systemImage: "person.crop.circle.badge.plus") }
                 if lobby.hasVisitor { Button("End visit") { interpreter.cancel(); lobby.endVisit() } }
             }
+            LobbyWorldToolbar(lobby: lobby, typing: typingRequest)
             HStack(spacing: 16) {
                 ZStack(alignment: .bottomLeading) {
                     RoundedRectangle(cornerRadius: 26).fill(LinearGradient(colors: [Color(red: 0.90, green: 0.91, blue: 0.94), Color(red: 0.98, green: 0.95, blue: 0.91)], startPoint: .topLeading, endPoint: .bottomTrailing))
                     if let error = lobby.error { Text(error).padding(30) }
                     else { LobbyStageView(lobby: lobby).id(lobby.roomRevision).clipShape(RoundedRectangle(cornerRadius: 26)) }
-                    Text("Tiny waves. Shared hops. Room to just be.")
+                    Text("Click a path to walk · Drag to turn the view")
                         .font(.system(size: 11)).foregroundStyle(ink.opacity(0.45)).padding(20).allowsHitTesting(false)
                 }.frame(maxWidth: .infinity, maxHeight: .infinity)
                 VStack(alignment: .leading, spacing: 8) {
-                    Text("HERE TOGETHER").font(.system(size: 10, weight: .bold)).tracking(1.3).foregroundStyle(.secondary)
+                    Text("HERE TOGETHER · \(lobby.members.count)").font(.system(size: 10, weight: .bold)).tracking(1.3).foregroundStyle(.secondary)
+                    ScrollView {
                     ForEach(Array(lobby.members.enumerated()), id: \.element.id) { index, member in
                         Button { lobby.selected = index } label: {
                             HStack(spacing: 10) {
@@ -58,6 +66,7 @@ struct LocalLobbyView: View {
                             .accessibilityLabel("Choose \(member.name) in the local lobby, \(member.feelingLabel)")
                             .accessibilityAddTraits(lobby.selected == index ? .isSelected : [])
                     }
+                    }.frame(maxHeight: 235)
                     Divider()
                     if lobby.selectedMember.isVisitor {
                         Label(lobby.selectedMember.feelingLabel, systemImage: "heart")
@@ -77,7 +86,7 @@ struct LocalLobbyView: View {
                         Button { lobby.pair(quiet: true) } label: { Label("Sit together", systemImage: "heart") }
                     }.font(.system(size: 11)).disabled(!lobby.ready)
                     Spacer(minLength: 0)
-                    Text(lobby.social.status)
+                    Text(lobby.worldTemporaryReason ?? lobby.social.status)
                         .font(.system(size: 11)).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
                 }.padding(16).frame(width: 250).frame(maxHeight: .infinity)
                     .background(.white.opacity(0.75), in: RoundedRectangle(cornerRadius: 24))
@@ -108,7 +117,7 @@ struct LocalLobbyView: View {
                 Text(lobby.motionStatus).font(.system(size: 10)).foregroundStyle(.secondary)
             }
         }
-        .padding(22).frame(minWidth: 950, minHeight: 720)
+        .padding(22).frame(minWidth: 1050, minHeight: 790)
         .background(Color(red: 0.98, green: 0.97, blue: 0.95)).foregroundStyle(ink).preferredColorScheme(.light)
         .background(VerificationWindowCapture().frame(width: 0, height: 0))
         .sheet(isPresented: $sharing) { VisitShareSheet(lobby: lobby, member: lobby.selectedMember) }
@@ -142,13 +151,54 @@ struct LocalLobbyView: View {
             lobby.lowPower = ProcessInfo.processInfo.isLowPowerModeEnabled
         }
         .onDisappear {
-            interpreter.cancel(); lobby.ready = false; lobby.containers = []; lobby.ball = nil
+            interpreter.cancel(); lobby.ready = false; lobby.containers = []; lobby.ball = nil; lobby.camera = nil; lobby.fountainDrops = []
             for member in lobby.members { member.controller.silence(); member.controller.rig = nil; member.controller.rendererReady = false }
         }
     }
     private func roomButton(_ title: String, _ icon: String, action: @escaping () -> Void) -> some View {
         Button(action: action) { Label(title, systemImage: icon).font(.system(size: 12, weight: .semibold, design: .rounded)).frame(maxWidth: .infinity).padding(.vertical, 11) }
             .buttonStyle(.bordered).disabled(!lobby.ready)
+    }
+}
+
+@available(macOS 15.0, *)
+private struct LobbyWorldToolbar: View {
+    let lobby: LocalLobbyController
+    let typing: Bool
+    var body: some View {
+        VStack(spacing: 8) {
+            HStack(spacing: 8) {
+                ForEach(LobbyWorld.Area.allCases) { area in
+                    let unlocked = lobby.world.areas.contains(area)
+                    Button { lobby.explore(area) } label: {
+                        HStack(spacing: 8) {
+                            Image(systemName: unlocked ? area.symbol : "lock").font(.system(size: 17))
+                            VStack(alignment: .leading, spacing: 2) {
+                                Text(area.title).font(.system(size: 11, weight: .semibold, design: .rounded))
+                                Text(unlocked ? "Explore with a friend" : "At \(area.population) Fonsters").font(.system(size: 9)).foregroundStyle(.secondary)
+                            }
+                            Spacer(minLength: 0)
+                        }.padding(9).frame(maxWidth: .infinity)
+                            .background(lobby.focusArea == area ? Color(red: 0.86, green: 0.91, blue: 0.80) : .white.opacity(0.7), in: RoundedRectangle(cornerRadius: 12))
+                    }.buttonStyle(.plain)
+                        .disabled(!unlocked || !lobby.ready || lobby.paused || lobby.backgrounded || lobby.lowPower)
+                        .accessibilityLabel(unlocked ? "Explore \(area.title) with your chosen friend" : "\(area.title) opens at \(area.population) Fonsters")
+                }
+            }
+            HStack(spacing: 9) {
+                Button { lobby.showOverview() } label: { Label("Whole world", systemImage: "map") }
+                Button { lobby.lookAtSelected() } label: { Label("Follow \(lobby.selectedMember.name)", systemImage: "viewfinder") }
+                Button { lobby.sitOnBench() } label: { Label("Rest on a bench", systemImage: "chair.lounge") }
+                    .disabled(lobby.world.benches.isEmpty || !lobby.ready || lobby.paused || lobby.backgrounded || lobby.lowPower)
+                Spacer()
+                Button { lobby.rotateCamera(-0.30) } label: { Image(systemName: "arrow.counterclockwise") }
+                    .accessibilityLabel("Turn camera left").keyboardShortcut(typing ? nil : KeyboardShortcut("[", modifiers: []))
+                Button { lobby.rotateCamera(0.30) } label: { Image(systemName: "arrow.clockwise") }
+                    .accessibilityLabel("Turn camera right").keyboardShortcut(typing ? nil : KeyboardShortcut("]", modifiers: []))
+                Button { lobby.zoomCamera(1.15) } label: { Image(systemName: "minus.magnifyingglass") }.accessibilityLabel("Zoom out")
+                Button { lobby.zoomCamera(0.85) } label: { Image(systemName: "plus.magnifyingglass") }.accessibilityLabel("Zoom in")
+            }.font(.system(size: 11)).buttonStyle(.bordered).disabled(!lobby.ready)
+        }
     }
 }
 
@@ -162,31 +212,24 @@ private struct LobbyStageView: View {
                     let revision = lobby.roomRevision
                     lobby.containers = []
                     for member in lobby.members {
-                        let rig = try CreatureRig(member.descriptor, furDetail: .lobby)
+                        let rig = try CreatureRig(member.descriptor, furDetail: lobby.members.count > 6 ? .world : .lobby)
                         member.controller.install(rig, name: member.name)
                         member.controller.orbit = 0
                         let container = Entity(); container.scale = .init(repeating: 0.55)
                         container.addChild(rig.root); content.add(container); lobby.containers.append(container)
                     }
-                    let floor = ModelEntity(mesh: .generateCylinder(height: 0.14, radius: 2.30), materials: [SimpleMaterial(color: NSColor(srgbRed: 0.90, green: 0.86, blue: 0.84, alpha: 1), roughness: 0.85, isMetallic: false)])
-                    floor.scale.z = 0.72; floor.position.y = -0.07; content.add(floor)
+                    let neighborhood = try LobbyWorldScene.make(lobby.world)
+                    content.add(neighborhood.root); lobby.fountainDrops = neighborhood.fountainDrops
                     let ball = ModelEntity(mesh: .generateSphere(radius: 0.14), materials: [SimpleMaterial(color: NSColor(srgbRed: 0.96, green: 0.62, blue: 0.42, alpha: 1), roughness: 0.4, isMetallic: false)])
                     lobby.ball = ball; content.add(ball)
-                    for x: Float in [-1.90, 1.90] {
-                        let pot = ModelEntity(mesh: .generateCylinder(height: 0.20, radius: 0.16), materials: [SimpleMaterial(color: NSColor(srgbRed: 0.73, green: 0.59, blue: 0.69, alpha: 1), roughness: 0.8, isMetallic: false)])
-                        pot.position = [x, 0.10, -0.55]; content.add(pot)
-                        let leaf = ModelEntity(mesh: .generateSphere(radius: 0.25), materials: [SimpleMaterial(color: NSColor(srgbRed: 0.44, green: 0.64, blue: 0.49, alpha: 1), roughness: 0.65, isMetallic: false)])
-                        leaf.scale = [0.8, 1.4, 0.8]; leaf.position = [x, 0.40, -0.55]; content.add(leaf)
-                    }
                     let camera = PerspectiveCamera(); camera.camera.fieldOfViewInDegrees = 42
-                    camera.name = "preview-camera"
-                    camera.look(at: [0, 0.55, 0], from: [0, 3.8, 5.7], relativeTo: nil)
-                    content.add(camera); content.camera = .virtual
+                    camera.name = "preview-camera"; lobby.camera = camera
+                    content.add(camera); content.camera = .virtual; lobby.updateCamera()
                     let key = DirectionalLight(); key.light.intensity = 2400
                     key.light.color = NSColor(srgbRed: 1, green: 0.9, blue: 0.8, alpha: 1)
                     key.look(at: [0, 0, 0], from: [-3, 5, 4], relativeTo: nil)
-                    key.shadow = .init(maximumDistance: 10, depthBias: 1); content.add(key)
-                    let fill = PointLight(); fill.light.intensity = 6500; fill.light.attenuationRadius = 10
+                    key.shadow = .init(maximumDistance: 30, depthBias: 1); content.add(key)
+                    let fill = PointLight(); fill.light.intensity = 11000; fill.light.attenuationRadius = 20
                     fill.light.color = NSColor(srgbRed: 0.88, green: 0.91, blue: 1, alpha: 1); fill.position = [0, 2, 4]; content.add(fill)
                     content.add(try await CreatureSceneLighting.studio(for: Array(content.entities)))
                     guard !Task.isCancelled, lobby.roomRevision == revision else { return }
@@ -199,11 +242,17 @@ private struct LobbyStageView: View {
                     lobby.selectedMember.controller.look([Float(point.x / geometry.size.width - 0.5) * 2, Float(0.5 - point.y / geometry.size.height) * 2])
                 }
             }
-            .contentShape(Rectangle()).onTapGesture { lobby.perform(.greet) }
+             .contentShape(Rectangle())
+            .onTapGesture { point in lobby.walk(at: point, size: geometry.size) }
+            .gesture(DragGesture(minimumDistance: 6).onChanged { value in
+                if lobby.dragOrbit == nil { lobby.dragOrbit = lobby.cameraOrbit }
+                lobby.cameraOrbit = (lobby.dragOrbit ?? 0) - Float(value.translation.width) * 0.008
+                lobby.updateCamera()
+            }.onEnded { _ in lobby.dragOrbit = nil })
             .accessibilityElement(children: .ignore)
-            .accessibilityLabel("Local lobby with \(lobby.names.joined(separator: ", "))")
+            .accessibilityLabel("Explorable Fonster world with \(lobby.names.joined(separator: ", "))")
             .accessibilityValue(lobby.message)
-            .accessibilityHint("Choose a Fonster in the list, then wave to a friend, play together, or type a request.")
+            .accessibilityHint("Choose an area to explore with a friend. Camera buttons turn and zoom the view. Click a path to walk there.")
             .accessibilityAction(named: "Wave to a friend") { lobby.waveToFriend() }
             .accessibilityAction(named: "Play together") { lobby.playTogether() }
             .accessibilityAction(named: "Pass ball with chosen friend") { lobby.pair(quiet: false) }

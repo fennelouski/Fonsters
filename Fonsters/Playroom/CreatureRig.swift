@@ -8,7 +8,7 @@ import simd
 @available(macOS 15.0, *)
 @MainActor
 final class CreatureRig {
-    enum FurDetail: String { case portrait, lobby }
+    enum FurDetail: String { case portrait, lobby, world }
     let root = Entity()
     let head = Entity()
     let descriptor: CreatureAppearanceDescriptor
@@ -56,7 +56,7 @@ final class CreatureRig {
         head.addChild(model)
         let coat = try CreatureFur.surface(key: coatKey + ":head", name: "fuzzy-head") {
             CreatureFur.head(descriptor, radii: outlineRadii, pixel: pixel, depth: depth, skinIndex: skinIndex,
-                             count: furDetail == .portrait ? 12_000 : 6_000, toneVariation: furDetail == .portrait)
+                             count: furDetail == .portrait ? 12_000 : (furDetail == .lobby ? 6_000 : 2_800), toneVariation: furDetail == .portrait)
         }
         addCoat(coat, to: head, name: "fuzzy-head")
         groomedFaceStrands = coat.trimmedStrands
@@ -104,7 +104,7 @@ final class CreatureRig {
             do {
                 let coat = try CreatureFur.surface(key: coatKey + ":surface:\(furSurfaces)", name: "fuzzy-surface-\(furSurfaces)") {
                     CreatureFur.ellipsoid(axes: scale * radius, palette: skinIndex, seed: furSeed ^ UInt64(furSurfaces + 1),
-                                          density: furDetail == .portrait ? 1 : 0.5, toneVariation: furDetail == .portrait)
+                                          density: furDetail == .portrait ? 1 : (furDetail == .lobby ? 0.5 : 0.24), toneVariation: furDetail == .portrait)
                 }
                 addCoat(coat, to: model, name: "fuzzy-surface-\(furSurfaces)")
             }

@@ -37,6 +37,7 @@ final class PlayroomController {
     @ObservationIgnored private var locomotion: Float = 0
     @ObservationIgnored var autonomyEnabled = true
     @ObservationIgnored var writesProbe = true
+    @ObservationIgnored var worldWalking = false
     @ObservationIgnored private var elapsed: Float = 0
     @ObservationIgnored private var actionTime: Float = 0
     @ObservationIgnored private var lastTime: Date?
@@ -256,7 +257,7 @@ final class PlayroomController {
         if moving {
             let blink = t.truncatingRemainder(dividingBy: 4.7)
             if blink > 4.43 { result.eyes = max(0.055, abs(blink - 4.56) / 0.13) }
-            if locomotion > 0.02 { result.y += abs(sin(t * 8)) * 0.04; result.tilt += sin(t * 8) * 0.04; result.arms = sin(t * 8) * 0.12 }
+            if locomotion > 0.02 || worldWalking { result.y += abs(sin(t * 8)) * 0.04; result.tilt += sin(t * 8) * 0.04; result.arms = sin(t * 8) * 0.12 }
         }
         switch reaction {
         case .greet:
