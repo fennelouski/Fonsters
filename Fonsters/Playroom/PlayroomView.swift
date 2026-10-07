@@ -202,7 +202,7 @@ struct PlayroomView: View {
                     Spacer()
                     HStack {
                         Spacer()
-                        Text("Tap hello · double tap high five · drag gently for a rub")
+                        Text("Stroke the fluff · hold for a cuddle · tap a paw for a high five")
                             .font(.system(size: 11)).foregroundStyle(ink.opacity(0.47))
                         Spacer()
                     }.padding(.bottom, 16)

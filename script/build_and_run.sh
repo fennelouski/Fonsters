@@ -14,7 +14,7 @@ for INDEX in "${!LAUNCH_ARGS[@]}"; do
     EXPECT_PATH=false
   else
     case "$ARGUMENT" in
-      --personality-file|--social-file|--probe-file|--lobby-probe-file|--scene-export-dir|--window-export-file|--sample-visit-file) EXPECT_PATH=true ;;
+      --personality-file|--social-file|--probe-file|--lobby-probe-file|--scene-export-dir|--window-export-file|--sample-visit-file|--touch-evidence-dir) EXPECT_PATH=true ;;
     esac
   fi
 done

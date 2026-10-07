@@ -29,6 +29,7 @@ final class LocalLobbyController {
     @ObservationIgnored var camera: PerspectiveCamera?
     @ObservationIgnored var fountainDrops: [Entity] = []
     @ObservationIgnored var dragOrbit: Float?
+    @ObservationIgnored private(set) var contactID: UUID?
     var world: LobbyWorld { LobbyWorld(population: members.count) }
     var worldTemporaryReason: String? { worldMemory.temporaryReason }
     var availableCompanions: [PlayroomCompanion] {
@@ -231,6 +232,7 @@ final class LocalLobbyController {
         applyLayout(); writeProbe()
     }
     func refreshGates() {
+        if !shouldAnimate { cancelContact() }
         for member in members {
             let c = member.controller
             c.paused = paused || reviewingControls; c.staticMode = still; c.systemReduceMotion = reduceMotion
@@ -295,7 +297,8 @@ final class LocalLobbyController {
         }
         agent.advance(lobby: self, now: now)
         presence.advance(lobby: self, now: now)
-        let events = simulation.step(dt: dt, wander: wander)
+        let held = members.firstIndex { $0.id == contactID && $0.controller.touching }
+        let events = simulation.step(dt: dt, wander: wander, heldActor: held)
         if !events.isEmpty { dispatch(events, deliberate: false) }
         for (i, member) in members.enumerated() { member.controller.worldWalking = simulation.agents[i].walking; member.controller.advance(dt: dt) }
         LobbyWorldScene.animate(fountainDrops, time: Float(activeSeconds))
@@ -333,7 +336,39 @@ final class LocalLobbyController {
         writeProbe()
     }
     func takeOwnerControl() { ownerActed() }
-    private func ownerActed() { userRevision += 1; agent.takeOver(lobby: self); presence.ownerTookOver() }
+    private func ownerActed() { cancelContact(); userRevision += 1; agent.takeOver(lobby: self); presence.ownerTookOver() }
+    func beginContact(at point: CGPoint, size: CGSize) -> Bool {
+        guard ready, !paused, !backgrounded, !lowPower, !reviewingControls, let camera,
+              let ray = CreatureRig.touchRay(at: point, size: size, camera: camera) else { return false }
+        let hits = members.enumerated().compactMap { index, member -> (Int, CreatureRig.TouchHit)? in
+            guard let hit = member.controller.rig?.touchHit(origin: ray.origin, direction: ray.direction) else { return nil }
+            return (index, hit)
+        }
+        guard let (index, hit) = hits.min(by: { $0.1.distance < $1.1.distance }) else { return false }
+        interruptPair()
+        if selected != index { selected = index } else { ownerActed() }
+        simulation.stopAgentMotion(actor: index)
+        let member = members[index]
+        guard member.controller.beginTouch(hit.sample(at: ProcessInfo.processInfo.systemUptime)) else { return false }
+        contactID = member.id; message = member.controller.message
+        return true
+    }
+    func moveContact(at point: CGPoint, size: CGSize) {
+        guard let id = contactID, let member = members.first(where: { $0.id == id }),
+              !paused, !backgrounded, !lowPower, !reviewingControls, let camera,
+              let ray = CreatureRig.touchRay(at: point, size: size, camera: camera),
+              let hit = member.controller.rig?.touchHit(origin: ray.origin, direction: ray.direction) else { endContact(); return }
+        member.controller.moveTouch(hit.sample(at: ProcessInfo.processInfo.systemUptime))
+        message = member.controller.message
+    }
+    func endContact() {
+        guard let id = contactID, let member = members.first(where: { $0.id == id }) else { cancelContact(); return }
+        member.controller.endTouch(); message = member.controller.message; contactID = nil
+    }
+    func cancelContact() {
+        for member in members where member.controller.touching { member.controller.cancelTouch() }
+        contactID = nil
+    }
     func cancelAgentMotion(id: UUID) {
         guard let actor = members.firstIndex(where: { $0.id == id }) else { return }
         interruptPair()

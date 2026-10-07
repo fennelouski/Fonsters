@@ -10,11 +10,18 @@ Unmodified action shortcuts are suspended while the request field has focus, so 
 and spaces can be typed normally.
 The Turn slider exposes the side and back. Still mode keeps reactions as single poses.
 Fonsters now take short walks, curious hops and stretches on their own. Turn off Wander
-to hold their spot. Double-tap for a high five, gently drag for a rub, or use the new
+to hold their spot. Stroke slowly for a rub, hold for a cuddle, touch a paw for a high five, or use the
 Hop / Twirl / Stretch / Hi five / Gentle rub / Toss ball / Follow buttons. Follow moves
 the Fonster toward your pointer; typing “stop” ends following and wandering.
 Sounds starts off; enable it to hear the small original chirps.
 Open Personality to see your shared rituals and heart a favorite Warm, Clear or Bright voice.
+
+## Responsive touch
+
+The native solo and lobby now distinguish contact location, stroke speed, duration and
+direction reversals. New contact interrupts the active reaction and agent immediately.
+Read [responsive-touch.md](responsive-touch.md) for behavior, real gesture evidence and
+verification limits. `Launch Touch Playroom.command` opens an isolated interactive preview.
 
 ## Fuzzy monsters
 

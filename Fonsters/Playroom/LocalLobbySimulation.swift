@@ -172,13 +172,14 @@ struct LocalLobbySimulation {
         let position = a + (b - a) * fraction
         ballPosition = [position.x, 0.50 + sin(fraction * .pi) * 0.65, position.y]
     }
-    mutating func step(dt rawDT: Float, wander: Bool) -> [Event] {
+    mutating func step(dt rawDT: Float, wander: Bool, heldActor: Int? = nil) -> [Event] {
         guard rawDT.isFinite && rawDT > 0 else { return [] }
         let dt = min(0.06, rawDT)
         elapsed += dt
         var arrivals: [Event] = []
         for i in agents.indices {
             agents[i].walking = false
+            if i == heldActor { continue }
             if agents[i].reaction != "rest" { agents[i].remaining = max(0, agents[i].remaining - dt) }
             agents[i].goalHold = max(0, agents[i].goalHold - dt)
             if agents[i].remaining == 0 && !agents[i].seated {
@@ -252,7 +253,7 @@ struct LocalLobbySimulation {
         } else { ballPosition = [0, 0.14, 0.65] }
         guard wander && elapsed >= nextSocial && agents.count > 1 else { return catches }
         round += 1; nextSocial = elapsed + 8
-        let free = agents.indices.filter { agents[$0].reaction == "idle" && agents[$0].goalHold == 0 && !agents[$0].seatRequested }
+        let free = agents.indices.filter { $0 != heldActor && agents[$0].reaction == "idle" && agents[$0].goalHold == 0 && !agents[$0].seatRequested }
         guard free.count >= 2 else { return catches }
         let actor = free[round % free.count]
         let peer = free.filter { $0 != actor }.min { simd_distance(agents[actor].position, agents[$0].position) < simd_distance(agents[actor].position, agents[$1].position) }!

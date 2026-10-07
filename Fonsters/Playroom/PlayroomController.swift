@@ -31,6 +31,11 @@ final class PlayroomController {
     private(set) var userRevision = 0
     @ObservationIgnored var rig: CreatureRig?
     @ObservationIgnored var toyBall: ModelEntity?
+    @ObservationIgnored var touchCamera: PerspectiveCamera?
+    @ObservationIgnored private(set) var touch = CreatureTouchDynamics()
+    private(set) var touching = false
+    @ObservationIgnored private var touchRecovery: Float = 0
+    @ObservationIgnored private var lastTouchSound = -Double.greatestFiniteMagnitude
     @ObservationIgnored private(set) var groundPosition: SIMD2<Float> = .zero
     @ObservationIgnored private var wanderGoal: SIMD2<Float> = .zero
     @ObservationIgnored private var nextCuriosity: Float = 5
@@ -87,6 +92,7 @@ final class PlayroomController {
     }
 
     func install(_ rig: CreatureRig, name: String) {
+        cancelTouch()
         self.rig = rig; elapsed = 0; actionTime = 0; lastTime = nil; pose = .init()
         userRevision += 1
         groundPosition = .zero; wanderGoal = .zero; nextCuriosity = 5; curiosityIndex = 0; locomotion = 0
@@ -98,6 +104,7 @@ final class PlayroomController {
         writeVerificationProbe()
     }
     func perform(_ action: Reaction, name: String, learn: Bool = true, audible: Bool = true) {
+        cancelTouch(); touchRecovery = 0
         reaction = action; actionTime = 0; actionCount += 1
         if learn { userRevision += 1; wanderGoal = groundPosition; nextCuriosity = elapsed + 6 }
         let ritual: String
@@ -134,8 +141,74 @@ final class PlayroomController {
     }
     func silence() { soundBank.stop() }
     func look(_ point: SIMD2<Float>) {
+        guard !touch.active else { return }
         gaze = [point.x.isFinite ? min(1, max(-1, point.x)) : 0,
                 point.y.isFinite ? min(1, max(-1, point.y)) : 0]
+    }
+    func beginTouch(_ sample: CreatureTouchDynamics.Sample) -> Bool {
+        guard rendererReady, !paused, !backgrounded, !lowPower,
+              touch.begin(sample, warmth: Float(personality?.greetingWarmth ?? 0.5), playEnergy: Float(personality?.playEnergy ?? 0.5)) else { return false }
+        touching = true; userRevision += 1; reaction = .idle; actionTime = 0
+        pose.yaw = atan2(sin(pose.yaw), cos(pose.yaw))
+        wanderGoal = groundPosition; nextCuriosity = elapsed + 6; touchRecovery = 6
+        soundBank.stop(); gaze = touch.response.gaze
+        describeTouch(); applyTouchImmediately()
+        return true
+    }
+    func moveTouch(_ sample: CreatureTouchDynamics.Sample) {
+        guard !paused, !backgrounded, !lowPower else { cancelTouch(); return }
+        touch.move(sample); touching = touch.active
+        if touch.active { gaze = touch.response.gaze; describeTouch(); applyTouchImmediately() }
+    }
+    func endTouch(at time: Double = ProcessInfo.processInfo.systemUptime) {
+        guard let manner = touch.end(at: time) else { cancelTouch(); return }
+        touching = false; touchRecovery = 6
+        // At most one learned ritual and one sound per meaningful completed stroke.
+        // Pointer samples never write memories or sound files.
+        let meaningful = touch.duration >= 0.35 && touch.distance >= 0.08
+        let ritual = manner == .tickle || manner == .lively ? "play" : manner == .highFive ? "greet" : "rest"
+        if meaningful, manner != .blink, let memories, let updated = memories.learn(ritual, name: companionName) {
+            personality = updated; memoryStatus = memories.status
+        }
+        if soundEnabled && !paused && !backgrounded && !lowPower && time - lastTouchSound >= 0.6 {
+            lastTouchSound = time
+            soundBank.play(manner == .tickle || manner == .lively ? "play" : "greet", preferredVariant: personality?.favoriteSound)
+        }
+        if !shouldAnimate { touch.cancel(); applyTouchImmediately() }
+        writeVerificationProbe()
+    }
+    func cancelTouch() { touch.cancel(); touching = false }
+    func beginTouch(at point: CGPoint, size: CGSize) -> Bool {
+        guard let camera = touchCamera, let ray = CreatureRig.touchRay(at: point, size: size, camera: camera),
+              let hit = rig?.touchHit(origin: ray.origin, direction: ray.direction) else { return false }
+        return beginTouch(hit.sample(at: ProcessInfo.processInfo.systemUptime))
+    }
+    func moveTouch(at point: CGPoint, size: CGSize) {
+        guard touch.active, let camera = touchCamera, let ray = CreatureRig.touchRay(at: point, size: size, camera: camera),
+              let hit = rig?.touchHit(origin: ray.origin, direction: ray.direction) else { endTouch(); return }
+        moveTouch(hit.sample(at: ProcessInfo.processInfo.systemUptime))
+    }
+    private func describeTouch() {
+        let suffix: String
+        switch touch.response.manner {
+        case .attention: suffix = "notices your touch."
+        case .softStroke: suffix = "leans into your gentle stroke."
+        case .cuddle: suffix = "settles into a little cuddle."
+        case .tickle: suffix = "has a ticklish little giggle!"
+        case .lively: suffix = "bobs back with a playful smile."
+        case .highFive: suffix = "meets your hand with a high five!"
+        case .blink: suffix = "gives a soft little blink."
+        }
+        let next = "\(companionName) \(suffix)"
+        if message != next { message = next }
+    }
+    private func applyTouchImmediately() {
+        if !shouldAnimate {
+            // Explicit still-mode contact changes only the expression, never body motion.
+            pose.eyes = touch.active ? touch.response.eyes : targetPose().eyes
+            pose.mouth = touch.active ? touch.response.smile : targetPose().mouth
+            apply(pose)
+        }
     }
     func followPointer() {
         followingPointer.toggle(); userRevision += 1
@@ -170,6 +243,7 @@ final class PlayroomController {
     }
     func refreshStillPose() {
         lastTime = nil
+        if !shouldAnimate { cancelTouch() }
         if paused || backgrounded { soundBank.stop(); apply(pose) }
         else if !shouldAnimate { pose = targetPose(); apply(pose) }
         writeVerificationProbe()
@@ -187,19 +261,27 @@ final class PlayroomController {
     func advance(dt rawDT: Float) {
         guard shouldAnimate && rawDT.isFinite else { return }
         let dt = min(0.06, max(0, rawDT))
+        if touch.active {
+            touch.hold(at: ProcessInfo.processInfo.systemUptime)
+            touching = touch.active; gaze = touch.response.gaze
+            if touch.active { describeTouch() }
+        } else { touch.settle(dt: dt) }
+        touchRecovery = max(0, touchRecovery - dt)
         elapsed += dt; actionTime += dt; frameCount += 1
         if reaction != .rest && reaction != .idle && actionTime > duration {
             if reaction == .spin { pose.yaw -= 2 * .pi }
             reaction = .idle; actionTime = 0; message = "\(companionName) is happy to see you."
         }
-        if autonomyEnabled && roaming && !followingPointer && reaction == .idle && elapsed > nextCuriosity {
+        if !touch.active && touchRecovery == 0 && autonomyEnabled && roaming && !followingPointer && reaction == .idle && elapsed > nextCuriosity {
             curiosityIndex += 1; nextCuriosity = elapsed + 7
             wanderGoal = [sin(Float(curiosityIndex) * 2.1) * 0.27, cos(Float(curiosityIndex) * 1.7) * 0.15]
             if curiosityIndex % 3 == 0 { perform(.stretch, name: companionName, learn: false, audible: false) }
             else if curiosityIndex % 3 == 2 { perform(.hop, name: companionName, learn: false, audible: false) }
         }
         var targetGround = groundPosition
-        if reaction == .fetch {
+        if touch.active || touchRecovery > 0 {
+            targetGround = groundPosition
+        } else if reaction == .fetch {
             targetGround = actionTime < 2.8 ? [-0.30, 0.10] : [0.15, 0]
         } else if reaction == .idle {
             if followingPointer { targetGround = [gaze.x * 0.32, -gaze.y * 0.15] }
@@ -210,7 +292,15 @@ final class PlayroomController {
         let step = min(distance, dt * (reaction == .fetch ? 0.36 : 0.14))
         if distance > 0.0001 { groundPosition += delta / distance * step }
         locomotion = dt > 0 ? step / dt : 0
-        let target = targetPose(), blend = 1 - exp(-dt * 11)
+        var target = targetPose()
+        let contact = touch.response
+        target.tilt += contact.lean; target.nod += contact.nod; target.squash += contact.squash
+        target.y += contact.lift; target.arms += contact.arms
+        if touch.active || contact.energy > 0.005 || abs(contact.eyes - 0.94) > 0.005 {
+            target.eyes = contact.eyes; target.mouth = contact.smile
+            if contact.manner == .tickle && touch.active { target.tilt += sin(elapsed * 18) * 0.025 * contact.energy }
+        }
+        let blend = 1 - exp(-dt * (touch.active ? 18 : 11))
         pose.y += (target.y - pose.y) * blend; pose.yaw += (target.yaw - pose.yaw) * blend
         pose.tilt += (target.tilt - pose.tilt) * blend; pose.nod += (target.nod - pose.nod) * blend
         pose.squash += (target.squash - pose.squash) * blend
@@ -231,6 +321,7 @@ final class PlayroomController {
             "actions": actionCount, "sounds": soundEnabled, "soundPlays": soundBank.playCount,
             "soundPlaying": soundBank.isPlaying, "learnedInteractions": personality?.interactionCount ?? 0,
             "favoriteSound": personality?.favoriteSound ?? -1, "roaming": roaming,
+            "touching": touching, "touchManner": touch.response.manner.rawValue,
             "groundX": groundPosition.x, "groundZ": groundPosition.y]
         if let data = try? JSONSerialization.data(withJSONObject: state, options: [.sortedKeys]) {
             try? data.write(to: URL(fileURLWithPath: args[index + 1]), options: .atomic)

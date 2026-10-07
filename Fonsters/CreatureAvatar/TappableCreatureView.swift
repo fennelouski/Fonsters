@@ -2,8 +2,8 @@
 //  TappableCreatureView.swift
 //  Fonsters
 //
-//  Wraps CreatureAvatarView with tap gesture; runs one of 22 animations
-//  (500ms forward, 500ms reverse). iOS, macOS, tvOS, visionOS 2D.
+//  Transient touch responses over the unchanged deterministic portrait.
+//  Existing birthday / exported animation definitions remain available.
 //
 
 import SwiftUI
@@ -21,6 +21,16 @@ struct TappableCreatureView: View {
     @State private var animationProgress: CGFloat = 0
     @State private var activeAnimation: CreatureTapAnimation?
     @State private var tapCount: Int = 0
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @Environment(\.scenePhase) private var scenePhase
+    @State private var lowPower = ProcessInfo.processInfo.isLowPowerModeEnabled
+    @State private var touch = CreatureTouchDynamics()
+    @State private var touchMap: CreatureTouchMap?
+    @State private var contactStarted = false
+    @State private var contactCaptured = false
+    @GestureState private var gestureActive = false
+    @State private var touchTask: Task<Void, Never>?
+    @State private var animationTask: Task<Void, Never>?
 
     private var isAnimating: Bool { activeAnimation != nil }
     private var effectiveSeed: String {
@@ -28,8 +38,31 @@ struct TappableCreatureView: View {
     }
 
     var body: some View {
-        let state = activeAnimation?.state(progress: animationProgress, size: size)
+        let legacy = activeAnimation?.state(progress: animationProgress, size: size)
             ?? CreatureTapAnimationState(scaleX: 1, scaleY: 1, rotationDegrees: 0, rotation3DY: 0, offsetX: 0, offsetY: 0, opacity: 1, overlay: nil)
+        interactionBody(contactState(legacy))
+            .task(id: seed) { cancelInteraction(); touchMap = CreatureTouchMap(seed: effectiveSeed) }
+            .onChange(of: triggerBirthdayDanceID) { _, _ in triggerAnimation() }
+            .onChange(of: reduceMotion) { _, _ in cancelInteraction() }
+            .onChange(of: scenePhase) { _, phase in if phase != .active { cancelInteraction() } }
+            .onReceive(NotificationCenter.default.publisher(for: Notification.Name.NSProcessInfoPowerStateDidChange)) { _ in
+                lowPower = ProcessInfo.processInfo.isLowPowerModeEnabled
+                if lowPower { cancelInteraction() }
+            }
+            .onDisappear { cancelInteraction() }
+    }
+    private var motionAllowed: Bool { !reduceMotion && !lowPower && scenePhase == .active }
+    private func contactState(_ legacy: CreatureTapAnimationState) -> CreatureTapAnimationState {
+        guard motionAllowed else { return .init(scaleX: 1, scaleY: 1, rotationDegrees: 0, rotation3DY: 0, offsetX: 0, offsetY: 0, opacity: 1, overlay: nil) }
+        let pose = touch.response
+        return .init(scaleX: legacy.scaleX * CGFloat(1 - pose.squash * 0.5),
+                     scaleY: legacy.scaleY * CGFloat(1 + pose.squash),
+                     rotationDegrees: legacy.rotationDegrees + Double(pose.lean) * 35,
+                     rotation3DY: legacy.rotation3DY, offsetX: legacy.offsetX + CGFloat(pose.gaze.x * pose.energy) * size * 0.012,
+                     offsetY: legacy.offsetY - CGFloat(pose.lift) * size * 0.3,
+                     opacity: legacy.opacity, overlay: legacy.overlay)
+    }
+    @ViewBuilder private func interactionBody(_ state: CreatureTapAnimationState) -> some View {
 
         #if os(tvOS)
         Button(action: triggerAnimation) {
@@ -37,14 +70,56 @@ struct TappableCreatureView: View {
                 .overlay { overlayView(for: state.overlay, size: size) }
         }
         .buttonStyle(CreatureFocusableButtonStyle())
-        .onChange(of: triggerBirthdayDanceID) { _, _ in triggerAnimation() }
         #else
         creatureWithTransform(state: state)
             .overlay { overlayView(for: state.overlay, size: size) }
+            .frame(width: size, height: size)
             .contentShape(Rectangle())
-            .onTapGesture { triggerAnimation() }
-            .onChange(of: triggerBirthdayDanceID) { _, _ in triggerAnimation() }
+            .gesture(DragGesture(minimumDistance: 0).updating($gestureActive) { _, active, _ in active = true }
+                .onChanged { value in
+                    guard scenePhase == .active, !lowPower, size > 0 else { return }
+                    let point = contactStarted ? value.location : value.startLocation
+                    let sample = touchMap?.sample(x: Double(point.x / size), y: Double(point.y / size), time: ProcessInfo.processInfo.systemUptime)
+                    if !contactStarted {
+                        contactStarted = true
+                        guard let sample else { return }
+                        animationTask?.cancel(); animationTask = nil; activeAnimation = nil
+                        contactCaptured = touch.begin(sample)
+                        startTouchClock()
+                    } else if contactCaptured {
+                        if let sample { touch.move(sample) } else { _ = touch.end(at: ProcessInfo.processInfo.systemUptime) }
+                    }
+                }.onEnded { _ in
+                    if contactCaptured { _ = touch.end(at: ProcessInfo.processInfo.systemUptime); onTap?() }
+                    contactStarted = false; contactCaptured = false
+                    if !motionAllowed { touch.cancel() }
+                })
+            .onChange(of: gestureActive) { _, active in if !active && contactStarted { cancelInteraction() } }
+            .accessibilityAddTraits(.isButton)
+            .accessibilityLabel("Fonster portrait")
+            .accessibilityHint("Touch the head gently or stroke more quickly for a playful response. Activate for a little dance.")
+            .accessibilityAction { triggerAnimation() }
         #endif
+    }
+    private func startTouchClock() {
+        touchTask?.cancel()
+        guard motionAllowed else { return }
+        touchTask = Task { @MainActor in
+            for _ in 0..<3600 {
+                do { try await Task.sleep(for: .milliseconds(33)) } catch { return }
+                guard !Task.isCancelled, motionAllowed else { return }
+                if touch.active { touch.hold(at: ProcessInfo.processInfo.systemUptime) }
+                else {
+                    touch.settle(dt: 1 / 30)
+                    if abs(touch.response.lean) < 0.001 && abs(touch.response.squash) < 0.001 && touch.response.lift < 0.001 { touch.cancel(); return }
+                }
+            }
+            touch.cancel()
+        }
+    }
+    private func cancelInteraction() {
+        touchTask?.cancel(); touchTask = nil; animationTask?.cancel(); animationTask = nil
+        touch.cancel(); contactStarted = false; contactCaptured = false; activeAnimation = nil
     }
 
     @ViewBuilder
@@ -136,7 +211,9 @@ struct TappableCreatureView: View {
     }
 
     private func triggerAnimation() {
-        guard !effectiveSeed.isEmpty, effectiveSeed != " ", !isAnimating else { return }
+        guard !effectiveSeed.isEmpty, effectiveSeed != " " else { return }
+        cancelInteraction()
+        guard motionAllowed else { onTap?(); return }
         let kind = CreatureTapAnimation.pick(seed: effectiveSeed, tapCount: tapCount)
         tapCount += 1
         activeAnimation = kind
@@ -145,13 +222,13 @@ struct TappableCreatureView: View {
         withAnimation(.easeInOut(duration: animationPhaseDuration)) {
             animationProgress = 1
         }
-        Task { @MainActor in
-            try? await Task.sleep(nanoseconds: UInt64(animationPhaseDuration * 1_000_000_000))
-            guard activeAnimation == kind else { return }
+        animationTask = Task { @MainActor in
+            do { try await Task.sleep(for: .seconds(animationPhaseDuration)) } catch { return }
+            guard !Task.isCancelled, activeAnimation == kind else { return }
             withAnimation(.easeInOut(duration: animationPhaseDuration)) {
                 animationProgress = 0
             }
-            try? await Task.sleep(nanoseconds: UInt64(animationPhaseDuration * 1_000_000_000))
+            do { try await Task.sleep(for: .seconds(animationPhaseDuration)) } catch { return }
             if activeAnimation == kind {
                 activeAnimation = nil
             }

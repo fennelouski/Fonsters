@@ -8,11 +8,53 @@ struct CreatureStageView: View {
     let companion: PlayroomCompanion
     let controller: PlayroomController
     var onSceneReady: (([Entity]) -> Void)? = nil
-    @State private var rubbing = false
+    @State private var contactStarted = false
+    @State private var contactCaptured = false
+    @GestureState private var gestureActive = false
+    @State private var touchEntities: [Entity] = []
 
     var body: some View {
         GeometryReader { geometry in
-            RealityView { content in
+            interactiveStage(size: geometry.size)
+            .accessibilityElement(children: .ignore)
+            .accessibilityLabel("\(companion.name), a fluffy three dimensional Fonster")
+            .accessibilityValue(controller.message)
+            .accessibilityHint("Stroke the fuzzy head gently, hold for a cuddle, or touch a paw for a high five. Quick strokes are playful. The same reactions are available as buttons. Drag the Turn slider to see every side.")
+            .accessibilityAction(named: "Say hello") { controller.perform(.greet, name: companion.name) }
+            .accessibilityAction(named: "Play") { controller.perform(.play, name: companion.name) }
+            .accessibilityAction(named: "Gentle rub") { controller.perform(.rub, name: companion.name) }
+            .accessibilityAction(named: "High five") { controller.perform(.highFive, name: companion.name) }
+        }
+    }
+
+    private func interactiveStage(size: CGSize) -> some View {
+        scene
+            .onContinuousHover { phase in
+                switch phase {
+                case .active(let p): controller.look([Float(p.x / size.width - 0.5) * 2, Float(0.5 - p.y / size.height) * 2])
+                case .ended: controller.look(.zero)
+                }
+            }
+            .contentShape(Rectangle())
+            .gesture(DragGesture(minimumDistance: 0).updating($gestureActive) { _, active, _ in active = true }
+                .onChanged { value in
+                    if !contactStarted {
+                        contactStarted = true
+                        contactCaptured = controller.beginTouch(at: value.startLocation, size: size)
+                    } else if contactCaptured { controller.moveTouch(at: value.location, size: size) }
+                }.onEnded { _ in
+                    if contactCaptured { controller.endTouch() }
+                    contactStarted = false; contactCaptured = false
+                })
+            .onChange(of: gestureActive) { _, active in
+                if !active && contactStarted { controller.cancelTouch(); contactStarted = false; contactCaptured = false }
+            }
+            .onDisappear { controller.cancelTouch(); controller.touchCamera = nil }
+            .overlay { TouchGestureVerification(controller: controller, entities: touchEntities).allowsHitTesting(false) }
+    }
+
+    private var scene: some View {
+        RealityView { content in
                 do {
                     let rig = try CreatureRig(companion.descriptor)
                     controller.install(rig, name: companion.name)
@@ -21,6 +63,7 @@ struct CreatureStageView: View {
                     camera.name = "preview-camera"
                     camera.camera.fieldOfViewInDegrees = 33
                     camera.look(at: [0, -0.12, 0], from: [0, 0.55, 5.15], relativeTo: nil)
+                    controller.touchCamera = camera
                     content.add(camera)
                     content.camera = .virtual
                     let key = DirectionalLight()
@@ -48,6 +91,7 @@ struct CreatureStageView: View {
                     ball.name = "little-play-ball"; ball.position = [0.68, -0.93, 0.32]
                     content.add(ball); controller.toyBall = ball
                     content.add(try await CreatureSceneLighting.studio(for: Array(content.entities)))
+                    touchEntities = Array(content.entities)
                     onSceneReady?(Array(content.entities))
                     NativeSceneExport.verificationTask(entities: Array(content.entities), label: "solo")
 
@@ -55,33 +99,6 @@ struct CreatureStageView: View {
                     controller.rendererError = error.localizedDescription
                 }
             }
-            .onContinuousHover { phase in
-                switch phase {
-                case .active(let p): controller.look([Float(p.x / geometry.size.width - 0.5) * 2, Float(0.5 - p.y / geometry.size.height) * 2])
-                case .ended: controller.look(.zero)
-                }
-            }
-            .contentShape(Rectangle())
-            .gesture(TapGesture(count: 2).exclusively(before: TapGesture()).onEnded { tap in
-                switch tap {
-                case .first: controller.perform(.highFive, name: companion.name)
-                case .second: controller.perform(.greet, name: companion.name)
-                }
-            })
-            .simultaneousGesture(DragGesture(minimumDistance: 6).onChanged { value in
-                if !rubbing { rubbing = true; controller.perform(.rub, name: companion.name) }
-                controller.look([Float(value.location.x / geometry.size.width - 0.5) * 2,
-                                 Float(0.5 - value.location.y / geometry.size.height) * 2])
-            }.onEnded { _ in rubbing = false })
-            .accessibilityElement(children: .ignore)
-            .accessibilityLabel("\(companion.name), a fluffy three dimensional Fonster")
-            .accessibilityValue(controller.message)
-            .accessibilityHint("Tap for hello, double tap for a high five, or gently drag for a rub. The same actions are available as buttons. Drag the Turn slider to see every side.")
-            .accessibilityAction(named: "Say hello") { controller.perform(.greet, name: companion.name) }
-            .accessibilityAction(named: "Play") { controller.perform(.play, name: companion.name) }
-            .accessibilityAction(named: "Gentle rub") { controller.perform(.rub, name: companion.name) }
-            .accessibilityAction(named: "High five") { controller.perform(.highFive, name: companion.name) }
-        }
     }
 }
 #endif

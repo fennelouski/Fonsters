@@ -58,7 +58,7 @@ struct LocalLobbyView: View {
                     RoundedRectangle(cornerRadius: 26).fill(LinearGradient(colors: [Color(red: 0.90, green: 0.91, blue: 0.94), Color(red: 0.98, green: 0.95, blue: 0.91)], startPoint: .topLeading, endPoint: .bottomTrailing))
                     if let error = lobby.error { Text(error).padding(30) }
                     else { LobbyStageView(lobby: lobby).id(lobby.roomRevision).clipShape(RoundedRectangle(cornerRadius: 26)) }
-                    Text("Click a path to walk · Drag to turn the view")
+                    Text("Stroke a Fonster · Click a path to walk · Drag the world to turn")
                         .font(.system(size: 11)).foregroundStyle(ink.opacity(0.45)).padding(20).allowsHitTesting(false)
                 }.frame(maxWidth: .infinity, maxHeight: .infinity)
                 VStack(alignment: .leading, spacing: 8) {
@@ -229,6 +229,9 @@ private struct LobbyWorldToolbar: View {
 @available(macOS 15.0, *)
 private struct LobbyStageView: View {
     let lobby: LocalLobbyController
+    @State private var gestureStarted = false
+    @State private var creatureCaptured = false
+    @GestureState private var gestureActive = false
     var body: some View {
         GeometryReader { geometry in
             RealityView { content in
@@ -267,16 +270,30 @@ private struct LobbyStageView: View {
                 }
             }
              .contentShape(Rectangle())
-            .onTapGesture { point in lobby.walk(at: point, size: geometry.size) }
-            .gesture(DragGesture(minimumDistance: 6).onChanged { value in
-                if lobby.dragOrbit == nil { lobby.dragOrbit = lobby.cameraOrbit }
-                lobby.cameraOrbit = (lobby.dragOrbit ?? 0) - Float(value.translation.width) * 0.008
-                lobby.updateCamera()
-            }.onEnded { _ in lobby.dragOrbit = nil })
+            .gesture(DragGesture(minimumDistance: 0).updating($gestureActive) { _, active, _ in active = true }
+                .onChanged { value in
+                    if !gestureStarted {
+                        gestureStarted = true
+                        creatureCaptured = lobby.beginContact(at: value.startLocation, size: geometry.size)
+                        if !creatureCaptured { lobby.dragOrbit = lobby.cameraOrbit }
+                    } else if creatureCaptured { lobby.moveContact(at: value.location, size: geometry.size) }
+                    if !creatureCaptured && hypot(value.translation.width, value.translation.height) > 6 {
+                        lobby.cameraOrbit = (lobby.dragOrbit ?? lobby.cameraOrbit) - Float(value.translation.width) * 0.008
+                        lobby.updateCamera()
+                    }
+                }.onEnded { value in
+                    if creatureCaptured { lobby.endContact() }
+                    else if hypot(value.translation.width, value.translation.height) <= 6 { lobby.walk(at: value.location, size: geometry.size) }
+                    lobby.dragOrbit = nil; gestureStarted = false; creatureCaptured = false
+                })
+            .onChange(of: gestureActive) { _, active in
+                if !active && gestureStarted { lobby.cancelContact(); lobby.dragOrbit = nil; gestureStarted = false; creatureCaptured = false }
+            }
+            .onDisappear { lobby.cancelContact() }
             .accessibilityElement(children: .ignore)
             .accessibilityLabel("Explorable Fonster world with \(lobby.names.joined(separator: ", "))")
             .accessibilityValue(lobby.message)
-            .accessibilityHint("Choose an area to explore with a friend. Camera buttons turn and zoom the view. Click a path to walk there.")
+            .accessibilityHint("Stroke a Fonster for a gentle rub, or touch a paw for a high five. Choose an area to explore with a friend. Camera buttons turn and zoom the view. Click a path to walk there.")
             .accessibilityAction(named: "Wave to a friend") { lobby.waveToFriend() }
             .accessibilityAction(named: "Play together") { lobby.playTogether() }
             .accessibilityAction(named: "Pass ball with chosen friend") { lobby.pair(quiet: false) }

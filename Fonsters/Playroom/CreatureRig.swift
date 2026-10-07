@@ -31,6 +31,53 @@ final class CreatureRig {
     private lazy var coatKey = CreatureFur.appearanceKey(descriptor) + ":fur-v\(CreatureFur.styleVersion):" + furDetail.rawValue
     let furDetail: FurDetail
     private var skinIndex = 0
+    struct TouchHit {
+        var distance: Float
+        var point: SIMD2<Float>
+        var zone: CreatureTouchDynamics.Zone
+        func sample(at time: Double) -> CreatureTouchDynamics.Sample { .init(point: point, zone: zone, time: time) }
+    }
+    struct TouchSurface {
+        let entity: Entity
+        let center: SIMD3<Float>
+        let radii: SIMD3<Float>
+        let zone: CreatureTouchDynamics.Zone
+    }
+    private var touchSurfaces: [TouchSurface] = []
+    private var touchHeadRadius = SIMD2<Float>(repeating: 1)
+
+    static func touchRay(at point: CGPoint, size: CGSize, camera: PerspectiveCamera) -> (origin: SIMD3<Float>, direction: SIMD3<Float>)? {
+        guard size.width > 0, size.height > 0, point.x.isFinite, point.y.isFinite else { return nil }
+        let x = Float(point.x / size.width * 2 - 1), y = Float(1 - point.y / size.height * 2)
+        let tangent = tan(Float(camera.camera.fieldOfViewInDegrees) * .pi / 360)
+        return (camera.position(relativeTo: nil), camera.orientation(relativeTo: nil).act(simd_normalize([x * Float(size.width / size.height) * tangent, y * tangent, -1])))
+    }
+    /// Analytic volumes follow the live head, eyes and limbs, including lobby scale/orbit.
+    /// No per-strand collision meshes or geometry rebuilds are needed for a stroke.
+    func touchHit(origin: SIMD3<Float>, direction: SIMD3<Float>) -> TouchHit? {
+        guard origin.x.isFinite, origin.y.isFinite, origin.z.isFinite,
+              direction.x.isFinite, direction.y.isFinite, direction.z.isFinite,
+              simd_length_squared(direction) > 0.0001 else { return nil }
+        let direction = simd_normalize(direction)
+        var closest: TouchHit?
+        for surface in touchSurfaces {
+            let localOrigin = surface.entity.convert(position: origin, from: nil)
+            let localNext = surface.entity.convert(position: origin + direction, from: nil)
+            let o = (localOrigin - surface.center) / surface.radii
+            let d = (localNext - localOrigin) / surface.radii
+            let a = simd_dot(d, d), b = simd_dot(o, d), c = simd_dot(o, o) - 1
+            let discriminant = b * b - a * c
+            guard a > 0, discriminant >= 0 else { continue }
+            let near = (-b - sqrt(discriminant)) / a, far = (-b + sqrt(discriminant)) / a
+            let distance = near > 0 ? near : far
+            guard distance > 0, distance.isFinite, distance < (closest?.distance ?? .greatestFiniteMagnitude) else { continue }
+            let location = head.convert(position: origin + direction * distance, from: nil)
+            let point = SIMD2<Float>(location.x, location.y) / touchHeadRadius
+            let zone = surface.zone == .cheek && point.y > 0.45 ? CreatureTouchDynamics.Zone.crown : surface.zone
+            closest = .init(distance: distance, point: point, zone: zone)
+        }
+        return closest
+    }
 
     init(_ descriptor: CreatureAppearanceDescriptor, furDetail: FurDetail = .portrait) throws {
         self.descriptor = descriptor
@@ -54,6 +101,10 @@ final class CreatureRig {
         let model = ModelEntity(mesh: mesh, materials: [surface, material(skin)])
         model.name = "resolved-head"
         head.addChild(model)
+        let bounds = model.visualBounds(relativeTo: head)
+        let radii = simd_max(bounds.extents * 0.5, SIMD3<Float>(repeating: 0.03))
+        touchHeadRadius = [radii.x, radii.y]
+        touchSurfaces.append(.init(entity: head, center: bounds.center, radii: radii, zone: .cheek))
         let coat = try CreatureFur.surface(key: coatKey + ":head", name: "fuzzy-head") {
             CreatureFur.head(descriptor, radii: outlineRadii, pixel: pixel, depth: depth, skinIndex: skinIndex,
                              count: furDetail == .portrait ? 12_000 : (furDetail == .lobby ? 6_000 : 2_800), toneVariation: furDetail == .portrait)
@@ -222,6 +273,7 @@ final class CreatureRig {
         _ = ball(NSColor(srgbRed: 0.05, green: 0.035, blue: 0.07, alpha: 1), scale: [w * 0.21, h * 0.31, 0.045], at: [0, 0, 0.046], parent: pupil)
         _ = ball(.white, scale: [0.028, 0.028, 0.015], at: [-0.025, 0.034, 0.09], parent: pupil)
         eye.addChild(pupil); head.addChild(eye); eyes.append(eye); pupils.append(pupil)
+        touchSurfaces.append(.init(entity: eye, center: [0, 0, 0.035], radii: [w * 0.74, h * 0.74, 0.18], zone: .eye))
     }
     struct SmileLayout {
         let centerX: Double, centerY: Double
@@ -332,10 +384,12 @@ final class CreatureRig {
         let (w, h) = extent(part)
         let body = ball(skin, scale: [w * 0.52, h * 0.52, 0.4], at: point(part.centerX, part.centerY, z: -0.10), parent: root, furry: true)
         body.name = "body"
+        touchSurfaces.append(.init(entity: body, center: .zero, radii: .init(repeating: 1), zone: .belly))
     }
     func addEar(_ part: CreatureAppearanceDescriptor.Part, skin: NSColor) {
         let (w, h) = extent(part)
-        _ = ball(skin, scale: [w * 0.55, h * 0.55, 0.20], at: point(part.centerX, part.centerY, z: 0.02) - baseHead, parent: head, furry: true)
+        let ear = ball(skin, scale: [w * 0.55, h * 0.55, 0.20], at: point(part.centerX, part.centerY, z: 0.02) - baseHead, parent: head, furry: true)
+        touchSurfaces.append(.init(entity: ear, center: .zero, radii: .init(repeating: 1.05), zone: .crown))
     }
     func addHorn(_ part: CreatureAppearanceDescriptor.Part, skin: NSColor) {
         let (w, h) = extent(part)
@@ -383,7 +437,8 @@ final class CreatureRig {
         tube(from: .zero, to: [0, length * 0.52, 0.05], radius: radius, color: skin, parent: joint)
         let bend = Entity(); bend.position = [0, length * 0.52, 0.05]
         tube(from: .zero, to: [0, length * 0.48, 0.03], radius: radius * 0.8, color: skin, parent: bend)
-        _ = ball(skin, scale: [radius * 1.22, radius, radius * 1.3], at: [0, length * 0.48, 0.03], parent: bend, furry: true)
+        let paw = ball(skin, scale: [radius * 1.22, radius, radius * 1.3], at: [0, length * 0.48, 0.03], parent: bend, furry: true)
+        touchSurfaces.append(.init(entity: paw, center: .zero, radii: .init(repeating: 1.15), zone: .paw))
         joint.addChild(bend); root.addChild(joint); limbs.append((joint, bend, angle))
     }
 }
