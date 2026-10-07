@@ -16,6 +16,51 @@ the Fonster toward your pointer; typing “stop” ends following and wandering.
 Sounds starts off; enable it to hear the small original chirps.
 Open Personality to see your shared rituals and heart a favorite Warm, Clear or Bright voice.
 
+## Fuzzy monsters
+
+All twelve 3D companions now wear original procedural fur. The coats use curved, tapered
+three-dimensional fibres, grouped into mesh surfaces instead of thousands of separate
+animated objects. Their colours come from the resolved appearance, including the existing
+hair, beard and surface markings. Fur on the body, ears, limbs and antlers follows the
+existing joints; the eyes, mouth, nose and brows stay readable with shorter face grooming.
+The legacy 2D renderer, appearance descriptor version and seed identity are unchanged.
+
+Close-ups use 12,000 head fibres; the lobby uses 6,000 and half the body density, with
+one colour tone per resolved palette index to reduce material groups at room distance. Across the
+twelve fixtures, portrait coats contain 12,000–19,644 fibres and 288,000–471,456 triangles.
+Each surface has at most nine observed material groups. An LRU cache reuses immutable mesh
+resources, with fresh animated entities for each creature. It is bounded by 80 surfaces and
+64 MiB of estimated vertex/normal/index/material data; RealityKit and GPU overhead are extra.
+The final construction run measured 0.77–2.93 seconds cold and 0.17–1.30 seconds on immediate
+repeat. An earlier run included a 5.6-second cold outlier. Other active simulator work on
+the Air competes for CPU/GPU resources, so these are observed shared-machine timings,
+not a responsiveness guarantee. The four-room fixtures use 42 fur material groups versus
+126 with the three-tone coat. Fur does not have a separate simulation or clock: Pause, Still, Reduce Motion,
+background and Low Power hold the same rig pose and existing room clock.
+
+`evidence/fur-solo-scene/solo-02.png` is a real close-up render of furry Coral.
+`evidence/fur-lobby-efficient-scene/lobby-03.png` shows furry Coral, Moss, Iris and Orbit.
+`evidence/fur-lobby-efficient-demo.mp4` and `.gif` use twelve sampled native RealityKit renders,
+without audio. They are scene exports, not desktop screenshots or continuous recordings.
+Current screen-capture preflight returns false; no recording permissions were changed.
+The original full-window screenshots remain available as evidence of the earlier layout.
+
+The fuzzy revision passed the native Xcode build/launch, all twelve groomed/deep/finite rigs,
+cache isolation and lobby detail checks, frozen appearance/export regressions, 100 repeated
+reactions and five motion gates, autonomous/typed-command/local-lobby tests, and guest visit,
+privacy, friendship, ball/quiet game and persistence tests. The native room probe confirms
+renderer-ready and advancing frames. The native Reduce Motion launch fixture also holds
+zero frames across four seconds after rendering becomes ready. Observed shared-machine controller cadence ranged
+from about 15 to 19.5 updates/second; this is not a controlled performance comparison. It is saved in
+`evidence/fur-native-cadence-final.json`; it does not measure display or GPU frame rate.
+Desktop interaction, full VoiceOver, actual OS settings and thermal/GPU profiling of this
+furry revision remain untested. Run `./script/verify_fur.sh` for coat metrics.
+
+The approved retry to save the existing phase-2 lobby preview/demo to Library was rejected
+before process creation: automatic approval review could not verify direct user approval
+from the main conversation in this Air execution thread. No new Library files were created
+and no further upload attempt was made. All fuzzy evidence remains local on the Air.
+
 ## Typed requests and a local lobby
 
 Try “do a little twirl,” “take a nap,” or “follow my pointer” in the request field.
@@ -131,8 +176,15 @@ working dry-run and bounded future generation workflow, resumable cost/provenanc
 offline PCM normalization/quality checks and tested per-character palette selection with
 cooldown/repeat avoidance. No generation call was made and no spend occurred. A metadata-only
 check confirmed the existing encrypted PictureGrid Production key; no value was retrieved
-or copied. Sound-effects scope, paid commercial plan, spending cap and secure server-job
-wiring still need the owner's approval. At the documented 40 credits/second, a four-greeting
+or copied. Nathan approved use of the remaining included credits, without overage, top-up
+or plan changes. Authenticated access remains unavailable in this execution session. The
+new **Generate Fonster Sounds.command** provides a one-time user-operated secure handoff:
+an existing key entered in a hidden Terminal prompt stays in that Python process, and the
+runner reads allowlisted subscription metadata before attempting its bounded pilot. It
+requires an active paid plan, sufficient fresh included balance and usage-based billing
+already disabled. It saves no credential or permanent cross-project access, and makes no
+billing changes or deployments. Six offline tests pass; the live handoff has not been run.
+At the documented 40 credits/second, a four-greeting
 pilot estimates 160 credits and the complete batch 960 credits. Dollar cost depends on plan.
 [ElevenLabs API usage](https://elevenlabs.io/docs/overview/capabilities/sound-effects)
 and [request schema](https://elevenlabs.io/docs/api-reference/text-to-sound-effects/convert)

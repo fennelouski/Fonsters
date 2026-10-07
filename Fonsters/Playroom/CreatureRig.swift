@@ -8,6 +8,7 @@ import simd
 @available(macOS 15.0, *)
 @MainActor
 final class CreatureRig {
+    enum FurDetail: String { case portrait, lobby }
     let root = Entity()
     let head = Entity()
     let descriptor: CreatureAppearanceDescriptor
@@ -20,17 +21,29 @@ final class CreatureRig {
     var baseHead: SIMD3<Float> = .zero
     var groundOffset: Float = 0
     var brows: [Entity] = []
+    private(set) var furStrands = 0
+    private(set) var furTriangles = 0
+    private(set) var furSurfaces = 0
+    private(set) var groomedFaceStrands = 0
+    private lazy var outlineRadii = headRadii()
+    private lazy var furMaterials = CreatureFur.materials(for: descriptor)
+    private lazy var furSeed = CreatureFur.seed(for: descriptor)
+    private lazy var coatKey = CreatureFur.appearanceKey(descriptor) + ":fur-v\(CreatureFur.styleVersion):" + furDetail.rawValue
+    let furDetail: FurDetail
+    private var skinIndex = 0
 
-    init(_ descriptor: CreatureAppearanceDescriptor) throws {
+    init(_ descriptor: CreatureAppearanceDescriptor, furDetail: FurDetail = .portrait) throws {
         self.descriptor = descriptor
+        self.furDetail = furDetail
         root.name = "companion"
         root.addChild(head)
         let h = descriptor.head
         baseHead = point(h.centerX, h.centerY)
         head.position = baseHead
-        let skinIndex = Int(descriptor.parts.first(where: { $0.kind == "head" })?.paletteIndices.first ?? 0)
+        skinIndex = Int(descriptor.parts.first(where: { $0.kind == "head" })?.paletteIndices.first ?? 0)
         let skin = color(skinIndex)
         var surface = material(skin)
+        surface.roughness = .init(floatLiteral: 0.96); surface.clearcoat = .init(floatLiteral: 0)
         if let image = skinTexture(skinIndex: skinIndex) {
             let texture = try TextureResource(image: image, options: .init(semantic: .color))
             let sampler = MTLSamplerDescriptor()
@@ -41,6 +54,12 @@ final class CreatureRig {
         let model = ModelEntity(mesh: mesh, materials: [surface, material(skin)])
         model.name = "resolved-head"
         head.addChild(model)
+        let coat = try CreatureFur.surface(key: coatKey + ":head", name: "fuzzy-head") {
+            CreatureFur.head(descriptor, radii: outlineRadii, pixel: pixel, depth: depth, skinIndex: skinIndex,
+                             count: furDetail == .portrait ? 12_000 : 6_000, toneVariation: furDetail == .portrait)
+        }
+        addCoat(coat, to: head, name: "fuzzy-head")
+        groomedFaceStrands = coat.trimmedStrands
         for part in descriptor.parts {
             switch part.kind {
             case "eye": addEye(part)
@@ -55,6 +74,7 @@ final class CreatureRig {
             default: break // Surface texture carries resolved hair, brows, beard, nose and markings.
             }
         }
+        if let furError { throw furError }
         groundOffset = -1.08 - root.visualBounds(relativeTo: root).min.y
     }
 
@@ -75,10 +95,28 @@ final class CreatureRig {
         mat.clearcoatRoughness = .init(floatLiteral: 0.35)
         return mat
     }
-    func ball(_ color: NSColor, radius: Float = 1, scale: SIMD3<Float>, at position: SIMD3<Float>, parent: Entity) -> ModelEntity {
-        let model = ModelEntity(mesh: .generateSphere(radius: radius), materials: [material(color)])
+    func ball(_ color: NSColor, radius: Float = 1, scale: SIMD3<Float>, at position: SIMD3<Float>, parent: Entity, furry: Bool = false) -> ModelEntity {
+        var surface = material(color, roughness: furry ? 0.96 : 0.52)
+        if furry { surface.clearcoat = .init(floatLiteral: 0) }
+        let model = ModelEntity(mesh: .generateSphere(radius: radius), materials: [surface])
         model.scale = scale; model.position = position; parent.addChild(model)
+        if furry {
+            do {
+                let coat = try CreatureFur.surface(key: coatKey + ":surface:\(furSurfaces)", name: "fuzzy-surface-\(furSurfaces)") {
+                    CreatureFur.ellipsoid(axes: scale * radius, palette: skinIndex, seed: furSeed ^ UInt64(furSurfaces + 1),
+                                          density: furDetail == .portrait ? 1 : 0.5, toneVariation: furDetail == .portrait)
+                }
+                addCoat(coat, to: model, name: "fuzzy-surface-\(furSurfaces)")
+            }
+            catch { furError = error }
+        }
         return model
+    }
+    private var furError: Error?
+    private func addCoat(_ surface: CreatureFur.Surface, to parent: Entity, name: String) {
+        let model = ModelEntity(mesh: surface.mesh, materials: furMaterials)
+        model.name = name; parent.addChild(model)
+        furStrands += surface.strands; furTriangles += surface.triangles; furSurfaces += 1
     }
     func extent(_ p: CreatureAppearanceDescriptor.Part) -> (Float, Float) {
         (Float((p.pixels.map(\.x).max() ?? 0) - (p.pixels.map(\.x).min() ?? 0) + 1) * pixel,
@@ -96,10 +134,10 @@ final class CreatureRig {
 
     // A closed, smooth volume: the legacy head outline is inflated through 40 rings.
     // The front and back have independent materials, and thickness is comparable to width.
-    func headMesh() throws -> MeshResource {
+    private func headRadii() -> [Float] {
         let h = descriptor.head
         let cells = Set(h.footprint.map { $0.y * 32 + $0.x })
-        let around = 96, rings = 40
+        let around = 96
         var radii: [Float] = []
         for j in 0...around {
             let theta = Float(j) / Float(around) * 2 * .pi
@@ -119,6 +157,11 @@ final class CreatureRig {
             for j in 0..<around { radii[j] = (old[(j + around - 1) % around] + 2 * old[j] + old[(j + 1) % around]) / 4 }
             radii[around] = radii[0]
         }
+        return radii
+    }
+    func headMesh() throws -> MeshResource {
+        let h = descriptor.head, radii = outlineRadii
+        let around = radii.count - 1, rings = 40
         var positions: [SIMD3<Float>] = [], normals: [SIMD3<Float>] = [], uv: [SIMD2<Float>] = []
         for i in 0...rings {
             let latitude = -Float.pi / 2 + Float(i) / Float(rings) * .pi
@@ -202,12 +245,12 @@ final class CreatureRig {
     }
     func addBody(_ part: CreatureAppearanceDescriptor.Part, skin: NSColor) {
         let (w, h) = extent(part)
-        let body = ball(skin, scale: [w * 0.52, h * 0.52, 0.4], at: point(part.centerX, part.centerY, z: -0.10), parent: root)
+        let body = ball(skin, scale: [w * 0.52, h * 0.52, 0.4], at: point(part.centerX, part.centerY, z: -0.10), parent: root, furry: true)
         body.name = "body"
     }
     func addEar(_ part: CreatureAppearanceDescriptor.Part, skin: NSColor) {
         let (w, h) = extent(part)
-        _ = ball(skin, scale: [w * 0.55, h * 0.55, 0.20], at: point(part.centerX, part.centerY, z: 0.02) - baseHead, parent: head)
+        _ = ball(skin, scale: [w * 0.55, h * 0.55, 0.20], at: point(part.centerX, part.centerY, z: 0.02) - baseHead, parent: head, furry: true)
     }
     func addHorn(_ part: CreatureAppearanceDescriptor.Part, skin: NSColor) {
         let (w, h) = extent(part)
@@ -228,7 +271,7 @@ final class CreatureRig {
         let delta = to - from
         let length = simd_length(delta)
         guard length > 0.001 else { return }
-        let sphere = ball(color, scale: [radius, length / 2 + radius, radius], at: (from + to) / 2, parent: parent)
+        let sphere = ball(color, scale: [radius, length / 2 + radius, radius], at: (from + to) / 2, parent: parent, furry: true)
         sphere.orientation = simd_quatf(from: [0, 1, 0], to: delta / length)
     }
     func addLimb(_ part: CreatureAppearanceDescriptor.Part, skin: NSColor) {
@@ -255,7 +298,7 @@ final class CreatureRig {
         tube(from: .zero, to: [0, length * 0.52, 0.05], radius: radius, color: skin, parent: joint)
         let bend = Entity(); bend.position = [0, length * 0.52, 0.05]
         tube(from: .zero, to: [0, length * 0.48, 0.03], radius: radius * 0.8, color: skin, parent: bend)
-        _ = ball(skin, scale: [radius * 1.22, radius, radius * 1.3], at: [0, length * 0.48, 0.03], parent: bend)
+        _ = ball(skin, scale: [radius * 1.22, radius, radius * 1.3], at: [0, length * 0.48, 0.03], parent: bend, furry: true)
         joint.addChild(bend); root.addChild(joint); limbs.append((joint, bend, angle))
     }
 }

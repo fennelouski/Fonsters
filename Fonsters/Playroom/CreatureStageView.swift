@@ -72,7 +72,7 @@ struct CreatureStageView: View {
                                  Float(0.5 - value.location.y / geometry.size.height) * 2])
             }.onEnded { _ in rubbing = false })
             .accessibilityElement(children: .ignore)
-            .accessibilityLabel("\(companion.name), a three dimensional Fonster")
+            .accessibilityLabel("\(companion.name), a fluffy three dimensional Fonster")
             .accessibilityValue(controller.message)
             .accessibilityHint("Tap for hello, double tap for a high five, or gently drag for a rub. The same actions are available as buttons. Drag the Turn slider to see every side.")
             .accessibilityAction(named: "Say hello") { controller.perform(.greet, name: companion.name) }

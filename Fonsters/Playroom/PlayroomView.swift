@@ -73,9 +73,9 @@ struct PlayroomView: View {
             VStack(alignment: .leading, spacing: 5) {
                 Label("FONSTERS", systemImage: "sparkle")
                     .font(.system(size: 13, weight: .black, design: .rounded)).tracking(2)
-                Text("Your little crowd")
+                Text("Fuzzy monsters")
                     .font(.system(size: 22, weight: .semibold, design: .rounded))
-                Text("12 familiar faces, in a new dimension.")
+                Text("Fluffy little friends, in 3D.")
                     .font(.system(size: 12)).foregroundStyle(ink.opacity(0.55))
             }.padding(.horizontal, 18).padding(.top, 22)
             ScrollView {

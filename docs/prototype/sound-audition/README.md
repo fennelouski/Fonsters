@@ -19,6 +19,31 @@ emails and personality histories are never request inputs.
 
 ## Secure runtime and approvals
 
+The concrete user action for the local pilot is: **open `Generate Fonster Sounds.command`
+on the Air and enter an existing ElevenLabs key in the hidden Terminal prompt**. Do not
+send the key in chat. This optional one-time handoff uses a key the owner already controls;
+the agent has not retrieved the encrypted PictureGrid key or created a new credential.
+The key is not put into a shell argument, environment file, Keychain, log or app bundle.
+The launcher needs a real Terminal and refuses piped input before prompting. It reads
+`GET /v1/user/subscription`, retains only the five allowlisted fields and check time, and
+requires an active paid plan, a fresh sufficient included balance and canonical overage
+extension exactly zero. It does not alter settings. The four one-second greetings reserve
+at most 160 estimated credits across their durable lifetime ledger; uncertain calls remain
+held and are never automatically retried. Nothing is automatically imported into the app.
+
+This is a ready local execution route, separate from deploying a server job. It needs no
+new installation, persistent credential setup or backend change. It does require the
+owner's secure entry of a currently usable key with subscription-read and sound-effects
+access. Six offline tests pass for zero-call dry run, non-Terminal refusal, account gates,
+allowlisted bounded subscription reads, private output, durable resume/ambiguous holds and
+absence of saved test credentials. No live key, account check, generation, spend or audition
+has occurred in this session. `python3 script/run_sound_pilot.py` is an offline dry run;
+`python3 script/verify_sound_pilot.py` uses fake credentials and transport only. Generated
+files would stay under private `evidence/elevenlabs-greeting-pilot/` for later offline curation.
+
+The alternative existing-server route below remains unwired; do not decrypt or copy its
+production credential merely to operate this prototype.
+
 Read-only metadata on 2026-10-07 confirmed `ELEVENLABS_API_KEY`, encrypted, in **Production**
 on the existing `picturegrid-tts-backend` Vercel project. The Air's PictureGrid source uses
 `process.env.ELEVENLABS_API_KEY` in `api/_lib/elevenlabs.js` for `/v1/text-to-speech/`.

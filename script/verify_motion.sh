@@ -8,6 +8,6 @@ swiftc -target arm64-apple-macos15.0 -module-cache-path "$ROOT_DIR/.prototype-bu
  Fonsters/CreatureAvatar/CreatureHash.swift Fonsters/CreatureAvatar/CreatureGenerator.swift \
  Fonsters/CreatureAvatar/CreatureRaster.swift \
  Fonsters/Playroom/ResolvedCreatureTrace.swift Fonsters/Playroom/CreatureAppearanceDescriptor.swift \
- Fonsters/Playroom/CreatureRig.swift Fonsters/Playroom/CreaturePersonality.swift Fonsters/Playroom/CreatureSoundBank.swift Fonsters/Playroom/CreatureCommandIntent.swift Fonsters/Playroom/CreatureSocialModels.swift Fonsters/Playroom/FriendshipMemoryStore.swift Fonsters/Playroom/PlayroomController.swift \
+ Fonsters/Playroom/CreatureFur.swift Fonsters/Playroom/CreatureRig.swift Fonsters/Playroom/CreaturePersonality.swift Fonsters/Playroom/CreatureSoundBank.swift Fonsters/Playroom/CreatureCommandIntent.swift Fonsters/Playroom/CreatureSocialModels.swift Fonsters/Playroom/FriendshipMemoryStore.swift Fonsters/Playroom/PlayroomController.swift \
  script/verify_motion.swift -o .prototype-build/verification/motion
 .prototype-build/verification/motion

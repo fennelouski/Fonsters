@@ -162,7 +162,7 @@ private struct LobbyStageView: View {
                     let revision = lobby.roomRevision
                     lobby.containers = []
                     for member in lobby.members {
-                        let rig = try CreatureRig(member.descriptor)
+                        let rig = try CreatureRig(member.descriptor, furDetail: .lobby)
                         member.controller.install(rig, name: member.name)
                         member.controller.orbit = 0
                         let container = Entity(); container.scale = .init(repeating: 0.55)
