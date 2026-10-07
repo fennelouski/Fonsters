@@ -1,0 +1,539 @@
+{
+  "version": 1,
+  "status": "dry_run_only",
+  "request_count": 24,
+  "duration_seconds_total": 24,
+  "estimated_credits": 960,
+  "estimate_source": "https://elevenlabs.io/docs/overview/capabilities/sound-effects",
+  "approval_required": "Account access, commercial-use plan confirmation, explicit credit or dollar spending cap. No microphone/camera data is included.",
+  "requests": [
+    {
+      "asset_id": "pebble_greet_01",
+      "family": "pebble",
+      "event": "greet",
+      "status": "prepared_not_generated",
+      "request": {
+        "text": "A tiny warm creature with a rounded woody coo and soft breathy texture makes a rising two-note greeting. Original imaginary animal vocalization, nonverbal, close dry mono, warm and quiet, no music, no words, no human voice, no harsh transients, silence at the beginning and end.",
+        "duration_seconds": 1.0,
+        "prompt_influence": 0.6,
+        "loop": false,
+        "model_id": "eleven_text_to_sound_v2"
+      },
+      "provenance": {
+        "provider": "ElevenLabs",
+        "account_plan": null,
+        "generated_at": null,
+        "license_snapshot": null,
+        "response_cost": null,
+        "sha256": null,
+        "audition_approved": false
+      }
+    },
+    {
+      "asset_id": "pebble_play_01",
+      "family": "pebble",
+      "event": "play",
+      "status": "prepared_not_generated",
+      "request": {
+        "text": "A tiny warm creature with a rounded woody coo and soft breathy texture makes an excited three-note giggle while hopping. Original imaginary animal vocalization, nonverbal, close dry mono, warm and quiet, no music, no words, no human voice, no harsh transients, silence at the beginning and end.",
+        "duration_seconds": 1.0,
+        "prompt_influence": 0.6,
+        "loop": false,
+        "model_id": "eleven_text_to_sound_v2"
+      },
+      "provenance": {
+        "provider": "ElevenLabs",
+        "account_plan": null,
+        "generated_at": null,
+        "license_snapshot": null,
+        "response_cost": null,
+        "sha256": null,
+        "audition_approved": false
+      }
+    },
+    {
+      "asset_id": "pebble_rest_01",
+      "family": "pebble",
+      "event": "rest",
+      "status": "prepared_not_generated",
+      "request": {
+        "text": "A tiny warm creature with a rounded woody coo and soft breathy texture makes a falling sleepy sigh. Original imaginary animal vocalization, nonverbal, close dry mono, warm and quiet, no music, no words, no human voice, no harsh transients, silence at the beginning and end.",
+        "duration_seconds": 1.0,
+        "prompt_influence": 0.6,
+        "loop": false,
+        "model_id": "eleven_text_to_sound_v2"
+      },
+      "provenance": {
+        "provider": "ElevenLabs",
+        "account_plan": null,
+        "generated_at": null,
+        "license_snapshot": null,
+        "response_cost": null,
+        "sha256": null,
+        "audition_approved": false
+      }
+    },
+    {
+      "asset_id": "pebble_blink_01",
+      "family": "pebble",
+      "event": "blink",
+      "status": "prepared_not_generated",
+      "request": {
+        "text": "A tiny warm creature with a rounded woody coo and soft breathy texture makes one very short curious peep. Original imaginary animal vocalization, nonverbal, close dry mono, warm and quiet, no music, no words, no human voice, no harsh transients, silence at the beginning and end.",
+        "duration_seconds": 1.0,
+        "prompt_influence": 0.6,
+        "loop": false,
+        "model_id": "eleven_text_to_sound_v2"
+      },
+      "provenance": {
+        "provider": "ElevenLabs",
+        "account_plan": null,
+        "generated_at": null,
+        "license_snapshot": null,
+        "response_cost": null,
+        "sha256": null,
+        "audition_approved": false
+      }
+    },
+    {
+      "asset_id": "pebble_look_01",
+      "family": "pebble",
+      "event": "look",
+      "status": "prepared_not_generated",
+      "request": {
+        "text": "A tiny warm creature with a rounded woody coo and soft breathy texture makes a questioning soft coo. Original imaginary animal vocalization, nonverbal, close dry mono, warm and quiet, no music, no words, no human voice, no harsh transients, silence at the beginning and end.",
+        "duration_seconds": 1.0,
+        "prompt_influence": 0.6,
+        "loop": false,
+        "model_id": "eleven_text_to_sound_v2"
+      },
+      "provenance": {
+        "provider": "ElevenLabs",
+        "account_plan": null,
+        "generated_at": null,
+        "license_snapshot": null,
+        "response_cost": null,
+        "sha256": null,
+        "audition_approved": false
+      }
+    },
+    {
+      "asset_id": "pebble_idle_01",
+      "family": "pebble",
+      "event": "idle",
+      "status": "prepared_not_generated",
+      "request": {
+        "text": "A tiny warm creature with a rounded woody coo and soft breathy texture makes a contented low purr, suitable as a rare one-shot. Original imaginary animal vocalization, nonverbal, close dry mono, warm and quiet, no music, no words, no human voice, no harsh transients, silence at the beginning and end.",
+        "duration_seconds": 1.0,
+        "prompt_influence": 0.6,
+        "loop": false,
+        "model_id": "eleven_text_to_sound_v2"
+      },
+      "provenance": {
+        "provider": "ElevenLabs",
+        "account_plan": null,
+        "generated_at": null,
+        "license_snapshot": null,
+        "response_cost": null,
+        "sha256": null,
+        "audition_approved": false
+      }
+    },
+    {
+      "asset_id": "bubble_greet_01",
+      "family": "bubble",
+      "event": "greet",
+      "status": "prepared_not_generated",
+      "request": {
+        "text": "A tiny cheerful creature with a liquid bubble chirp and a soft elastic pop makes a rising two-note greeting. Original imaginary animal vocalization, nonverbal, close dry mono, warm and quiet, no music, no words, no human voice, no harsh transients, silence at the beginning and end.",
+        "duration_seconds": 1.0,
+        "prompt_influence": 0.6,
+        "loop": false,
+        "model_id": "eleven_text_to_sound_v2"
+      },
+      "provenance": {
+        "provider": "ElevenLabs",
+        "account_plan": null,
+        "generated_at": null,
+        "license_snapshot": null,
+        "response_cost": null,
+        "sha256": null,
+        "audition_approved": false
+      }
+    },
+    {
+      "asset_id": "bubble_play_01",
+      "family": "bubble",
+      "event": "play",
+      "status": "prepared_not_generated",
+      "request": {
+        "text": "A tiny cheerful creature with a liquid bubble chirp and a soft elastic pop makes an excited three-note giggle while hopping. Original imaginary animal vocalization, nonverbal, close dry mono, warm and quiet, no music, no words, no human voice, no harsh transients, silence at the beginning and end.",
+        "duration_seconds": 1.0,
+        "prompt_influence": 0.6,
+        "loop": false,
+        "model_id": "eleven_text_to_sound_v2"
+      },
+      "provenance": {
+        "provider": "ElevenLabs",
+        "account_plan": null,
+        "generated_at": null,
+        "license_snapshot": null,
+        "response_cost": null,
+        "sha256": null,
+        "audition_approved": false
+      }
+    },
+    {
+      "asset_id": "bubble_rest_01",
+      "family": "bubble",
+      "event": "rest",
+      "status": "prepared_not_generated",
+      "request": {
+        "text": "A tiny cheerful creature with a liquid bubble chirp and a soft elastic pop makes a falling sleepy sigh. Original imaginary animal vocalization, nonverbal, close dry mono, warm and quiet, no music, no words, no human voice, no harsh transients, silence at the beginning and end.",
+        "duration_seconds": 1.0,
+        "prompt_influence": 0.6,
+        "loop": false,
+        "model_id": "eleven_text_to_sound_v2"
+      },
+      "provenance": {
+        "provider": "ElevenLabs",
+        "account_plan": null,
+        "generated_at": null,
+        "license_snapshot": null,
+        "response_cost": null,
+        "sha256": null,
+        "audition_approved": false
+      }
+    },
+    {
+      "asset_id": "bubble_blink_01",
+      "family": "bubble",
+      "event": "blink",
+      "status": "prepared_not_generated",
+      "request": {
+        "text": "A tiny cheerful creature with a liquid bubble chirp and a soft elastic pop makes one very short curious peep. Original imaginary animal vocalization, nonverbal, close dry mono, warm and quiet, no music, no words, no human voice, no harsh transients, silence at the beginning and end.",
+        "duration_seconds": 1.0,
+        "prompt_influence": 0.6,
+        "loop": false,
+        "model_id": "eleven_text_to_sound_v2"
+      },
+      "provenance": {
+        "provider": "ElevenLabs",
+        "account_plan": null,
+        "generated_at": null,
+        "license_snapshot": null,
+        "response_cost": null,
+        "sha256": null,
+        "audition_approved": false
+      }
+    },
+    {
+      "asset_id": "bubble_look_01",
+      "family": "bubble",
+      "event": "look",
+      "status": "prepared_not_generated",
+      "request": {
+        "text": "A tiny cheerful creature with a liquid bubble chirp and a soft elastic pop makes a questioning soft coo. Original imaginary animal vocalization, nonverbal, close dry mono, warm and quiet, no music, no words, no human voice, no harsh transients, silence at the beginning and end.",
+        "duration_seconds": 1.0,
+        "prompt_influence": 0.6,
+        "loop": false,
+        "model_id": "eleven_text_to_sound_v2"
+      },
+      "provenance": {
+        "provider": "ElevenLabs",
+        "account_plan": null,
+        "generated_at": null,
+        "license_snapshot": null,
+        "response_cost": null,
+        "sha256": null,
+        "audition_approved": false
+      }
+    },
+    {
+      "asset_id": "bubble_idle_01",
+      "family": "bubble",
+      "event": "idle",
+      "status": "prepared_not_generated",
+      "request": {
+        "text": "A tiny cheerful creature with a liquid bubble chirp and a soft elastic pop makes a contented low purr, suitable as a rare one-shot. Original imaginary animal vocalization, nonverbal, close dry mono, warm and quiet, no music, no words, no human voice, no harsh transients, silence at the beginning and end.",
+        "duration_seconds": 1.0,
+        "prompt_influence": 0.6,
+        "loop": false,
+        "model_id": "eleven_text_to_sound_v2"
+      },
+      "provenance": {
+        "provider": "ElevenLabs",
+        "account_plan": null,
+        "generated_at": null,
+        "license_snapshot": null,
+        "response_cost": null,
+        "sha256": null,
+        "audition_approved": false
+      }
+    },
+    {
+      "asset_id": "sprout_greet_01",
+      "family": "sprout",
+      "event": "greet",
+      "status": "prepared_not_generated",
+      "request": {
+        "text": "A tiny shy creature with a gentle airy warble and a faint leaf rustle makes a rising two-note greeting. Original imaginary animal vocalization, nonverbal, close dry mono, warm and quiet, no music, no words, no human voice, no harsh transients, silence at the beginning and end.",
+        "duration_seconds": 1.0,
+        "prompt_influence": 0.6,
+        "loop": false,
+        "model_id": "eleven_text_to_sound_v2"
+      },
+      "provenance": {
+        "provider": "ElevenLabs",
+        "account_plan": null,
+        "generated_at": null,
+        "license_snapshot": null,
+        "response_cost": null,
+        "sha256": null,
+        "audition_approved": false
+      }
+    },
+    {
+      "asset_id": "sprout_play_01",
+      "family": "sprout",
+      "event": "play",
+      "status": "prepared_not_generated",
+      "request": {
+        "text": "A tiny shy creature with a gentle airy warble and a faint leaf rustle makes an excited three-note giggle while hopping. Original imaginary animal vocalization, nonverbal, close dry mono, warm and quiet, no music, no words, no human voice, no harsh transients, silence at the beginning and end.",
+        "duration_seconds": 1.0,
+        "prompt_influence": 0.6,
+        "loop": false,
+        "model_id": "eleven_text_to_sound_v2"
+      },
+      "provenance": {
+        "provider": "ElevenLabs",
+        "account_plan": null,
+        "generated_at": null,
+        "license_snapshot": null,
+        "response_cost": null,
+        "sha256": null,
+        "audition_approved": false
+      }
+    },
+    {
+      "asset_id": "sprout_rest_01",
+      "family": "sprout",
+      "event": "rest",
+      "status": "prepared_not_generated",
+      "request": {
+        "text": "A tiny shy creature with a gentle airy warble and a faint leaf rustle makes a falling sleepy sigh. Original imaginary animal vocalization, nonverbal, close dry mono, warm and quiet, no music, no words, no human voice, no harsh transients, silence at the beginning and end.",
+        "duration_seconds": 1.0,
+        "prompt_influence": 0.6,
+        "loop": false,
+        "model_id": "eleven_text_to_sound_v2"
+      },
+      "provenance": {
+        "provider": "ElevenLabs",
+        "account_plan": null,
+        "generated_at": null,
+        "license_snapshot": null,
+        "response_cost": null,
+        "sha256": null,
+        "audition_approved": false
+      }
+    },
+    {
+      "asset_id": "sprout_blink_01",
+      "family": "sprout",
+      "event": "blink",
+      "status": "prepared_not_generated",
+      "request": {
+        "text": "A tiny shy creature with a gentle airy warble and a faint leaf rustle makes one very short curious peep. Original imaginary animal vocalization, nonverbal, close dry mono, warm and quiet, no music, no words, no human voice, no harsh transients, silence at the beginning and end.",
+        "duration_seconds": 1.0,
+        "prompt_influence": 0.6,
+        "loop": false,
+        "model_id": "eleven_text_to_sound_v2"
+      },
+      "provenance": {
+        "provider": "ElevenLabs",
+        "account_plan": null,
+        "generated_at": null,
+        "license_snapshot": null,
+        "response_cost": null,
+        "sha256": null,
+        "audition_approved": false
+      }
+    },
+    {
+      "asset_id": "sprout_look_01",
+      "family": "sprout",
+      "event": "look",
+      "status": "prepared_not_generated",
+      "request": {
+        "text": "A tiny shy creature with a gentle airy warble and a faint leaf rustle makes a questioning soft coo. Original imaginary animal vocalization, nonverbal, close dry mono, warm and quiet, no music, no words, no human voice, no harsh transients, silence at the beginning and end.",
+        "duration_seconds": 1.0,
+        "prompt_influence": 0.6,
+        "loop": false,
+        "model_id": "eleven_text_to_sound_v2"
+      },
+      "provenance": {
+        "provider": "ElevenLabs",
+        "account_plan": null,
+        "generated_at": null,
+        "license_snapshot": null,
+        "response_cost": null,
+        "sha256": null,
+        "audition_approved": false
+      }
+    },
+    {
+      "asset_id": "sprout_idle_01",
+      "family": "sprout",
+      "event": "idle",
+      "status": "prepared_not_generated",
+      "request": {
+        "text": "A tiny shy creature with a gentle airy warble and a faint leaf rustle makes a contented low purr, suitable as a rare one-shot. Original imaginary animal vocalization, nonverbal, close dry mono, warm and quiet, no music, no words, no human voice, no harsh transients, silence at the beginning and end.",
+        "duration_seconds": 1.0,
+        "prompt_influence": 0.6,
+        "loop": false,
+        "model_id": "eleven_text_to_sound_v2"
+      },
+      "provenance": {
+        "provider": "ElevenLabs",
+        "account_plan": null,
+        "generated_at": null,
+        "license_snapshot": null,
+        "response_cost": null,
+        "sha256": null,
+        "audition_approved": false
+      }
+    },
+    {
+      "asset_id": "spark_greet_01",
+      "family": "spark",
+      "event": "greet",
+      "status": "prepared_not_generated",
+      "request": {
+        "text": "A tiny curious creature with a mellow bell-like trill and a soft fuzzy hum makes a rising two-note greeting. Original imaginary animal vocalization, nonverbal, close dry mono, warm and quiet, no music, no words, no human voice, no harsh transients, silence at the beginning and end.",
+        "duration_seconds": 1.0,
+        "prompt_influence": 0.6,
+        "loop": false,
+        "model_id": "eleven_text_to_sound_v2"
+      },
+      "provenance": {
+        "provider": "ElevenLabs",
+        "account_plan": null,
+        "generated_at": null,
+        "license_snapshot": null,
+        "response_cost": null,
+        "sha256": null,
+        "audition_approved": false
+      }
+    },
+    {
+      "asset_id": "spark_play_01",
+      "family": "spark",
+      "event": "play",
+      "status": "prepared_not_generated",
+      "request": {
+        "text": "A tiny curious creature with a mellow bell-like trill and a soft fuzzy hum makes an excited three-note giggle while hopping. Original imaginary animal vocalization, nonverbal, close dry mono, warm and quiet, no music, no words, no human voice, no harsh transients, silence at the beginning and end.",
+        "duration_seconds": 1.0,
+        "prompt_influence": 0.6,
+        "loop": false,
+        "model_id": "eleven_text_to_sound_v2"
+      },
+      "provenance": {
+        "provider": "ElevenLabs",
+        "account_plan": null,
+        "generated_at": null,
+        "license_snapshot": null,
+        "response_cost": null,
+        "sha256": null,
+        "audition_approved": false
+      }
+    },
+    {
+      "asset_id": "spark_rest_01",
+      "family": "spark",
+      "event": "rest",
+      "status": "prepared_not_generated",
+      "request": {
+        "text": "A tiny curious creature with a mellow bell-like trill and a soft fuzzy hum makes a falling sleepy sigh. Original imaginary animal vocalization, nonverbal, close dry mono, warm and quiet, no music, no words, no human voice, no harsh transients, silence at the beginning and end.",
+        "duration_seconds": 1.0,
+        "prompt_influence": 0.6,
+        "loop": false,
+        "model_id": "eleven_text_to_sound_v2"
+      },
+      "provenance": {
+        "provider": "ElevenLabs",
+        "account_plan": null,
+        "generated_at": null,
+        "license_snapshot": null,
+        "response_cost": null,
+        "sha256": null,
+        "audition_approved": false
+      }
+    },
+    {
+      "asset_id": "spark_blink_01",
+      "family": "spark",
+      "event": "blink",
+      "status": "prepared_not_generated",
+      "request": {
+        "text": "A tiny curious creature with a mellow bell-like trill and a soft fuzzy hum makes one very short curious peep. Original imaginary animal vocalization, nonverbal, close dry mono, warm and quiet, no music, no words, no human voice, no harsh transients, silence at the beginning and end.",
+        "duration_seconds": 1.0,
+        "prompt_influence": 0.6,
+        "loop": false,
+        "model_id": "eleven_text_to_sound_v2"
+      },
+      "provenance": {
+        "provider": "ElevenLabs",
+        "account_plan": null,
+        "generated_at": null,
+        "license_snapshot": null,
+        "response_cost": null,
+        "sha256": null,
+        "audition_approved": false
+      }
+    },
+    {
+      "asset_id": "spark_look_01",
+      "family": "spark",
+      "event": "look",
+      "status": "prepared_not_generated",
+      "request": {
+        "text": "A tiny curious creature with a mellow bell-like trill and a soft fuzzy hum makes a questioning soft coo. Original imaginary animal vocalization, nonverbal, close dry mono, warm and quiet, no music, no words, no human voice, no harsh transients, silence at the beginning and end.",
+        "duration_seconds": 1.0,
+        "prompt_influence": 0.6,
+        "loop": false,
+        "model_id": "eleven_text_to_sound_v2"
+      },
+      "provenance": {
+        "provider": "ElevenLabs",
+        "account_plan": null,
+        "generated_at": null,
+        "license_snapshot": null,
+        "response_cost": null,
+        "sha256": null,
+        "audition_approved": false
+      }
+    },
+    {
+      "asset_id": "spark_idle_01",
+      "family": "spark",
+      "event": "idle",
+      "status": "prepared_not_generated",
+      "request": {
+        "text": "A tiny curious creature with a mellow bell-like trill and a soft fuzzy hum makes a contented low purr, suitable as a rare one-shot. Original imaginary animal vocalization, nonverbal, close dry mono, warm and quiet, no music, no words, no human voice, no harsh transients, silence at the beginning and end.",
+        "duration_seconds": 1.0,
+        "prompt_influence": 0.6,
+        "loop": false,
+        "model_id": "eleven_text_to_sound_v2"
+      },
+      "provenance": {
+        "provider": "ElevenLabs",
+        "account_plan": null,
+        "generated_at": null,
+        "license_snapshot": null,
+        "response_cost": null,
+        "sha256": null,
+        "audition_approved": false
+      }
+    }
+  ]
+}

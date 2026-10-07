@@ -1,0 +1,36 @@
+#!/usr/bin/env bash
+set -euo pipefail
+ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+MODE="${1:-run}"
+if [[ $# -gt 0 ]]; then shift; fi
+LAUNCH_ARGS=("$@")
+APP_NAME="Fonsters"
+BUILD_DIR="$ROOT_DIR/.prototype-build"
+APP_BUNDLE="$BUILD_DIR/Build/Products/Debug/Fonsters.app"
+cd "$ROOT_DIR"
+# Stop only this task's exact prototype executable, never a different Fonsters app.
+if [[ -f "$BUILD_DIR/prototype.pid" ]]; then
+  TASK_PID="$(cat "$BUILD_DIR/prototype.pid")"
+  if ps -p "$TASK_PID" -o command= | grep -Fq "$APP_BUNDLE/Contents/MacOS/Fonsters"; then kill "$TASK_PID" || true; fi
+fi
+mkdir -p "$BUILD_DIR"
+xcodebuild -project Fonsters.xcodeproj -scheme Fonsters -configuration Debug \
+  -destination 'platform=macOS' -derivedDataPath "$BUILD_DIR" \
+  PRODUCT_BUNDLE_IDENTIFIER=com.nathanfennel.Fonsters.Playroom \
+  CODE_SIGN_ENTITLEMENTS='' CODE_SIGN_IDENTITY=- CODE_SIGNING_ALLOWED=NO \
+  build > "$BUILD_DIR/build.log" 2>&1 || { tail -80 "$BUILD_DIR/build.log"; exit 1; }
+echo "Built: $APP_BUNDLE"
+open_app() {
+  /usr/bin/open -n "$APP_BUNDLE" --args --prototype "${LAUNCH_ARGS[@]}"
+  sleep 1
+  TASK_PID="$(pgrep -f "$APP_BUNDLE/Contents/MacOS/Fonsters" | head -1 || true)"
+  if [[ -n "$TASK_PID" ]]; then printf '%s\n' "$TASK_PID" > "$BUILD_DIR/prototype.pid"; fi
+}
+case "$MODE" in
+ run) open_app ;;
+ --verify|verify) open_app; [[ -s "$BUILD_DIR/prototype.pid" ]]; kill -0 "$(cat "$BUILD_DIR/prototype.pid")"; echo 'PASS: native prototype process is running' ;;
+ --debug|debug) lldb -- "$APP_BUNDLE/Contents/MacOS/Fonsters" --prototype ;;
+ --logs|logs) open_app; /usr/bin/log stream --info --style compact --predicate 'process == "Fonsters"' ;;
+ --telemetry|telemetry) open_app; /usr/bin/log stream --info --style compact --predicate 'subsystem == "com.nathanfennel.Fonsters.Playroom"' ;;
+ *) echo 'Usage: script/build_and_run.sh [run|--verify|--debug|--logs|--telemetry]' >&2; exit 2 ;;
+esac
