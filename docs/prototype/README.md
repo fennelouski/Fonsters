@@ -16,6 +16,10 @@ the Fonster toward your pointer; typing “stop” ends following and wandering.
 Sounds starts off; enable it to hear the small original chirps.
 Open Personality to see your shared rituals and heart a favorite Warm, Clear or Bright voice.
 
+## Visual interface
+
+`Launch Visual Playroom.command` opens the icon-first interface with separate interactive preview memory. Mint groups touch/company, peach groups play, and lavender groups world controls. Hover for tooltips; information icons reveal detail. The text bubble opens typed requests. Consent, audience choices, and draft review retain necessary text. See [visual-ui.md](visual-ui.md) for exact verification and screenshot provenance, and [sound-effects-brief.md](sound-effects-brief.md) for the audio-worker handoff.
+
 ## Responsive touch
 
 The native solo and lobby now distinguish contact location, stroke speed, duration and

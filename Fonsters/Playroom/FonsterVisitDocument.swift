@@ -51,27 +51,32 @@ struct VisitShareSheet: View {
     @State private var document: FonsterVisitDocument?
     @State private var error: String?
     var body: some View {
-        VStack(alignment: .leading, spacing: 18) {
-            HStack(spacing: 14) {
-                ResolvedPortrait(appearance: member.descriptor).frame(width: 72, height: 72)
-                VStack(alignment: .leading, spacing: 5) {
-                    Text("Send a little company.").font(.system(size: 25, weight: .bold, design: .rounded))
-                    Text("A portable visit from \(member.name)").foregroundStyle(.secondary)
+        VStack(alignment: .leading, spacing: 20) {
+            HStack(spacing: 24) {
+                ResolvedPortrait(appearance: member.descriptor).frame(width: 90, height: 90)
+                Image(systemName: "arrow.right").font(.system(size: 22)).foregroundStyle(FonsterTone.world.ink)
+                Image(systemName: "person.2").font(.system(size: 38)).foregroundStyle(FonsterTone.company.ink)
+                Spacer()
+            }.accessibilityElement(children: .ignore).accessibilityLabel("Save a portable visit from \(member.name) to send to a person you choose")
+            HStack {
+                Text(member.name).font(.system(size: 26, weight: .bold, design: .rounded))
+                Spacer()
+                FonsterInfo(title: "Visit file contents", detail: "Save this file and send it to someone you choose. It contains a random public ID, this appearance, and two personality tendencies. No email, original seed, camera or microphone input, private memories, or friendship list. Feelings and activities don't update across Macs.")
+            }
+            Toggle("Share chosen feeling: \(member.controller.feeling.title)", isOn: $includeFeeling).toggleStyle(.checkbox)
+            Text("Recipients can keep this copy. Ending your visit cannot revoke their file.")
+                .font(.system(size: 12)).foregroundStyle(.secondary)
+            if let error { Text(error).foregroundStyle(.red).font(.system(size: 12)) }
+            HStack {
+                FonsterIconButton(title: "Cancel", symbol: "xmark") { dismiss() }.keyboardShortcut(.cancelAction)
+                Spacer()
+                FonsterIconButton(title: "Save visit file to share", symbol: "square.and.arrow.down", tone: .world) {
+                    do { document = try .init(card: lobby.card(for: member, includeFeeling: includeFeeling)); exporting = true }
+                    catch { self.error = error.localizedDescription }
                 }
             }
-            Text("Save this visit file, then send it to someone you choose. They can invite this snapshot into their Fonsters preview lobby.")
-            Toggle("Include my chosen feeling: \(member.controller.feeling.title)", isOn: $includeFeeling)
-                .toggleStyle(.checkbox)
-            Text("The file contains a random public ID, this appearance and two personality tendencies. It includes no email, original seed, camera or microphone input, private memories, or friendship list.")
-                .font(.system(size: 12)).foregroundStyle(.secondary)
-            Text("A recipient can keep this copy. Ending a local visit doesn't revoke their file. Feelings and activities don't update across Macs in this preview.")
-                .font(.system(size: 12, weight: .medium)).foregroundStyle(.secondary)
-            if let error { Text(error).foregroundStyle(.red).font(.system(size: 12)) }
-            HStack { Button("Cancel") { dismiss() }; Spacer(); Button("Save visit file…") {
-                do { document = try .init(card: lobby.card(for: member, includeFeeling: includeFeeling)); exporting = true }
-                catch { self.error = error.localizedDescription }
-            }.buttonStyle(.borderedProminent) }
-        }.padding(28).frame(width: 510)
+        }.padding(28).frame(width: 450)
+
         .fileExporter(isPresented: $exporting, document: document, contentType: .json,
                       defaultFilename: "\(member.name).fonster") { result in
             switch result { case .success: dismiss(); case .failure: error = "The visit file couldn't be saved. You can try again." }
@@ -86,23 +91,29 @@ struct VisitReviewSheet: View {
     @Environment(\.dismiss) private var dismiss
     @State private var error: String?
     var body: some View {
-        VStack(alignment: .leading, spacing: 18) {
-            HStack(spacing: 16) {
-                ResolvedPortrait(appearance: card.appearance).frame(width: 80, height: 80)
-                VStack(alignment: .leading, spacing: 5) {
-                    Text("Meet \(card.name).").font(.system(size: 26, weight: .bold, design: .rounded))
-                    Text(card.feeling.map { "Chosen feeling: \($0.title)" } ?? "Their owner didn't share a feeling.")
-                        .font(.system(size: 13)).foregroundStyle(.secondary)
-                }
+        VStack(alignment: .leading, spacing: 20) {
+            HStack(spacing: 24) {
+                ResolvedPortrait(appearance: card.appearance).frame(width: 90, height: 90)
+                Image(systemName: "arrow.right").font(.system(size: 22)).foregroundStyle(FonsterTone.world.ink)
+                Image(systemName: "person.3").font(.system(size: 38)).foregroundStyle(FonsterTone.company.ink)
+            }.accessibilityElement(children: .ignore).accessibilityLabel("Invite \(card.name)'s snapshot into this local world")
+            HStack {
+                Text(card.name).font(.system(size: 26, weight: .bold, design: .rounded))
+                if let feeling = card.feeling { FonsterStatus(symbol: feeling.symbol, detail: "Shared chosen feeling: \(feeling.title)", tone: .company) }
+                Spacer()
             }
-            Text("Invite this snapshot to stay with Coral, Moss and Iris. Orbit will make room until you end the visit.")
-            Text("This is a local copy, without live messages or a verified owner. Your camera, microphone, feelings and friendship memories aren't sent anywhere by inviting it.")
+            Text("A local snapshot with an unverified owner. No live messages or private inputs are sent.")
                 .font(.system(size: 12)).foregroundStyle(.secondary)
             if let error { Text(error).foregroundStyle(.red).font(.system(size: 12)) }
-            HStack { Button("Cancel") { dismiss() }; Spacer(); Button("Invite into this lobby") {
-                do { try invite(); dismiss() } catch { self.error = error.localizedDescription }
-            }.buttonStyle(.borderedProminent) }
-        }.padding(28).frame(width: 480)
+            HStack {
+                FonsterIconButton(title: "Cancel", symbol: "xmark") { dismiss() }.keyboardShortcut(.cancelAction)
+                Spacer()
+                FonsterIconButton(title: "Invite into this local lobby", symbol: "person.crop.circle.badge.plus", tone: .company) {
+                    do { try invite(); dismiss() } catch { self.error = error.localizedDescription }
+                }
+            }
+        }.padding(28).frame(width: 450)
+
     }
 }
 #endif

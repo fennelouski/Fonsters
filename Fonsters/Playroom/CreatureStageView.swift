@@ -29,6 +29,7 @@ struct CreatureStageView: View {
 
     private func interactiveStage(size: CGSize) -> some View {
         scene
+            .background(VerificationSceneMarker(entities: touchEntities))
             .onContinuousHover { phase in
                 switch phase {
                 case .active(let p): controller.look([Float(p.x / size.width - 0.5) * 2, Float(0.5 - p.y / size.height) * 2])

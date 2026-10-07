@@ -52,7 +52,13 @@ struct TouchGestureVerification: NSViewRepresentable {
             let args = ProcessInfo.processInfo.arguments
             guard let i = args.firstIndex(of: "--touch-evidence-dir"), i + 1 < args.count else { return }
             let directory = URL(fileURLWithPath: args[i + 1], isDirectory: true)
+            // Restored windows can be key instead of this stage. Replay only
+            // into this app-owned window, with no system pointer events.
+            window.makeKeyAndOrderFront(nil)
+            window.makeFirstResponder(window.contentView)
+            controller.autonomyEnabled = false
             controller.roaming = false
+            try await Task.sleep(for: .milliseconds(350))
             func headPoint(_ x: Float, _ y: Float) -> CGPoint {
                 let h = rig.descriptor.head
                 let local: SIMD3<Float> = [x * Float(h.radius * h.ellipseX) * rig.pixel,
@@ -61,25 +67,16 @@ struct TouchGestureVerification: NSViewRepresentable {
                 return project(rig.head.convert(position: local, to: nil), camera: camera)
             }
             var results: [[String: Any]] = []
-            try await NativeSceneExport.capture(entities, to: directory.appendingPathComponent("touch-00-idle.png"))
-            let recording = Task { @MainActor in
-                let began = ProcessInfo.processInfo.systemUptime
-                var frames: [[String: Any]] = []
-                for frame in 0..<48 {
-                    if Task.isCancelled { break }
-                    let file = String(format: "clip-%03d.png", frame)
-                    let time = (ProcessInfo.processInfo.systemUptime - began) * 1000
-                    do {
-                        try await NativeSceneExport.capture(entities, width: 960, height: 675, to: directory.appendingPathComponent(file))
-                        frames.append(["file": file, "time": time, "segment": "native touch gestures"])
-                        try await Task.sleep(for: .milliseconds(120))
-                    } catch { break }
-                }
-                if let data = try? JSONSerialization.data(withJSONObject: frames, options: [.sortedKeys]) {
-                    try? data.write(to: directory.appendingPathComponent("frames.json"), options: .atomic)
-                }
+            let began = ProcessInfo.processInfo.systemUptime
+            var frames: [[String: Any]] = []
+            func capture(_ filename: String, segment: String) async throws {
+                // Do not run a second renderer while delivering time-sensitive
+                // strokes. Record actual held/settled poses between sequences.
+                let time = (ProcessInfo.processInfo.systemUptime - began) * 1000
+                try await NativeSceneExport.capture(entities, width: 960, height: 675, to: directory.appendingPathComponent(filename))
+                frames.append(["file": filename, "time": time, "segment": segment])
             }
-            defer { recording.cancel() }
+            try await capture("touch-00-idle.png", segment: "idle")
             for (index, duration, startX, endX, y, expected) in [
                 (1, 1.0, Float(-0.22), Float(0.22), Float(0.62), "softStroke"),
                 (2, 0.75, Float(0.15), Float(0.15), Float(0.35), "cuddle"),
@@ -96,9 +93,13 @@ struct TouchGestureVerification: NSViewRepresentable {
                 results.append(["expected": expected, "actual": actual, "captured": controller.touching,
                                 "pass": controller.touching && actual == expected])
                 try await Task.sleep(for: .milliseconds(40))
-                try await NativeSceneExport.capture(entities, to: directory.appendingPathComponent("touch-0\(index)-\(expected).png"))
+                try await capture("touch-0\(index)-\(expected).png", segment: expected)
                 event(.leftMouseUp, headPoint(endX, y))
                 try await Task.sleep(for: .milliseconds(650))
+                try await capture("touch-0\(index)-settled.png", segment: "release")
+            }
+            if let data = try? JSONSerialization.data(withJSONObject: frames, options: [.sortedKeys]) {
+                try? data.write(to: directory.appendingPathComponent("frames.json"), options: .atomic)
             }
             // Actual repeated mouse taps, rather than direct controller calls.
             for _ in 0..<30 {

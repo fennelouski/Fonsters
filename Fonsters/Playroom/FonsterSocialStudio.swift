@@ -28,48 +28,49 @@ struct FonsterSocialStudio: View {
     var body: some View {
         VStack(spacing: 0) {
             HStack {
-                Label("fonsters social", systemImage: "sparkles").font(.system(size: 21, weight: .bold, design: .rounded))
-                Text("THIS MAC").font(.system(size: 9, weight: .bold)).tracking(1).padding(6).background(.white, in: Capsule())
+                Image(systemName: "sparkles.rectangle.stack").font(.system(size: 25)).foregroundStyle(FonsterTone.company.ink)
+                FonsterInfo(title: "Local profiles", detail: "Fictional Fonsters, written locally. Profiles and posts stay on this Mac. No public platform or external agent is connected.")
                 Spacer()
-                Button("Back to the world") { dismiss() }.keyboardShortcut(.cancelAction)
+                FonsterIconButton(title: "Back to the world", symbol: "xmark", tone: .world) { dismiss() }.keyboardShortcut(.cancelAction)
             }.padding(20)
             Divider()
             HStack(alignment: .top, spacing: 0) {
-                sidebar.frame(width: 175)
+                sidebar.frame(width: 106)
                 Divider()
                 ScrollView {
                     VStack(alignment: .leading, spacing: 16) {
                         if let profile {
                             hero(profile)
-                            HStack {
-                                Text(neighborhood ? "Around the neighborhood" : "Little moments").font(.system(size: 19, weight: .bold, design: .rounded))
+                            HStack(spacing: 10) {
+                                FonsterIconButton(title: "Approved local moments", symbol: "rectangle.stack", tone: .company, selected: !review) { review = false }
+                                FonsterIconButton(title: "Review drafts", symbol: "square.and.pencil", tone: .play, selected: review) { review = true }
                                 Spacer()
-                                Picker("Posts", selection: $review) { Text("Local feed").tag(false); Text("Review drafts").tag(true) }.pickerStyle(.segmented).frame(width: 240)
                             }
                             posts
                         } else {
-                            ContentUnavailableView {
-                                Label("A little life to share.", systemImage: "leaf")
-                            } description: {
-                                Text("Give \(member.name) a local profile. Their agent can turn small Fonster adventures into little posts.")
-                            } actions: {
-                                Button("Create \(member.name)'s profile") { attempt { _ = try store.create(id: member.id, name: member.name, owned: !member.isVisitor) }; review = true }
-                                    .buttonStyle(.borderedProminent).disabled(member.isVisitor)
-                            }.frame(height: 430)
+                            VStack(spacing: 20) {
+                                if let fixture = member.localCompanion { FonsterSocialPortrait(companion: fixture).id(member.id).frame(width: 240, height: 290) }
+                                Text(member.name).font(.system(size: 26, weight: .bold, design: .rounded))
+                                FonsterIconButton(title: "Create \(member.name)'s fictional profile on this Mac", symbol: "person.crop.circle.badge.plus", tone: .company) {
+                                    attempt { _ = try store.create(id: member.id, name: member.name, owned: !member.isVisitor) }; review = true
+                                }.disabled(member.isVisitor)
+                            }.frame(maxWidth: .infinity).frame(height: 480)
+
                         }
                     }.padding(20)
                 }
                 Divider()
-                controls.frame(width: 225)
+                controls.frame(width: 205)
             }
             Divider()
             HStack {
-                Label("Fictional Fonsters · locally written · no public platform connected", systemImage: "lock")
+                FonsterStatus(symbol: "lock", detail: "Fictional Fonsters; local agent voice; no public platform connected", tone: .company)
                 Spacer()
-                Text(store.status)
-            }.font(.system(size: 10)).foregroundStyle(.secondary).padding(14)
+                FonsterInfo(title: "Local notebook status", detail: store.status)
+            }.padding(.horizontal, 18).padding(.vertical, 8)
+
         }.frame(width: 1040, height: 690).background(Color(red: 0.97, green: 0.97, blue: 0.94)).foregroundStyle(ink).preferredColorScheme(.light)
-            .background(VerificationWindowCapture().frame(width: 0, height: 0))
+            .background(VerificationWindowCapture(label: "social").frame(width: 0, height: 0))
             .fileExporter(isPresented: $exporting, document: document, contentType: .json, defaultFilename: "\(member.name).fonster-social-review") { result in
                 if case .failure(let failure) = result, (failure as NSError).code != NSUserCancelledError { error = "The review file couldn't be saved." }
             }
@@ -78,59 +79,48 @@ struct FonsterSocialStudio: View {
             } message: { Text(error ?? "") }
     }
     private var sidebar: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            Button { neighborhood = true; review = false } label: { Label("Neighborhood", systemImage: "house") }.font(.system(size: 11, weight: .semibold)).accessibilityLabel("Neighborhood feed")
-            Text("LITTLE PRESENCES").font(.system(size: 9, weight: .bold)).tracking(1).foregroundStyle(.secondary)
+        VStack(spacing: 16) {
+            FonsterIconButton(title: "Neighborhood feed", symbol: "house", tone: .world, selected: neighborhood) { neighborhood = true; review = false }
             ScrollView {
-                VStack(spacing: 5) {
+                VStack(spacing: 12) {
                     ForEach(lobby.members.filter { !$0.isVisitor }) { companion in
-                        Button {
-                            if let index = lobby.members.firstIndex(where: { $0.id == companion.id }) { lobby.selected = index }; neighborhood = false
-                        } label: {
-                            HStack(spacing: 9) {
-                                ResolvedPortrait(appearance: companion.descriptor).frame(width: 29, height: 29).padding(5).background(.white, in: RoundedRectangle(cornerRadius: 10))
-                                VStack(alignment: .leading, spacing: 2) {
-                                    Text(companion.name).font(.system(size: 12, weight: .semibold, design: .rounded))
-                                    Text(store.profile(companion.id) == nil ? "Create a profile" : "Local Fonster").font(.system(size: 9)).foregroundStyle(.secondary)
-                                }
-                                Spacer(minLength: 0)
-                            }.padding(5).background(companion.id == member.id && !neighborhood ? Color.green.opacity(0.09) : .clear, in: RoundedRectangle(cornerRadius: 13))
-                        }.buttonStyle(.plain).accessibilityLabel("\(companion.name)'s local social profile")
-                            .accessibilityAddTraits(companion.id == member.id && !neighborhood ? .isSelected : [])
+                        FonsterPortraitChoice(name: "\(companion.name)'s local profile", selected: companion.id == member.id && !neighborhood,
+                            portrait: { ResolvedPortrait(appearance: companion.descriptor) }, action: {
+                                if let index = lobby.members.firstIndex(where: { $0.id == companion.id }) { lobby.selected = index }; neighborhood = false
+                            })
                     }
-                }
+                }.padding(4)
             }
         }.padding(14)
     }
     private func hero(_ profile: FonsterSocialProfile) -> some View {
-        HStack(spacing: 14) {
-            if let fixture = member.localCompanion { FonsterSocialPortrait(companion: fixture).id(member.id).frame(width: 140, height: 160) }
-            VStack(alignment: .leading, spacing: 8) {
-                HStack(spacing: 8) {
-                    Text(profile.name).font(.system(size: 29, weight: .bold, design: .rounded))
-                    ResolvedPortrait(appearance: member.descriptor).frame(width: 25, height: 25).padding(5).background(.white.opacity(0.7), in: RoundedRectangle(cornerRadius: 9))
-                        .accessibilityLabel("Original two dimensional portrait")
+        HStack(spacing: 20) {
+            if let fixture = member.localCompanion { FonsterSocialPortrait(companion: fixture).id(member.id).frame(width: 170, height: 195) }
+            VStack(alignment: .leading, spacing: 16) {
+                Text(profile.name).font(.system(size: 30, weight: .bold, design: .rounded))
+                HStack(spacing: 12) {
+                    ResolvedPortrait(appearance: member.descriptor).frame(width: 32, height: 32).padding(8)
+                        .background(.white.opacity(0.7), in: RoundedRectangle(cornerRadius: 12)).accessibilityLabel("Original two dimensional portrait")
+                    FonsterInfo(title: "Profile identity and voice", detail: "@\(profile.handle)\n\(profile.voice.bio)\nFictional character; local agent voice.")
                 }
-                Text("@\(profile.handle)").font(.system(size: 11)).foregroundStyle(.secondary).textSelection(.enabled)
-                Text(profile.voice.bio).font(.system(size: 12)).fixedSize(horizontal: false, vertical: true)
-                Label("Fictional character · local agent voice", systemImage: "sparkles").font(.system(size: 10, weight: .medium)).foregroundStyle(.secondary)
-                Text("\(profile.posts.filter { $0.state == .localFeed }.count) local moments · \(profile.posts.filter { $0.state == .draft }.count) drafts")
-                    .font(.system(size: 10)).foregroundStyle(.secondary)
+                HStack(spacing: 18) {
+                    Label("\(profile.posts.filter { $0.state == .localFeed }.count)", systemImage: "rectangle.stack")
+                    Label("\(profile.posts.filter { $0.state == .draft }.count)", systemImage: "square.and.pencil")
+                }.font(.system(size: 12, weight: .medium))
+                    .accessibilityLabel("\(profile.posts.filter { $0.state == .localFeed }.count) local moments, \(profile.posts.filter { $0.state == .draft }.count) drafts")
             }
             Spacer(minLength: 0)
-        }.padding(12).background(LinearGradient(colors: [Color(red: 0.83, green: 0.92, blue: 0.85), Color(red: 0.97, green: 0.91, blue: 0.80)], startPoint: .topLeading, endPoint: .bottomTrailing), in: RoundedRectangle(cornerRadius: 24))
+        }.padding(16).background(LinearGradient(colors: [Color(red: 0.83, green: 0.92, blue: 0.85), Color(red: 0.97, green: 0.91, blue: 0.80)], startPoint: .topLeading, endPoint: .bottomTrailing), in: RoundedRectangle(cornerRadius: 24))
     }
     private var displayedProfiles: [FonsterSocialProfile] { neighborhood ? store.profiles : profile.map { [$0] } ?? [] }
     private var posts: some View {
         let moments = displayedProfiles.flatMap { profile in profile.posts.filter { $0.state == (review ? .draft : .localFeed) }.map { (profile, $0) } }.sorted { $0.1.event.date > $1.1.event.date }
         return VStack(spacing: 11) {
             if moments.isEmpty {
-                VStack(spacing: 10) {
-                    Image(systemName: review ? "square.and.pencil" : "leaf").font(.system(size: 28)).foregroundStyle(.green.opacity(0.65))
-                    Text(review ? "New moments will wait here." : "A small world, a fresh page.").font(.system(size: 16, weight: .medium, design: .rounded))
-                    Text(review ? "Review a draft, then choose Add to local feed." : "Try a hello or a little game, then let the writer make a draft.")
-                        .font(.system(size: 11)).foregroundStyle(.secondary).multilineTextAlignment(.center)
-                }.frame(maxWidth: .infinity).padding(28)
+                Image(systemName: review ? "square.and.pencil" : "leaf").font(.system(size: 32)).foregroundStyle(FonsterTone.company.ink.opacity(0.6))
+                    .frame(maxWidth: .infinity).padding(32)
+                    .accessibilityLabel(review ? "No new drafts. Make a moment, then draft it." : "No approved local moments yet.")
+
             }
             ForEach(moments, id: \.1.id) { item in
                 FonsterSocialPostCard(profile: item.0, post: item.1, store: store, onError: { error = $0 })
@@ -139,55 +129,59 @@ struct FonsterSocialStudio: View {
     }
     private var controls: some View {
         ScrollView {
-            VStack(alignment: .leading, spacing: 15) {
-                Text("THE LITTLE WRITER").font(.system(size: 9, weight: .bold)).tracking(1).foregroundStyle(.secondary)
-                Label(lobby.presence.running ? "Agent on" : "You're in control", systemImage: lobby.presence.running ? "sparkles" : "hand.raised")
-                    .font(.system(size: 15, weight: .semibold, design: .rounded))
-                Text(lobby.presence.message).font(.system(size: 11)).foregroundStyle(.secondary)
+            VStack(alignment: .leading, spacing: 20) {
+                HStack {
+                    FonsterStatus(symbol: lobby.presence.running ? "sparkles" : "hand.raised", detail: lobby.presence.message, tone: .company)
+                    Spacer()
+                    FonsterInfo(title: "Local writer and publishing", detail: "The writer runs while Fonsters is open and active. Pause, Still mode, Reduce Motion, background, and Low Power hold it. Creature controls take over immediately. One post a minute; six this session; twenty-four a day. No generation cost. Public connections need a chosen account and owner approval.")
+                }
                 if let profile {
-                    Picker("Voice", selection: Binding(get: { profile.voice }, set: { lobby.presence.stop(lobby: lobby); store.setVoice($0, id: member.id) })) {
-                        ForEach(FonsterSocialVoice.allCases) { Text($0.title).tag($0) }
-                    }.font(.system(size: 11))
+                    HStack(spacing: 8) {
+                        ForEach(FonsterSocialVoice.allCases) { voice in
+                            FonsterIconButton(title: "\(voice.title) writing voice", symbol: voiceSymbol(voice), tone: .company, selected: profile.voice == voice) {
+                                lobby.presence.stop(lobby: lobby); store.setVoice(voice, id: member.id)
+                            }
+                        }
+                    }.accessibilityElement(children: .contain).accessibilityLabel("Writing voice")
+                    // Publishing is a meaningful consent choice: keep its actual audience visible.
                     Picker("New posts", selection: Binding(get: { lobby.presence.mode }, set: { lobby.presence.setMode($0, lobby: lobby) })) {
                         ForEach(FonsterSocialDirector.Mode.allCases) { Text($0.title).tag($0) }
-                    }.font(.system(size: 11))
-                    Text("CONTENT CHOICES").font(.system(size: 9, weight: .bold)).tracking(1).foregroundStyle(.secondary)
-                    ForEach(FonsterSocialCategory.allCases) { category in
-                        Toggle(category.title, isOn: Binding(get: { profile.categories.contains(category) }, set: {
-                            lobby.presence.stop(lobby: lobby); store.setCategory(category, enabled: $0, id: member.id)
-                        })).toggleStyle(.checkbox).font(.system(size: 11))
-                    }
-                    Button(lobby.presence.running ? "Pause profile agent" : "Start local profile agent") {
-                        attempt {
-                            if lobby.presence.running { lobby.presence.stop(lobby: lobby) }
-                            else { try lobby.presence.start(lobby: lobby); dismiss() }
+                    }.pickerStyle(.radioGroup).labelsHidden().font(.system(size: 11))
+                        .accessibilityLabel("How new posts enter this Mac’s local feed")
+                    LazyVGrid(columns: [GridItem(.fixed(44)), GridItem(.fixed(44))], spacing: 12) {
+                        ForEach(FonsterSocialCategory.allCases) { category in
+                            FonsterIconToggle(title: "Include \(category.title.lowercased())", symbol: categorySymbol(category), tone: .play,
+                                isOn: Binding(get: { profile.categories.contains(category) }, set: {
+                                    lobby.presence.stop(lobby: lobby); store.setCategory(category, enabled: $0, id: member.id)
+                                }))
                         }
-                    }.buttonStyle(.borderedProminent).font(.system(size: 11)).disabled(member.isVisitor)
-                    Button("Draft a new moment") { attempt { _ = try store.makeDraft(id: member.id) }; review = true }
-                        .font(.system(size: 10))
-                    Text("Runs while Fonsters is open and active. Pause, Still mode, Reduce Motion, background, and Low Power hold the agent. Creature controls take over immediately.")
-                        .font(.system(size: 10)).foregroundStyle(.secondary)
-                    Text("One post a minute · six this session · twenty-four a day. No generation cost.")
-                        .font(.system(size: 10)).foregroundStyle(.secondary)
+                    }.accessibilityElement(children: .contain).accessibilityLabel("Fictional content choices")
+                    HStack(spacing: 8) {
+                        FonsterIconButton(title: lobby.presence.running ? "Pause local profile agent" : "Start local profile agent", symbol: lobby.presence.running ? "pause.fill" : "play.fill", tone: .company, selected: lobby.presence.running) {
+                            attempt {
+                                if lobby.presence.running { lobby.presence.stop(lobby: lobby) }
+                                else { try lobby.presence.start(lobby: lobby); dismiss() }
+                            }
+                        }.disabled(member.isVisitor)
+                        FonsterIconButton(title: "Draft a new fictional moment for review", symbol: "square.and.pencil", tone: .play) { attempt { _ = try store.makeDraft(id: member.id) }; review = true }
+                    }
                     Divider()
-                    Text("DESTINATIONS").font(.system(size: 9, weight: .bold)).tracking(1).foregroundStyle(.secondary)
-                    ForEach(FonsterSocialDestination.allCases) { destination in
-                        HStack {
-                            Image(systemName: destination.implemented ? "checkmark.circle" : "circle.dashed").foregroundStyle(destination.implemented ? .green : .secondary)
-                            Text(destination.title).font(.system(size: 10))
-                            Spacer(minLength: 0)
+                    HStack(spacing: 8) {
+                        FonsterIconButton(title: "Save a seed-free fictional profile review file", symbol: "square.and.arrow.up", tone: .world) {
+                            attempt { document = try .init(profile: profile, card: lobby.card(for: member, includeFeeling: false)); exporting = true }
                         }
+                        FonsterInfo(title: "What is shared", detail: "Includes this fictional profile, its seed-free appearance, and approved local posts. Drafts and private feelings stay here. Bluesky and Mastodon are planned; no public platform is connected.")
                     }
-                    Text("Bluesky and Mastodon are planned connections. Public posting needs a chosen account, content policy, and owner approval.")
-                        .font(.system(size: 10)).foregroundStyle(.secondary)
-                    Button("Save profile review file…") {
-                        attempt { document = try .init(profile: profile, card: lobby.card(for: member, includeFeeling: false)); exporting = true }
-                    }.font(.system(size: 10))
-                    Text("Includes this fictional profile, its seed-free appearance, and approved local posts. Drafts and private feelings stay here.")
-                        .font(.system(size: 10)).foregroundStyle(.secondary)
+                    FonsterStatus(symbol: "lock", detail: "No public platform connected. Local feed and review-file export are available.")
                 }
             }.padding(16)
         }
+    }
+    private func voiceSymbol(_ voice: FonsterSocialVoice) -> String {
+        switch voice { case .warm: "heart"; case .playful: "sparkles"; case .dreamy: "moon.stars" }
+    }
+    private func categorySymbol(_ category: FonsterSocialCategory) -> String {
+        switch category { case .adventures: "leaf"; case .play: "tennisball"; case .company: "person.2"; case .quiet: "moon" }
     }
     private func attempt(_ action: () throws -> Void) {
         do { try action(); error = nil } catch { self.error = error.localizedDescription }
@@ -231,28 +225,36 @@ private struct FonsterSocialPostCard: View {
     let post: FonsterSocialPost
     let store: FonsterSocialStore
     let onError: (String) -> Void
+    @State private var showsCaption = false
     var body: some View {
-        VStack(alignment: .leading, spacing: 10) {
-            HStack {
-                Image(systemName: post.event.symbol).foregroundStyle(.green)
-                Text(profile.name).font(.system(size: 12, weight: .bold, design: .rounded))
-                Text(post.event.title).font(.system(size: 10)).foregroundStyle(.secondary)
+        VStack(alignment: .leading, spacing: 12) {
+            HStack(spacing: 14) {
+                Image(systemName: post.event.symbol).font(.system(size: 27)).foregroundStyle(FonsterTone.company.ink)
+                    .frame(width: 46, height: 46).background(FonsterTone.company.wash, in: RoundedRectangle(cornerRadius: 15))
+                    .help(post.event.title).accessibilityLabel(post.event.title)
+                Text(profile.name).font(.system(size: 14, weight: .bold, design: .rounded))
                 Spacer()
-                Text(post.event.date, style: .time).font(.system(size: 9)).foregroundStyle(.secondary)
+                if post.state != .draft {
+                    FonsterIconButton(title: "Read this moment", symbol: "text.bubble", tone: .company, selected: showsCaption) { showsCaption.toggle() }
+                }
+                FonsterInfo(title: "Moment source", detail: post.event.title + "\n" + post.event.source.title + "\nLocally written. " + post.event.date.formatted())
             }
-            Text(post.text(name: profile.name)).font(.system(size: 13)).lineSpacing(3).fixedSize(horizontal: false, vertical: true).textSelection(.enabled)
-            Text("Locally written · \(post.event.source.title)").font(.system(size: 9)).foregroundStyle(.secondary)
+            if post.state == .draft || showsCaption {
+                Text(post.text(name: profile.name)).font(.system(size: 13)).lineSpacing(3).fixedSize(horizontal: false, vertical: true).textSelection(.enabled)
+            }
             if post.state == .draft {
-                HStack {
-                    Button("Add to local feed") {
+                HStack(spacing: 10) {
+                    FonsterIconButton(title: "Approve this draft for this Mac's local feed", symbol: "checkmark", tone: .company) {
                         do { try FonsterLocalFeedAdapter().publish(post.id, profileID: profile.fonsterID, store: store) } catch { onError(error.localizedDescription) }
-                    }.buttonStyle(.borderedProminent)
-                    Button("Pass this one") { store.pass(postID: post.id, id: profile.fonsterID) }
+                    }
+                    FonsterIconButton(title: "Pass this draft", symbol: "xmark") { store.pass(postID: post.id, id: profile.fonsterID) }
                     Spacer()
-                }.font(.system(size: 10))
+                    Text("This Mac only").font(.system(size: 10)).foregroundStyle(.secondary)
+                }
             }
-        }.padding(16).frame(maxWidth: .infinity, alignment: .leading).background(.white.opacity(0.9), in: RoundedRectangle(cornerRadius: 18))
+        }.padding(16).frame(maxWidth: .infinity, alignment: .leading).background(.white.opacity(0.9), in: RoundedRectangle(cornerRadius: 20))
             .accessibilityElement(children: .contain)
+
     }
 }
 #endif

@@ -14,6 +14,7 @@ struct PlayroomView: View {
     @State private var selection = 0
     @State private var exportMessage: String?
     @State private var showsPersonality = false
+    @State private var showsCommand = false
     @State private var interpreter = TypedActionInterpreter()
     @State private var typingRequest = false
     private let ink = Color(red: 0.19, green: 0.15, blue: 0.27)
@@ -23,7 +24,7 @@ struct PlayroomView: View {
     var body: some View {
         HStack(spacing: 0) {
             sidebar
-                .frame(width: 206)
+                .frame(width: 104)
             Rectangle().fill(ink.opacity(0.09)).frame(width: 1)
             VStack(alignment: .leading, spacing: 14) {
                 header
@@ -33,11 +34,11 @@ struct PlayroomView: View {
             }
             .padding(22)
         }
-        .frame(minWidth: 950, minHeight: 740)
+        .frame(minWidth: 950, minHeight: 700)
         .background(Color(red: 0.98, green: 0.97, blue: 0.95))
         .foregroundStyle(ink)
         .preferredColorScheme(.light)
-        .background(VerificationWindowCapture().frame(width: 0, height: 0))
+        .background(VerificationWindowCapture(label: "playroom").frame(width: 0, height: 0))
         .task(id: controller.shouldAnimate) {
             if controller.shouldAnimate { await controller.animate() }
             else { controller.refreshStillPose() }
@@ -69,114 +70,77 @@ struct PlayroomView: View {
     }
 
     private var sidebar: some View {
-        VStack(alignment: .leading, spacing: 20) {
-            VStack(alignment: .leading, spacing: 5) {
-                Label("FONSTERS", systemImage: "sparkle")
-                    .font(.system(size: 13, weight: .black, design: .rounded)).tracking(2)
-                Text("Fuzzy monsters")
-                    .font(.system(size: 22, weight: .semibold, design: .rounded))
-                Text("Fluffy little friends, in 3D.")
-                    .font(.system(size: 12)).foregroundStyle(ink.opacity(0.55))
-            }.padding(.horizontal, 18).padding(.top, 22)
+        VStack(spacing: 18) {
+            Image(systemName: "sparkle").font(.system(size: 26, weight: .medium))
+                .foregroundStyle(accent).padding(.top, 26).accessibilityLabel("Fonsters")
             ScrollView {
-                VStack(spacing: 6) {
+                VStack(spacing: 12) {
                     ForEach(companions) { companion in
-                        Button {
-                            if let index = companions.firstIndex(where: { $0.id == companion.id }) {
-                                if index == selection { controller.perform(.greet, name: companion.name) }
-                                else {
-                                    controller.rendererReady = false; controller.rig = nil
-                                    controller.rendererError = nil
-                                    selection = index; exportMessage = nil
+                        FonsterPortraitChoice(name: "Meet \(companion.name)", selected: selected.id == companion.id,
+                            portrait: { CreatureAvatarView(seed: companion.seed, size: 48) }, action: {
+                                if let index = companions.firstIndex(where: { $0.id == companion.id }) {
+                                    if index == selection { controller.perform(.greet, name: companion.name) }
+                                    else {
+                                        controller.rendererReady = false; controller.rig = nil; controller.rendererError = nil
+                                        selection = index; exportMessage = nil
+                                    }
                                 }
-                            }
-                        } label: {
-                            HStack(spacing: 12) {
-                                CreatureAvatarView(seed: companion.seed, size: 42)
-                                    .padding(4).background(.white.opacity(0.75), in: RoundedRectangle(cornerRadius: 13))
-                                VStack(alignment: .leading, spacing: 3) {
-                                    Text(companion.name).font(.system(size: 14, weight: .semibold, design: .rounded))
-                                    Text(selection == companions.firstIndex(where: { $0.id == companion.id }) ? "Here with you" : "Come say hello")
-                                        .font(.system(size: 10)).foregroundStyle(ink.opacity(0.48))
-                                }
-                                Spacer(minLength: 0)
-                            }
-                            .padding(.horizontal, 10).padding(.vertical, 7)
-                            .background(selected.id == companion.id ? accent.opacity(0.11) : .clear, in: RoundedRectangle(cornerRadius: 16))
-                        }
-                        .buttonStyle(.plain)
-                        .accessibilityLabel("Meet \(companion.name)")
-                        .accessibilityAddTraits(selected.id == companion.id ? .isSelected : [])
+                            })
                     }
-                }.padding(.horizontal, 10)
+                }.padding(.horizontal, 14).padding(.vertical, 4)
             }
-            Text("Just company.\nNo chores, no clocks.")
-                .font(.system(size: 12, weight: .medium, design: .rounded))
-                .foregroundStyle(ink.opacity(0.45)).lineSpacing(4)
-                .padding(.horizontal, 20).padding(.bottom, 20)
-        }
-        .background(Color(red: 0.95, green: 0.93, blue: 0.92))
+            FonsterInfo(title: "About the Playroom", detail: "Choose a portrait, then touch your Fonster. Stroke the fluff, hold for a cuddle, or tap a paw for a high five. The original portrait beside it stays unchanged. Your companion is always happy when you return.")
+                .padding(.bottom, 16)
+        }.background(Color(red: 0.95, green: 0.93, blue: 0.92))
     }
 
     private var header: some View {
-        HStack(alignment: .top) {
-            VStack(alignment: .leading, spacing: 5) {
-                Text("Meet \(selected.name).")
-                    .font(.system(size: 32, weight: .bold, design: .rounded))
-                Text(selected.note).font(.system(size: 14)).foregroundStyle(ink.opacity(0.55))
-            }
+        HStack(spacing: 10) {
+            Text(selected.name).font(.system(size: 28, weight: .bold, design: .rounded))
             Spacer()
-            Button {
-                controller.paused = true; interpreter.cancel()
-                openWindow(id: "lobby")
-            } label: { Label("Lobby", systemImage: "person.3") }
-                .buttonStyle(.bordered).help("A local hangout for four preview Fonsters.")
-            Button { showsPersonality.toggle() } label: {
-                Label("Personality", systemImage: "heart.text.square")
-                    .font(.system(size: 12, weight: .medium))
+            FonsterIconButton(title: "Open the local world", symbol: "person.3", tone: .world) {
+                controller.paused = true; interpreter.cancel(); openWindow(id: "lobby")
             }
-            .buttonStyle(.bordered)
-            .popover(isPresented: $showsPersonality) { personalityCard }
-            Label("THE PLAYROOM", systemImage: "cube.transparent")
-                .font(.system(size: 10, weight: .bold)).tracking(1.3)
-                .padding(.horizontal, 12).padding(.vertical, 9)
-                .background(accent.opacity(0.09), in: Capsule())
-                .padding(.top, 6)
+            FonsterIconButton(title: "\(selected.name)'s developing personality", symbol: "heart.text.square", tone: .company, selected: showsPersonality) { showsPersonality.toggle() }
+                .popover(isPresented: $showsPersonality) { personalityCard }
         }
     }
 
     private var personalityCard: some View {
-        VStack(alignment: .leading, spacing: 16) {
-            Text("Getting to know \(selected.name)")
-                .font(.system(size: 23, weight: .semibold, design: .rounded))
-            Text(controller.personality?.naturalQuirk ?? selected.note)
-                .foregroundStyle(.secondary)
-            ForEach(controller.personality?.observations(name: selected.name) ?? [], id: \.self) { observation in
-                Label(observation, systemImage: "sparkle")
-                    .font(.system(size: 13)).fixedSize(horizontal: false, vertical: true)
+        VStack(spacing: 20) {
+            CreatureAvatarView(seed: selected.seed, size: 72)
+            Text(selected.name).font(.system(size: 24, weight: .semibold, design: .rounded))
+            if let personality = controller.personality {
+                HStack(spacing: 16) {
+                    Image(systemName: "heart.fill").foregroundStyle(FonsterTone.company.ink)
+                    ProgressView(value: personality.greetingWarmth).tint(FonsterTone.company.ink)
+                        .accessibilityLabel("Greeting warmth").accessibilityValue("\(Int(personality.greetingWarmth * 100)) percent")
+                    FonsterInfo(title: "Greeting warmth", detail: personality.naturalQuirk + " Your shared hellos gradually shape how warmly your Fonster greets you.")
+                }
+                HStack(spacing: 16) {
+                    Image(systemName: "tennisball.fill").foregroundStyle(FonsterTone.play.ink)
+                    ProgressView(value: personality.playEnergy).tint(FonsterTone.play.ink)
+                        .accessibilityLabel("Play energy").accessibilityValue("\(Int(personality.playEnergy * 100)) percent")
+                    FonsterInfo(title: "Shared rituals", detail: personality.observations(name: selected.name).joined(separator: "\n") + "\n" + controller.memoryStatus)
+                }
+                HStack(spacing: 24) {
+                    Label("\(personality.hellos)", systemImage: "hand.wave")
+                    Label("\(personality.games)", systemImage: "tennisball")
+                    Label("\(personality.rests)", systemImage: "moon")
+                }.font(.system(size: 13, weight: .medium)).accessibilityLabel("\(personality.hellos) shared hellos, \(personality.games) games, \(personality.rests) quiet moments")
             }
             Divider()
-            Text("Find a favorite voice")
-                .font(.system(size: 15, weight: .semibold, design: .rounded))
-            Text("Hear a chirp, then give one a heart. It becomes part of your shared hello.")
-                .font(.system(size: 12)).foregroundStyle(.secondary)
-            ForEach(0..<3, id: \.self) { variant in
-                HStack {
-                    Text(CreaturePersonality.soundNames[variant]).font(.system(size: 13, weight: .medium))
-                    Spacer()
-                    Button { controller.auditionSound(variant) } label: { Label("Hear", systemImage: "speaker.wave.2") }
-                        .disabled(!controller.soundEnabled || controller.paused || controller.backgrounded)
-                        .help("Turn Sounds on to hear this chirp.")
-                    Button { controller.likeSound(variant) } label: {
-                        Image(systemName: controller.personality?.favoriteSound == variant ? "heart.fill" : "heart")
-                    }.accessibilityLabel("Prefer the \(CreaturePersonality.soundNames[variant].lowercased()) voice")
-                }.buttonStyle(.bordered).controlSize(.small)
+            HStack(spacing: 18) {
+                ForEach(0..<3, id: \.self) { variant in
+                    VStack(spacing: 8) {
+                        FonsterIconButton(title: "Hear the \(CreaturePersonality.soundNames[variant].lowercased()) voice", symbol: ["waveform", "waveform.path", "waveform.path.ecg"][variant], tone: .play) { controller.auditionSound(variant) }
+                            .disabled(!controller.soundEnabled || controller.paused || controller.backgrounded)
+                        FonsterIconButton(title: "Prefer the \(CreaturePersonality.soundNames[variant].lowercased()) voice", symbol: "heart", tone: .company, selected: controller.personality?.favoriteSound == variant) { controller.likeSound(variant) }
+                    }
+                }
             }
-            Text("Hellos, games and quiet moments slowly shape your companion. It’s always happy when you return.")
-                .font(.system(size: 12)).foregroundStyle(.secondary)
-            Text(controller.memoryStatus).font(.system(size: 10)).foregroundStyle(.secondary)
-        }
-        .padding(24).frame(width: 390).foregroundStyle(ink)
+            FonsterInfo(title: "Favorite voice", detail: "With sound enabled, hear each voice and give your favorite a heart. Hellos, games, and quiet moments slowly shape your companion; there are no chores or care penalties.")
+        }.padding(24).frame(width: 320).foregroundStyle(ink)
     }
 
     private var stage: some View {
@@ -195,159 +159,109 @@ struct PlayroomView: View {
                             .font(.callout).multilineTextAlignment(.center).padding(.horizontal, 20)
                     }.frame(maxWidth: .infinity, maxHeight: .infinity)
                 }
-                Label("A LITTLE MORE ALIVE", systemImage: "cube.fill")
-                    .font(.system(size: 9, weight: .bold)).tracking(1.5)
-                    .foregroundStyle(ink.opacity(0.48)).padding(20)
-                VStack {
-                    Spacer()
-                    HStack {
-                        Spacer()
-                        Text("Stroke the fluff · hold for a cuddle · tap a paw for a high five")
-                            .font(.system(size: 11)).foregroundStyle(ink.opacity(0.47))
-                        Spacer()
-                    }.padding(.bottom, 16)
-                }.allowsHitTesting(false)
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity)
-            VStack(alignment: .leading, spacing: 16) {
-                Text("THE ORIGINAL").font(.system(size: 9, weight: .bold)).tracking(1.6).foregroundStyle(ink.opacity(0.45))
-                CreatureAvatarView(seed: selected.seed, size: 140)
-                    .frame(width: 156, height: 156)
+            VStack(spacing: 18) {
+                Image(systemName: "square.grid.3x3").font(.system(size: 18)).foregroundStyle(ink.opacity(0.55))
+                    .accessibilityLabel("Original two dimensional portrait")
+                CreatureAvatarView(seed: selected.seed, size: 104)
+                    .frame(width: 116, height: 116)
                     .background(Color(red: 0.94, green: 0.92, blue: 0.91), in: RoundedRectangle(cornerRadius: 18))
-                    .accessibilityHidden(false)
                     .accessibilityLabel("Original 32 by 32 portrait of \(selected.name)")
-                Text("Same little soul.")
-                    .font(.system(size: 17, weight: .semibold, design: .rounded))
-                Text("The familiar silhouette, colors and tiny details, given a little depth.")
-                    .font(.system(size: 12)).foregroundStyle(ink.opacity(0.58)).lineSpacing(3)
-                Spacer(minLength: 4)
-                HStack(spacing: 7) {
+                HStack(spacing: 6) {
                     ForEach(Array(selected.descriptor.rgbaPalette.prefix(selected.descriptor.palette.count).enumerated()), id: \.offset) { _, p in
-                        Circle().fill(Color(red: Double(p[0]) / 255, green: Double(p[1]) / 255, blue: Double(p[2]) / 255))
-                            .frame(width: 16, height: 16)
+                        Circle().fill(Color(red: Double(p[0]) / 255, green: Double(p[1]) / 255, blue: Double(p[2]) / 255)).frame(width: 12, height: 12)
                     }
                 }.accessibilityLabel("Original color palette")
+                Spacer(minLength: 0)
                 Menu {
                     Button("Save original PNG…") { exportPNG() }
                     Button("Save evolution GIF…") { exportGIF() }
-                } label: {
-                    Label("Save portrait", systemImage: "square.and.arrow.down")
-                        .font(.system(size: 12, weight: .medium))
-                }
-                .menuStyle(.borderlessButton)
-                .accessibilityLabel("Save original two dimensional portrait")
-                Text("32 × 32 · legacy appearance")
-                    .font(.system(size: 9)).foregroundStyle(ink.opacity(0.4))
-            }
-            .padding(20).frame(width: 196)
-            .frame(maxHeight: .infinity)
-            .background(.white.opacity(0.72), in: RoundedRectangle(cornerRadius: 24))
+                } label: { FonsterIcon(symbol: "square.and.arrow.down", tone: .world) }
+                    .menuStyle(.borderlessButton).menuIndicator(.hidden)
+                    .frame(width: 44, height: 44).background(FonsterTone.world.wash, in: RoundedRectangle(cornerRadius: 14))
+                    .help("Save original PNG or evolution GIF").accessibilityLabel("Save original portrait")
+            }.padding(14).frame(width: 144).frame(maxHeight: .infinity)
+                .background(.white.opacity(0.72), in: RoundedRectangle(cornerRadius: 24))
         }.frame(minHeight: 260, maxHeight: .infinity)
     }
 
     private var controls: some View {
-        VStack(alignment: .leading, spacing: 10) {
-            HStack(spacing: 9) {
-                reactionButton("Say hello", "hand.wave", .greet, "h")
-                reactionButton("Play", "sparkles", .play, "p")
-                reactionButton("Rest", "moon", .rest, "r")
-                reactionButton("Blink", "eye", .blink, "b")
-                reactionButton("Look", "eyes", .look, "l")
-            }
-            HStack(spacing: 7) {
-                littleReaction("Hop", "hare", .hop)
-                littleReaction("Twirl", "arrow.trianglehead.2.clockwise.rotate.90", .spin)
-                littleReaction("Stretch", "figure.flexibility", .stretch)
-                littleReaction("High five", "hand.raised", .highFive)
-                littleReaction("Gentle rub", "heart", .rub)
-                littleReaction("Toss ball", "circle.dotted", .fetch)
-                Button { controller.followPointer() } label: {
-                    Label(controller.followingPointer ? "Following" : "Follow", systemImage: "cursorarrow.rays")
-                }.buttonStyle(.bordered).tint(controller.followingPointer ? accent : nil)
-            }.font(.system(size: 11)).controlSize(.small)
-            HStack(spacing: 10) {
-                Image(systemName: "rotate.3d").font(.system(size: 14))
-                Text("Turn").font(.system(size: 12, weight: .medium))
-                Slider(value: $controller.orbit, in: -180...180)
-                    .tint(accent).frame(maxWidth: 190)
-                    .accessibilityLabel("Turn \(selected.name) in three dimensions")
-                Text("\(Int(controller.orbit))°").font(.system(size: 10, design: .monospaced)).frame(width: 36)
-                Spacer()
-                Toggle("Wander", isOn: Binding(get: { controller.roaming }, set: { controller.setRoaming($0) }))
-                    .toggleStyle(.checkbox).font(.system(size: 12))
-                Toggle("Still mode", isOn: $controller.staticMode)
-                    .toggleStyle(.checkbox).font(.system(size: 12))
-                Button {
-                    controller.paused.toggle()
-                } label: {
-                    Label(controller.paused ? "Resume" : "Pause", systemImage: controller.paused ? "play.fill" : "pause.fill")
-                        .font(.system(size: 12))
+        VStack(spacing: 10) {
+            HStack(spacing: 12) {
+                FonsterControlGroup(title: "Touch and company", tone: .company) {
+                    reactionButton("Say hello", "hand.wave", .greet, "h", .company)
+                    littleReaction("Gentle rub", "heart", .rub, .company)
+                    littleReaction("High five", "hand.raised", .highFive, .company)
                 }
-                .buttonStyle(.bordered).keyboardShortcut(typingRequest ? nil : KeyboardShortcut(.space, modifiers: []))
-                .accessibilityLabel(controller.paused ? "Resume motion" : "Pause motion")
-            }.foregroundStyle(ink.opacity(0.65))
-            inputControls
-            CreatureCommandBar(interpreter: interpreter, selected: selected.name, names: [selected.name],
-                               revision: controller.userRevision,
-                               enabled: controller.rendererReady && !controller.paused && !controller.backgrounded && !controller.lowPower,
-                               currentRevision: { controller.userRevision }, apply: { controller.execute($0) },
-                               onFocusChange: { typingRequest = $0 })
+                FonsterControlGroup(title: "Play", tone: .play) {
+                    reactionButton("Play", "sparkles", .play, "p", .play)
+                    littleReaction("Toss ball", "tennisball", .fetch, .play)
+                    littleReaction("Hop", "hare", .hop, .play)
+                    littleReaction("Twirl", "arrow.trianglehead.2.clockwise.rotate.90", .spin, .play)
+                }
+                FonsterControlGroup(title: "Quiet and curiosity", tone: .world) {
+                    reactionButton("Rest", "moon", .rest, "r", .world)
+                    littleReaction("Stretch", "figure.flexibility", .stretch, .world)
+                    reactionButton("Blink", "eye", .blink, "b", .world)
+                    reactionButton("Look", "eyes", .look, "l", .world)
+                }
+                Spacer(minLength: 0)
+                FonsterIconButton(title: "Type a request", symbol: "text.bubble", tone: .world, selected: showsCommand) { showsCommand.toggle() }
+            }
+            HStack(spacing: 10) {
+                Image(systemName: "rotate.3d").foregroundStyle(accent).accessibilityHidden(true)
+                Slider(value: $controller.orbit, in: -180...180).tint(accent).frame(maxWidth: 150)
+                    .accessibilityLabel("Turn \(selected.name) in three dimensions")
+                FonsterIconButton(title: "Follow the pointer", symbol: "cursorarrow.rays", selected: controller.followingPointer) { controller.followPointer() }
+                Spacer(minLength: 0)
+                inputControls
+                FonsterControlGroup(title: "Motion") {
+                    FonsterIconToggle(title: "Wander", symbol: "figure.walk", isOn: Binding(get: { controller.roaming }, set: { controller.setRoaming($0) }))
+                    FonsterIconToggle(title: "Still mode", symbol: "snowflake", isOn: $controller.staticMode)
+                    FonsterIconButton(title: controller.paused ? "Resume motion" : "Pause motion", symbol: controller.paused ? "play.fill" : "pause.fill", selected: controller.paused) { controller.paused.toggle() }
+                        .keyboardShortcut(typingRequest ? nil : KeyboardShortcut(.space, modifiers: []))
+                }
+            }
+            if showsCommand {
+                CreatureCommandBar(interpreter: interpreter, selected: selected.name, names: [selected.name], revision: controller.userRevision,
+                    enabled: controller.rendererReady && !controller.paused && !controller.backgrounded && !controller.lowPower,
+                    currentRevision: { controller.userRevision }, apply: { controller.execute($0) }, onFocusChange: { typingRequest = $0 })
+            }
         }
     }
-    private func littleReaction(_ title: String, _ icon: String, _ action: PlayroomController.Reaction) -> some View {
-        Button { controller.perform(action, name: selected.name) } label: { Label(title, systemImage: icon) }
-            .buttonStyle(.bordered).disabled(!controller.rendererReady)
+    private func littleReaction(_ title: String, _ icon: String, _ action: PlayroomController.Reaction, _ tone: FonsterTone) -> some View {
+        FonsterIconButton(title: title, symbol: icon, tone: tone, selected: controller.reaction == action) { controller.perform(action, name: selected.name) }
+            .disabled(!controller.rendererReady)
     }
-
     private var inputControls: some View {
-        HStack(spacing: 12) {
-            Toggle("Sounds", isOn: $controller.soundEnabled).toggleStyle(.checkbox)
-                .help("Original prototype chirps. ElevenLabs clips can replace these later.")
-            Button { inputs.toggleMicrophone() } label: {
-                Label(inputs.microphoneEnabled ? "Stop listening" : "Listen", systemImage: inputs.microphoneEnabled ? "mic.fill" : "mic")
-            }.buttonStyle(.bordered)
-                .help("Microphone levels trigger a hello. Audio stays local and isn’t recorded.")
-            Button { inputs.toggleCamera() } label: {
-                Label(inputs.cameraEnabled ? "Camera off" : "Camera look", systemImage: inputs.cameraEnabled ? "video.fill" : "video")
-            }.buttonStyle(.bordered)
-                .help("Follow a detected face locally. Frames aren’t stored or sent anywhere.")
-            Spacer(minLength: 4)
+        FonsterControlGroup(title: "Sound, microphone and camera") {
+            FonsterIconToggle(title: "Sounds", symbol: "speaker.wave.2", isOn: $controller.soundEnabled)
+            FonsterIconButton(title: inputs.microphoneEnabled ? "Stop listening" : "Listen locally; audio is not recorded", symbol: "mic", selected: inputs.microphoneEnabled) { inputs.toggleMicrophone() }
+            FonsterIconButton(title: inputs.cameraEnabled ? "Turn camera off" : "Follow a face locally; frames are not stored", symbol: "video", selected: inputs.cameraEnabled) { inputs.toggleCamera() }
             if inputs.microphoneEnabled {
-                ProgressView(value: Double(inputs.level)).frame(width: 48)
-                    .accessibilityLabel("Microphone activity")
+                ProgressView(value: Double(inputs.level)).frame(width: 36).accessibilityLabel("Microphone activity")
             }
-            Text(inputs.status).foregroundStyle(ink.opacity(0.45)).lineLimit(1)
-        }.font(.system(size: 10)).controlSize(.small)
+        }.help(inputs.status)
     }
 
     private func suspendInputsIfNeeded() {
         inputs.setSuspended(controller.backgrounded || controller.paused || controller.lowPower)
     }
 
-    private func reactionButton(_ title: String, _ icon: String, _ reaction: PlayroomController.Reaction, _ key: KeyEquivalent) -> some View {
-        Button { controller.perform(reaction, name: selected.name) } label: {
-            Label(title, systemImage: icon)
-                .font(.system(size: 13, weight: .semibold, design: .rounded))
-                .frame(maxWidth: .infinity).padding(.vertical, 13)
-                .background(controller.reaction == reaction ? accent : .white,
-                            in: RoundedRectangle(cornerRadius: 14))
-                .foregroundStyle(controller.reaction == reaction ? .white : ink)
-                .overlay(RoundedRectangle(cornerRadius: 14).strokeBorder(ink.opacity(0.08)))
-        }
-        .buttonStyle(.plain).keyboardShortcut(typingRequest ? nil : KeyboardShortcut(key, modifiers: []))
-        .help("\(title) (\(key.character.uppercased()))")
-        .disabled(!selected.descriptor.supported || controller.rendererError != nil)
+    private func reactionButton(_ title: String, _ icon: String, _ reaction: PlayroomController.Reaction, _ key: KeyEquivalent, _ tone: FonsterTone) -> some View {
+        FonsterIconButton(title: "\(title) (\(key.character.uppercased()))", symbol: icon, tone: tone, selected: controller.reaction == reaction) { controller.perform(reaction, name: selected.name) }
+            .keyboardShortcut(typingRequest ? nil : KeyboardShortcut(key, modifiers: []))
+            .disabled(!selected.descriptor.supported || controller.rendererError != nil)
     }
-
     private var footer: some View {
-        HStack(spacing: 9) {
-            Circle().fill(controller.shouldAnimate ? Color(red: 0.42, green: 0.62, blue: 0.42) : ink.opacity(0.3))
-                .frame(width: 6, height: 6)
-            Text(exportMessage ?? controller.message).font(.system(size: 12, weight: .medium, design: .rounded))
+        HStack(spacing: 8) {
+            FonsterStatus(symbol: exportMessage == nil ? "heart" : "square.and.arrow.down", detail: exportMessage ?? controller.message, tone: .company)
                 .accessibilityIdentifier("reactionStatus")
             Spacer()
-            Text(controller.motionStatus).font(.system(size: 10)).foregroundStyle(ink.opacity(0.45))
+            FonsterStatus(symbol: controller.shouldAnimate ? "waveform.path" : "pause.circle", detail: controller.motionStatus)
                 .accessibilityIdentifier("motionStatus")
+            FonsterInfo(title: "Camera and microphone privacy", detail: inputs.status + "\nMicrophone activity triggers a hello; audio stays local and isn't recorded. Camera face detection stays local; frames aren't stored. Pause, background, and Low Power suspend both inputs.")
         }
     }
 

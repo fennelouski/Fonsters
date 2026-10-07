@@ -11,6 +11,7 @@ struct LocalLobbyView: View {
     @State private var lobby = LocalLobbyController()
     @State private var interpreter = TypedActionInterpreter()
     @State private var typingRequest = false
+    @State private var showsCommand = false
     @State private var agentStudio = false
     @State private var initialAgentStudioShown = false
     @State private var socialStudio = false
@@ -25,115 +26,69 @@ struct LocalLobbyView: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
-            HStack {
-                VStack(alignment: .leading, spacing: 5) {
-                    Text("A world that grows with you.").font(.system(size: 30, weight: .bold, design: .rounded))
-                    Text(lobby.growthDescription).font(.system(size: 13)).foregroundStyle(.secondary)
-                }
-                Spacer()
-                Button { socialStudio = true } label: { Label("Fonster Social", systemImage: "sparkles.rectangle.stack") }
+            HStack(spacing: 12) {
+                Image(systemName: "person.3").font(.system(size: 24)).foregroundStyle(accent)
+                Text("\(lobby.members.count)").font(.system(size: 22, weight: .semibold, design: .rounded))
+                    .accessibilityLabel("\(lobby.members.count) Fonsters in this local world")
+                FonsterAgentStatus(lobby: lobby) { agentStudio = true }
+                FonsterIconButton(title: "Local Fonster profiles and moments", symbol: "sparkles.rectangle.stack", tone: .company) { socialStudio = true }
                 Menu {
-                    ForEach(lobby.availableCompanions) { fixture in
-                        Button("Add \(fixture.name)") { interpreter.cancel(); lobby.addCompanion(fixture) }
-                    }
-                } label: { Label("Add local Fonster", systemImage: "plus.circle") }
+                    ForEach(lobby.availableCompanions) { fixture in Button("Add \(fixture.name)") { interpreter.cancel(); lobby.addCompanion(fixture) } }
+                } label: { FonsterIcon(symbol: "plus", tone: .world) }
+                    .menuStyle(.borderlessButton).menuIndicator(.hidden).frame(width: 44, height: 44).background(FonsterTone.world.wash, in: RoundedRectangle(cornerRadius: 14)).help("Add a local Fonster").accessibilityLabel("Add a local Fonster")
                     .disabled(lobby.availableCompanions.isEmpty || !lobby.ready)
-                Button { sharing = true } label: { Label("Share Fonster", systemImage: "square.and.arrow.up") }
-                    .disabled(lobby.selectedMember.isVisitor)
-                Button { importing = true } label: { Label("Invite…", systemImage: "person.crop.circle.badge.plus") }
-                if lobby.hasVisitor { Button("End visit") { interpreter.cancel(); lobby.endVisit() } }
-            }
-            FonsterAgentStatus(lobby: lobby) { agentStudio = true }
-            if lobby.presence.running {
-                HStack {
-                    Label("Local profile agent · \(lobby.presence.mode.title)", systemImage: "sparkles").font(.system(size: 11, weight: .medium))
-                    Text(lobby.presence.message).font(.system(size: 10)).foregroundStyle(.secondary).lineLimit(1)
-                    Spacer()
-                    Button("Pause profile agent") { lobby.presence.stop(lobby: lobby) }.font(.system(size: 11))
-                }.padding(10).background(Color.green.opacity(0.07), in: RoundedRectangle(cornerRadius: 12))
+                FonsterIconButton(title: "Save a Fonster visit file", symbol: "square.and.arrow.up", tone: .world) { sharing = true }.disabled(lobby.selectedMember.isVisitor)
+                FonsterIconButton(title: "Invite a Fonster from a visit file", symbol: "person.crop.circle.badge.plus", tone: .world) { importing = true }
+                if lobby.hasVisitor { FonsterIconButton(title: "End the local visit", symbol: "person.crop.circle.badge.minus") { interpreter.cancel(); lobby.endVisit() } }
             }
             LobbyWorldToolbar(lobby: lobby, typing: typingRequest)
             HStack(spacing: 16) {
-                ZStack(alignment: .bottomLeading) {
+                ZStack {
                     RoundedRectangle(cornerRadius: 26).fill(LinearGradient(colors: [Color(red: 0.90, green: 0.91, blue: 0.94), Color(red: 0.98, green: 0.95, blue: 0.91)], startPoint: .topLeading, endPoint: .bottomTrailing))
                     if let error = lobby.error { Text(error).padding(30) }
                     else { LobbyStageView(lobby: lobby).id(lobby.roomRevision).clipShape(RoundedRectangle(cornerRadius: 26)) }
-                    Text("Stroke a Fonster · Click a path to walk · Drag the world to turn")
-                        .font(.system(size: 11)).foregroundStyle(ink.opacity(0.45)).padding(20).allowsHitTesting(false)
                 }.frame(maxWidth: .infinity, maxHeight: .infinity)
-                VStack(alignment: .leading, spacing: 8) {
-                    Text("HERE TOGETHER · \(lobby.members.count)").font(.system(size: 10, weight: .bold)).tracking(1.3).foregroundStyle(.secondary)
-                    ScrollView {
-                    ForEach(Array(lobby.members.enumerated()), id: \.element.id) { index, member in
-                        Button { lobby.selected = index } label: {
-                            HStack(spacing: 10) {
-                                ResolvedPortrait(appearance: member.descriptor).frame(width: 36, height: 36)
-                                    .padding(4).background(.white, in: RoundedRectangle(cornerRadius: 10))
-                                VStack(alignment: .leading, spacing: 3) {
-                                    Text(member.name).font(.system(size: 14, weight: .semibold, design: .rounded))
-                                    Text(member.isVisitor ? "Visiting · \(member.visitCard!.name)" : member.feelingLabel)
-                                        .font(.system(size: 10)).foregroundStyle(.secondary).lineLimit(1)
-                                }
-                                Spacer(minLength: 0)
-                            }.padding(4).background(lobby.selected == index ? accent.opacity(0.10) : .clear, in: RoundedRectangle(cornerRadius: 14))
-                        }.buttonStyle(.plain)
-                            .accessibilityLabel("Choose \(member.name) in the local lobby, \(member.feelingLabel)")
-                            .accessibilityAddTraits(lobby.selected == index ? .isSelected : [])
-                    }
-                    }.frame(maxHeight: 235)
-                    Divider()
-                    if lobby.selectedMember.isVisitor {
-                        Label(lobby.selectedMember.feelingLabel, systemImage: "heart")
-                            .font(.system(size: 12)).foregroundStyle(.secondary)
-                    } else {
-                        Picker("Chosen feeling", selection: Binding(get: { lobby.selectedMember.controller.feeling }, set: { lobby.chooseFeeling($0) })) {
-                            ForEach(CreatureFeeling.allCases) { feeling in Label(feeling.title, systemImage: feeling.symbol).tag(feeling) }
-                        }.font(.system(size: 12))
-                    }
-                    Picker("With", selection: Binding(get: { lobby.peerIndex }, set: { lobby.buddy = $0 })) {
-                        ForEach(lobby.members.indices.filter { $0 != lobby.selected }, id: \.self) { i in Text(lobby.names[i]).tag(i) }
-                    }.font(.system(size: 12))
-                    Text(lobby.selectedFriendship.description).font(.system(size: 11)).foregroundStyle(.secondary)
-                        .fixedSize(horizontal: false, vertical: true)
-                    HStack(spacing: 6) {
-                        Button { lobby.pair(quiet: false) } label: { Label("Pass ball", systemImage: "circle.dotted") }
-                        Button { lobby.pair(quiet: true) } label: { Label("Sit together", systemImage: "heart") }
-                    }.font(.system(size: 11)).disabled(!lobby.ready)
-                    Spacer(minLength: 0)
-                    Text(lobby.worldTemporaryReason ?? lobby.social.status)
-                        .font(.system(size: 11)).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
-                }.padding(16).frame(width: 250).frame(maxHeight: .infinity)
-                    .background(.white.opacity(0.75), in: RoundedRectangle(cornerRadius: 24))
-            }.frame(minHeight: 330, maxHeight: .infinity)
-            HStack(spacing: 9) {
-                roomButton("Wave to a friend", "hand.wave") { lobby.waveToFriend() }
-                roomButton("Play together", "sparkles") { lobby.playTogether() }
-                roomButton("Toss ball", "circle.dotted") { lobby.perform(.fetch) }
-                roomButton("Come closer", "person.3.sequence") { lobby.gather() }
-                roomButton("Quiet moment", "moon") { lobby.perform(.rest) }
+                companionRail
+            }.frame(minHeight: 360, maxHeight: .infinity)
+            HStack(spacing: 12) {
+                FonsterControlGroup(title: "Company", tone: .company) {
+                    roomButton("Wave to a friend", "hand.wave", .company) { lobby.waveToFriend() }
+                    roomButton("Come closer", "person.3.sequence", .company) { lobby.gather() }
+                    roomButton("Quiet moment", "moon", .company) { lobby.perform(.rest) }
+                }
+                FonsterControlGroup(title: "Play", tone: .play) {
+                    roomButton("Play together", "sparkles", .play) { lobby.playTogether() }
+                    roomButton("Toss ball", "tennisball", .play) { lobby.perform(.fetch) }
+                }
+                Spacer(minLength: 0)
+                FonsterIconButton(title: "Type a request", symbol: "text.bubble", tone: .world, selected: showsCommand) { showsCommand.toggle() }
+                FonsterControlGroup(title: "Sound and motion") {
+                    FonsterIconToggle(title: "Sounds", symbol: "speaker.wave.2", isOn: $lobby.sounds)
+                    FonsterIconToggle(title: "Wander and mingle", symbol: "figure.walk", isOn: Binding(get: { lobby.wander }, set: { lobby.setWander($0) }))
+                    FonsterIconToggle(title: "Still mode", symbol: "snowflake", isOn: Binding(get: { lobby.still }, set: { lobby.takeOwnerControl(); lobby.still = $0 }))
+                    FonsterIconButton(title: lobby.paused ? "Resume" : "Pause", symbol: lobby.paused ? "play.fill" : "pause.fill", selected: lobby.paused) { lobby.takeOwnerControl(); lobby.paused.toggle() }
+                        .keyboardShortcut(typingRequest ? nil : KeyboardShortcut(.space, modifiers: []))
+                }
             }
-            HStack(spacing: 16) {
-                Toggle("Wander & mingle", isOn: Binding(get: { lobby.wander }, set: { lobby.setWander($0) })).toggleStyle(.checkbox)
-                Toggle("Sounds", isOn: $lobby.sounds).toggleStyle(.checkbox)
+            if showsCommand {
+                CreatureCommandBar(interpreter: interpreter, selected: lobby.selectedMember.name, names: lobby.names, revision: lobby.userRevision,
+                    enabled: lobby.ready && !lobby.paused && !lobby.backgrounded && !lobby.lowPower,
+                    currentRevision: { lobby.userRevision }, apply: { lobby.execute($0) },
+                    onFocusChange: { typingRequest = $0; if $0 { lobby.takeOwnerControl() } })
+            }
+            HStack(spacing: 8) {
+                FonsterStatus(symbol: "heart", detail: lobby.message, tone: .company)
+                if lobby.presence.running {
+                    FonsterIconButton(title: "Pause local profile agent: \(lobby.presence.message)", symbol: "sparkles", tone: .company, selected: true) { lobby.presence.stop(lobby: lobby) }
+                }
                 Spacer()
-                Toggle("Still mode", isOn: Binding(get: { lobby.still }, set: { lobby.takeOwnerControl(); lobby.still = $0 })).toggleStyle(.checkbox)
-                Button { lobby.takeOwnerControl(); lobby.paused.toggle() } label: { Label(lobby.paused ? "Resume" : "Pause", systemImage: lobby.paused ? "play.fill" : "pause.fill") }
-                    .buttonStyle(.bordered).keyboardShortcut(typingRequest ? nil : KeyboardShortcut(.space, modifiers: []))
-            }.font(.system(size: 12)).foregroundStyle(.secondary)
-            CreatureCommandBar(interpreter: interpreter, selected: lobby.selectedMember.name,
-                               names: lobby.names, revision: lobby.userRevision,
-                               enabled: lobby.ready && !lobby.paused && !lobby.backgrounded && !lobby.lowPower,
-                               currentRevision: { lobby.userRevision }, apply: { lobby.execute($0) },
-                               onFocusChange: { typingRequest = $0; if $0 { lobby.takeOwnerControl() } })
-            HStack {
-                Text(lobby.message).font(.system(size: 12, weight: .medium, design: .rounded))
-                Spacer()
-                Text(lobby.motionStatus).font(.system(size: 10)).foregroundStyle(.secondary)
+                FonsterStatus(symbol: lobby.shouldAnimate ? "waveform.path" : "pause.circle", detail: lobby.motionStatus)
+                FonsterInfo(title: "About this world", detail: lobby.growthDescription + "\nStroke a Fonster, click a path to walk, or drag the world to turn.\n" + (lobby.worldTemporaryReason ?? lobby.social.status) + "\nProfiles, feelings, and friendship memories stay local. No public platform or external agent is connected.")
             }
         }
-        .padding(22).frame(minWidth: 1050, minHeight: 790)
+        .padding(22).frame(minWidth: 1050, minHeight: 740)
         .background(Color(red: 0.98, green: 0.97, blue: 0.95)).foregroundStyle(ink).preferredColorScheme(.light)
-        .background(VerificationWindowCapture().frame(width: 0, height: 0))
+        .background(VerificationWindowCapture(label: "lobby").frame(width: 0, height: 0))
         .sheet(isPresented: $agentStudio) { FonsterAgentStudio(lobby: lobby) }
         .sheet(isPresented: $socialStudio) { FonsterSocialStudio(lobby: lobby) }
         .sheet(isPresented: $sharing) { VisitShareSheet(lobby: lobby, member: lobby.selectedMember) }
@@ -179,10 +134,49 @@ struct LocalLobbyView: View {
             for member in lobby.members { member.controller.silence(); member.controller.rig = nil; member.controller.rendererReady = false }
         }
     }
-    private func roomButton(_ title: String, _ icon: String, action: @escaping () -> Void) -> some View {
-        Button(action: action) { Label(title, systemImage: icon).font(.system(size: 12, weight: .semibold, design: .rounded)).frame(maxWidth: .infinity).padding(.vertical, 11) }
-            .buttonStyle(.bordered).disabled(!lobby.ready)
+    private var companionRail: some View {
+        VStack(spacing: 14) {
+            ScrollView {
+                LazyVGrid(columns: [GridItem(.fixed(68)), GridItem(.fixed(68))], spacing: 12) {
+                    ForEach(Array(lobby.members.enumerated()), id: \.element.id) { index, member in
+                        FonsterPortraitChoice(name: "\(member.name), \(member.feelingLabel)", selected: lobby.selected == index,
+                            portrait: { ResolvedPortrait(appearance: member.descriptor) }, action: { lobby.selected = index })
+                    }
+                }.padding(4)
+            }.frame(maxHeight: 252)
+            Divider()
+            if lobby.selectedMember.isVisitor {
+                FonsterStatus(symbol: "person.crop.circle.badge.checkmark", detail: lobby.selectedMember.feelingLabel, tone: .company)
+            } else {
+                LazyVGrid(columns: Array(repeating: GridItem(.fixed(44)), count: 3), spacing: 8) {
+                    ForEach(CreatureFeeling.allCases) { feeling in
+                        FonsterIconButton(title: "Choose \(feeling.title.lowercased())", symbol: feeling.symbol, tone: .company, selected: lobby.selectedMember.controller.feeling == feeling) { lobby.chooseFeeling(feeling) }
+                    }
+                }.accessibilityElement(children: .contain).accessibilityLabel("Chosen Fonster feeling")
+            }
+            Spacer(minLength: 0)
+            HStack(spacing: 8) {
+                ResolvedPortrait(appearance: lobby.selectedMember.descriptor).frame(width: 36, height: 36)
+                FonsterStatus(symbol: "heart", detail: lobby.selectedFriendship.description, tone: .company)
+                Menu {
+                    ForEach(lobby.members.indices.filter { $0 != lobby.selected }, id: \.self) { i in Button(lobby.names[i]) { lobby.buddy = i } }
+                } label: {
+                    ResolvedPortrait(appearance: lobby.members[lobby.peerIndex].descriptor).frame(width: 36, height: 36)
+                        .padding(5).background(FonsterTone.company.wash, in: RoundedRectangle(cornerRadius: 12))
+                }.menuStyle(.borderlessButton).menuIndicator(.hidden)
+                    .help("Choose a friend; currently \(lobby.names[lobby.peerIndex])").accessibilityLabel("Choose a friend; currently \(lobby.names[lobby.peerIndex])")
+            }
+            FonsterControlGroup(title: "Time with your chosen friend", tone: .company) {
+                roomButton("Pass the ball with your chosen friend", "tennisball", .play) { lobby.pair(quiet: false) }
+                roomButton("Sit with your chosen friend", "heart", .company) { lobby.pair(quiet: true) }
+            }
+        }.padding(16).frame(width: 184).frame(maxHeight: .infinity)
+            .background(.white.opacity(0.75), in: RoundedRectangle(cornerRadius: 24))
     }
+    private func roomButton(_ title: String, _ icon: String, _ tone: FonsterTone, action: @escaping () -> Void) -> some View {
+        FonsterIconButton(title: title, symbol: icon, tone: tone, action: action).disabled(!lobby.ready)
+    }
+
 }
 
 @available(macOS 15.0, *)
@@ -190,45 +184,39 @@ private struct LobbyWorldToolbar: View {
     let lobby: LocalLobbyController
     let typing: Bool
     var body: some View {
-        VStack(spacing: 8) {
-            HStack(spacing: 8) {
+        HStack(spacing: 12) {
+            FonsterControlGroup(title: "World areas", tone: .world) {
                 ForEach(LobbyWorld.Area.allCases) { area in
                     let unlocked = lobby.world.areas.contains(area)
-                    Button { lobby.explore(area) } label: {
-                        HStack(spacing: 8) {
-                            Image(systemName: unlocked ? area.symbol : "lock").font(.system(size: 17))
-                            VStack(alignment: .leading, spacing: 2) {
-                                Text(area.title).font(.system(size: 11, weight: .semibold, design: .rounded))
-                                Text(unlocked ? "Explore with a friend" : "At \(area.population) Fonsters").font(.system(size: 9)).foregroundStyle(.secondary)
-                            }
-                            Spacer(minLength: 0)
-                        }.padding(9).frame(maxWidth: .infinity)
-                            .background(lobby.focusArea == area ? Color(red: 0.86, green: 0.91, blue: 0.80) : .white.opacity(0.7), in: RoundedRectangle(cornerRadius: 12))
-                    }.buttonStyle(.plain)
+                    FonsterIconButton(title: unlocked ? "Explore \(area.title) with your chosen friend" : "\(area.title) opens at \(area.population) Fonsters", symbol: area.symbol, tone: .world, selected: lobby.focusArea == area && unlocked) { lobby.explore(area) }
+                        .overlay(alignment: .bottomTrailing) {
+                            if !unlocked { Label("\(area.population)", systemImage: "lock.fill").font(.system(size: 9, weight: .bold)).padding(4).background(.white, in: Capsule()).allowsHitTesting(false) }
+                        }
                         .disabled(!unlocked || !lobby.ready || lobby.paused || lobby.backgrounded || lobby.lowPower)
-                        .accessibilityLabel(unlocked ? "Explore \(area.title) with your chosen friend" : "\(area.title) opens at \(area.population) Fonsters")
                 }
             }
-            HStack(spacing: 9) {
-                Button { lobby.showOverview() } label: { Label("Whole world", systemImage: "map") }
-                Button { lobby.lookAtSelected() } label: { Label("Follow \(lobby.selectedMember.name)", systemImage: "viewfinder") }
-                Button { lobby.sitOnBench() } label: { Label("Rest on a bench", systemImage: "chair.lounge") }
-                    .disabled(lobby.world.benches.isEmpty || !lobby.ready || lobby.paused || lobby.backgrounded || lobby.lowPower)
-                Spacer()
-                Button { lobby.rotateCamera(-0.30) } label: { Image(systemName: "arrow.counterclockwise") }
-                    .accessibilityLabel("Turn camera left").keyboardShortcut(typing ? nil : KeyboardShortcut("[", modifiers: []))
-                Button { lobby.rotateCamera(0.30) } label: { Image(systemName: "arrow.clockwise") }
-                    .accessibilityLabel("Turn camera right").keyboardShortcut(typing ? nil : KeyboardShortcut("]", modifiers: []))
-                Button { lobby.zoomCamera(1.15) } label: { Image(systemName: "minus.magnifyingglass") }.accessibilityLabel("Zoom out")
-                Button { lobby.zoomCamera(0.85) } label: { Image(systemName: "plus.magnifyingglass") }.accessibilityLabel("Zoom in")
-            }.font(.system(size: 11)).buttonStyle(.bordered).disabled(!lobby.ready)
+            Spacer(minLength: 0)
+            FonsterControlGroup(title: "Camera and benches", tone: .world) {
+                FonsterIconButton(title: "Whole world", symbol: "map", tone: .world) { lobby.showOverview() }
+                FonsterIconButton(title: "Follow \(lobby.selectedMember.name)", symbol: "viewfinder", tone: .world) { lobby.lookAtSelected() }
+                FonsterIconButton(title: "Rest on a bench", symbol: "chair.lounge", tone: .world) { lobby.sitOnBench() }
+                    .disabled(lobby.world.benches.isEmpty || lobby.paused || lobby.backgrounded || lobby.lowPower)
+                FonsterIconButton(title: "Turn camera left", symbol: "arrow.counterclockwise", tone: .world) { lobby.rotateCamera(-0.30) }
+                    .keyboardShortcut(typing ? nil : KeyboardShortcut("[", modifiers: []))
+                FonsterIconButton(title: "Turn camera right", symbol: "arrow.clockwise", tone: .world) { lobby.rotateCamera(0.30) }
+                    .keyboardShortcut(typing ? nil : KeyboardShortcut("]", modifiers: []))
+                FonsterIconButton(title: "Zoom out", symbol: "minus.magnifyingglass", tone: .world) { lobby.zoomCamera(1.15) }
+                FonsterIconButton(title: "Zoom in", symbol: "plus.magnifyingglass", tone: .world) { lobby.zoomCamera(0.85) }
+            }.disabled(!lobby.ready)
         }
+
     }
 }
 
 @available(macOS 15.0, *)
 private struct LobbyStageView: View {
     let lobby: LocalLobbyController
+    @State private var sceneEntities: [Entity] = []
     @State private var gestureStarted = false
     @State private var creatureCaptured = false
     @GestureState private var gestureActive = false
@@ -261,9 +249,11 @@ private struct LobbyStageView: View {
                     content.add(try await CreatureSceneLighting.studio(for: Array(content.entities)))
                     guard !Task.isCancelled, lobby.roomRevision == revision else { return }
                     lobby.applyLayout(); lobby.ready = true; lobby.refreshGates()
+                    sceneEntities = Array(content.entities)
                     NativeSceneExport.verificationTask(entities: Array(content.entities), label: "lobby")
                 } catch { lobby.error = "Couldn’t open this little room: \(error.localizedDescription)"; lobby.refreshGates() }
             }
+            .background(VerificationSceneMarker(entities: sceneEntities))
             .onContinuousHover { phase in
                 if case .active(let point) = phase {
                     lobby.selectedMember.controller.look([Float(point.x / geometry.size.width - 0.5) * 2, Float(0.5 - point.y / geometry.size.height) * 2])

@@ -13,6 +13,6 @@ swiftc -target arm64-apple-macos15.0 -module-cache-path "$ROOT_DIR/.prototype-bu
  Fonsters/Playroom/CreatureSocialModels.swift Fonsters/Playroom/FriendshipMemoryStore.swift \
  Fonsters/Playroom/CreatureCommandIntent.swift Fonsters/Playroom/PlayroomController.swift \
  Fonsters/Playroom/LobbyWorld.swift Fonsters/Playroom/LobbyWorldScene.swift Fonsters/Playroom/LocalLobbySimulation.swift Fonsters/Playroom/LocalLobbyController.swift \
- Fonsters/Playroom/FonsterVisitDocument.swift Fonsters/Playroom/VerificationWindowCapture.swift \
+ Fonsters/Playroom/FonsterVisualControls.swift Fonsters/Playroom/FonsterVisitDocument.swift Fonsters/Playroom/VerificationWindowCapture.swift \
  script/verify_agent.swift -o .prototype-build/verification/agent
 .prototype-build/verification/agent "$FIXTURE_DIR" --personality-file "$FIXTURE_DIR/personality.json"

@@ -12,6 +12,6 @@ swiftc -target arm64-apple-macos15.0 -module-cache-path "$ROOT_DIR/.prototype-bu
  Fonsters/Playroom/CreatureSocialModels.swift Fonsters/Playroom/FriendshipMemoryStore.swift \
  Fonsters/Playroom/CreatureCommandIntent.swift Fonsters/Playroom/PlayroomController.swift \
  Fonsters/Playroom/LobbyWorld.swift Fonsters/Playroom/LobbyWorldScene.swift Fonsters/Playroom/LocalLobbySimulation.swift Fonsters/Playroom/LocalLobbyController.swift Fonsters/Playroom/FonsterAgentDirector.swift Fonsters/Playroom/FonsterSocialPresence.swift Fonsters/Playroom/FonsterSocialDirector.swift \
- Fonsters/Playroom/FonsterVisitDocument.swift \
+ Fonsters/Playroom/FonsterVisualControls.swift Fonsters/Playroom/FonsterVisitDocument.swift \
  script/verify_touch.swift -o .prototype-build/verification/touch
 .prototype-build/verification/touch "$FIXTURE_DIR" --personality-file "$FIXTURE_DIR/personality.json" "$@"

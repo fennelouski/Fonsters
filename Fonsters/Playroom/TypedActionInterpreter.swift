@@ -128,15 +128,15 @@ struct CreatureCommandBar: View {
                     .accessibilityLabel("Tell \(selected) what to try")
                 if interpreter.isBusy {
                     ProgressView().controlSize(.small)
-                    Button("Cancel") { interpreter.cancel() }.buttonStyle(.borderless)
-                } else { Button("Try it", action: submit).buttonStyle(.borderedProminent).disabled(text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || !enabled) }
+                    FonsterIconButton(title: "Cancel request", symbol: "xmark") { interpreter.cancel() }
+                } else { FonsterIconButton(title: "Try this request", symbol: "arrow.up", tone: .world, action: submit).disabled(text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || !enabled) }
             }.padding(.horizontal, 12).padding(.vertical, 9)
                 .background(.white.opacity(0.8), in: RoundedRectangle(cornerRadius: 12))
             HStack {
-                Text(interpreter.status).lineLimit(2)
-                Spacer(minLength: 8)
-                Text(interpreter.capability).lineLimit(2).multilineTextAlignment(.trailing)
-            }.font(.system(size: 10)).foregroundStyle(.secondary)
+                FonsterInfo(title: interpreter.status, detail: interpreter.status + "\n" + interpreter.capability)
+                Spacer()
+            }
+
         }
         .onChange(of: revision) { interpreter.cancel() }
         .onChange(of: selected) { interpreter.cancel() }
