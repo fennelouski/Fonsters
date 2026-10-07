@@ -1,0 +1,11 @@
+{
+  "version": 1,
+  "status": "prepared_not_generated",
+  "character_families": {
+    "Coral": "bubble", "Moss": "sprout", "Iris": "spark", "Tide": "bubble",
+    "Orbit": "spark", "Plum": "pebble", "Poppy": "bubble", "Inky": "pebble",
+    "Pebble": "pebble", "Nori": "sprout", "Ember": "spark", "Wisp": "sprout"
+  },
+  "selection": "Only audition-approved event and family matches; 1.2 second per-character cooldown; avoid last two assets where pool size permits. One-clip exhausted pools stay silent.",
+  "prototype_playback": "Current app uses 15 original synthesized chirps. ElevenLabs audio is not included or wired into playback yet."
+}

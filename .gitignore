@@ -46,3 +46,7 @@ node_modules/
 sst-env.d.ts
 .aws-preview-password
 __pycache__/
+
+.prototype-build/
+evidence/
+script/__pycache__/

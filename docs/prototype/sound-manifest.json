@@ -1,0 +1,152 @@
+[
+  {
+    "id": "greet-0",
+    "event": "greet",
+    "file": "fonster_greet_0.wav",
+    "duration": 0.65,
+    "source": "original-procedural-placeholder",
+    "license": "project-original",
+    "gain": 0.55,
+    "sha256": "27401a928c76dd2c89580847608763e41c524ec960dccd0cb55de8ac192876b1"
+  },
+  {
+    "id": "greet-1",
+    "event": "greet",
+    "file": "fonster_greet_1.wav",
+    "duration": 0.65,
+    "source": "original-procedural-placeholder",
+    "license": "project-original",
+    "gain": 0.55,
+    "sha256": "dbc4d466c1c3b3b2d5d3637d47e51c4c8b015e6f065f133b944cf01e0d728b6b"
+  },
+  {
+    "id": "greet-2",
+    "event": "greet",
+    "file": "fonster_greet_2.wav",
+    "duration": 0.65,
+    "source": "original-procedural-placeholder",
+    "license": "project-original",
+    "gain": 0.55,
+    "sha256": "c3291bc94c604f15f04793b24480b80ccc40c6e4acb11291bf75b6fc5a959e04"
+  },
+  {
+    "id": "play-0",
+    "event": "play",
+    "file": "fonster_play_0.wav",
+    "duration": 0.8,
+    "source": "original-procedural-placeholder",
+    "license": "project-original",
+    "gain": 0.55,
+    "sha256": "6d15fcfbc1dd6a65945ee39dc27bd1adcd96cc35ce7a03948a64253b3f6f9fff"
+  },
+  {
+    "id": "play-1",
+    "event": "play",
+    "file": "fonster_play_1.wav",
+    "duration": 0.8,
+    "source": "original-procedural-placeholder",
+    "license": "project-original",
+    "gain": 0.55,
+    "sha256": "9309c7fbd525220532b28b02bba0d8a6483eff4f9a20f493aba5cd4a82b3e934"
+  },
+  {
+    "id": "play-2",
+    "event": "play",
+    "file": "fonster_play_2.wav",
+    "duration": 0.8,
+    "source": "original-procedural-placeholder",
+    "license": "project-original",
+    "gain": 0.55,
+    "sha256": "eca4dc12517bf9a932face1943e1d960043bbfd8f0fefb483ebcc226d3939c7d"
+  },
+  {
+    "id": "rest-0",
+    "event": "rest",
+    "file": "fonster_rest_0.wav",
+    "duration": 0.9,
+    "source": "original-procedural-placeholder",
+    "license": "project-original",
+    "gain": 0.55,
+    "sha256": "cfe7ec4130f9a89138943ce39d1acedc5841146283fbc4a5e6f0a620bad25206"
+  },
+  {
+    "id": "rest-1",
+    "event": "rest",
+    "file": "fonster_rest_1.wav",
+    "duration": 0.9,
+    "source": "original-procedural-placeholder",
+    "license": "project-original",
+    "gain": 0.55,
+    "sha256": "d59be866faa0a27ea3fb4d9aff340fa6fe0194bfc25585c2178eb15db2629df8"
+  },
+  {
+    "id": "rest-2",
+    "event": "rest",
+    "file": "fonster_rest_2.wav",
+    "duration": 0.9,
+    "source": "original-procedural-placeholder",
+    "license": "project-original",
+    "gain": 0.55,
+    "sha256": "3e550f1365863426c89d5cb0db3865398edade0277961bed1e64e969bd4c7a39"
+  },
+  {
+    "id": "blink-0",
+    "event": "blink",
+    "file": "fonster_blink_0.wav",
+    "duration": 0.24,
+    "source": "original-procedural-placeholder",
+    "license": "project-original",
+    "gain": 0.55,
+    "sha256": "93a29d0a4afcfc19afde9dc994c700ab22412a0c051592ea224a40039d0ded85"
+  },
+  {
+    "id": "blink-1",
+    "event": "blink",
+    "file": "fonster_blink_1.wav",
+    "duration": 0.24,
+    "source": "original-procedural-placeholder",
+    "license": "project-original",
+    "gain": 0.55,
+    "sha256": "c002e858935d2750284878ce67765b87f39b17c36f329f2c8123a091ae955a96"
+  },
+  {
+    "id": "blink-2",
+    "event": "blink",
+    "file": "fonster_blink_2.wav",
+    "duration": 0.24,
+    "source": "original-procedural-placeholder",
+    "license": "project-original",
+    "gain": 0.55,
+    "sha256": "3d98056f43c09a63c91f44c0b53591551cd6e3f43bc1fcc2e9b0667c87dca083"
+  },
+  {
+    "id": "look-0",
+    "event": "look",
+    "file": "fonster_look_0.wav",
+    "duration": 0.36,
+    "source": "original-procedural-placeholder",
+    "license": "project-original",
+    "gain": 0.55,
+    "sha256": "eaaf9db09e9fd2241aa6b36656e416299c281565408165d5437761f3e28213eb"
+  },
+  {
+    "id": "look-1",
+    "event": "look",
+    "file": "fonster_look_1.wav",
+    "duration": 0.36,
+    "source": "original-procedural-placeholder",
+    "license": "project-original",
+    "gain": 0.55,
+    "sha256": "2bb406d6f941deeb916a2ff5ab66e811ff096152b7e47ed0d9129669fd6f7c59"
+  },
+  {
+    "id": "look-2",
+    "event": "look",
+    "file": "fonster_look_2.wav",
+    "duration": 0.36,
+    "source": "original-procedural-placeholder",
+    "license": "project-original",
+    "gain": 0.55,
+    "sha256": "10b170d0b884613f2d4b4641c6d7625836c9b1c8f521c9910b7079b05ab3acf8"
+  }
+]

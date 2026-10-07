@@ -17,6 +17,16 @@ import Combine
 import Tips
 #endif
 
+/// The task-local preview bundle always uses memory-only data, even when double-clicked.
+private var isPlayroomPrototype: Bool {
+    #if os(macOS)
+    return ProcessInfo.processInfo.arguments.contains("--prototype") ||
+        Bundle.main.bundleIdentifier == "com.nathanfennel.Fonsters.Playroom"
+    #else
+    return false
+    #endif
+}
+
 /// Holds a URL that was used to open the app (custom scheme or universal link); ContentView consumes it and imports seeds.
 final class PendingImportURLHolder: ObservableObject {
     @Published var url: URL?
@@ -133,6 +143,11 @@ struct FonstersApp: App {
         let schema = Schema([
             Fonster.self,
         ])
+        #if os(macOS)
+        if isPlayroomPrototype {
+            return try! ModelContainer(for: schema, configurations: [ModelConfiguration(schema: schema, isStoredInMemoryOnly: true, cloudKitDatabase: .none)])
+        }
+        #endif
         // Only use CloudKit when an iCloud account is available; otherwise we get
         // "Unable to initialize without an iCloud account" and mirroring errors in the console.
         var useCloudKit = false
@@ -173,7 +188,17 @@ struct FonstersApp: App {
 
     var body: some Scene {
         WindowGroup {
-            if loadingComplete {
+            if isPlayroomPrototype {
+                #if os(macOS)
+                if #available(macOS 15.0, *) {
+                    if ProcessInfo.processInfo.arguments.contains("--lobby") { LocalLobbyView() }
+                    else { PlayroomView() }
+                }
+                else { Text("The Playroom requires macOS 15 or later.") }
+                #else
+                ContentView().environmentObject(pendingImportURL).environmentObject(featureFlags)
+                #endif
+            } else if loadingComplete {
                 ContentView()
                     .environmentObject(pendingImportURL)
                     .environmentObject(featureFlags)
@@ -191,7 +216,35 @@ struct FonstersApp: App {
         #if os(macOS)
         .commands {
             FonstersCommands()
+            PlayroomCommands()
         }
+        #endif
+        #if os(macOS)
+        Window("Fonsters Playroom", id: "playroom") {
+            if #available(macOS 15.0, *) {
+                PlayroomView()
+            } else { Text("The Playroom requires macOS 15 or later.") }
+        }
+        .defaultSize(width: 1080, height: 740)
+        Window("Fonsters Lobby", id: "lobby") {
+            if #available(macOS 15.0, *) { LocalLobbyView() }
+            else { Text("The local lobby requires macOS 15 or later.") }
+        }
+        .defaultSize(width: 1080, height: 740)
         #endif
     }
 }
+
+#if os(macOS)
+private struct PlayroomCommands: Commands {
+    @Environment(\.openWindow) private var openWindow
+    var body: some Commands {
+        CommandMenu("Playroom") {
+            Button("Meet the 3D Fonsters") { openWindow(id: "playroom") }
+                .keyboardShortcut("m", modifiers: [.command, .shift])
+            Button("Open the local lobby") { openWindow(id: "lobby") }
+                .keyboardShortcut("l", modifiers: [.command, .shift])
+        }
+    }
+}
+#endif

@@ -1,0 +1,1558 @@
+{
+  "api_calls": 0,
+  "budget_authorization": "existing remaining included credits only; no overage, top-up or plan change",
+  "credentials_read": false,
+  "four_family_hello_pilot_credits": 160,
+  "full_estimated_credits": 3840,
+  "generated_base_clips": 0,
+  "generation_blockers": [
+    "approved existing server job/key scope",
+    "confirmed paid commercial plan",
+    "fresh included balance and usage-based billing disabled",
+    "durable attempt ledger"
+  ],
+  "license_source": "https://elevenlabs.io/sound-effects",
+  "mode": "offline_plan",
+  "prepared_base_clips": 96,
+  "rate_source": "https://elevenlabs.io/docs/overview/capabilities/sound-effects",
+  "requests": [
+    {
+      "asset_id": "coral_hello_1_fbb0a8269738",
+      "character": "Coral",
+      "cue": "hello",
+      "estimated_credits": 40,
+      "event": "greet",
+      "family": "bubble",
+      "request": {
+        "duration_seconds": 1.0,
+        "loop": false,
+        "model_id": "eleven_text_to_sound_v2",
+        "prompt_influence": 0.6,
+        "text": "One original imaginary small creature sound, a warm little greeting. Its distinctive timbre is soft coral bells and two buoyant watery syllables. Variation 1, gentle and expressive, one second, quiet, no words, no human voice, no music, no harsh transients, a clean isolated one-shot with silence at both ends."
+      },
+      "request_sha256": "fbb0a8269738428152879d1cebce537cbf8490fd93f3b3925c6d887d18fbb1fa"
+    },
+    {
+      "asset_id": "moss_hello_1_13841e7640aa",
+      "character": "Moss",
+      "cue": "hello",
+      "estimated_credits": 40,
+      "event": "greet",
+      "family": "sprout",
+      "request": {
+        "duration_seconds": 1.0,
+        "loop": false,
+        "model_id": "eleven_text_to_sound_v2",
+        "prompt_influence": 0.6,
+        "text": "One original imaginary small creature sound, a warm little greeting. Its distinctive timbre is a shy woodwind coo with a tiny leafy rustle. Variation 1, gentle and expressive, one second, quiet, no words, no human voice, no music, no harsh transients, a clean isolated one-shot with silence at both ends."
+      },
+      "request_sha256": "13841e7640aaab4ca089e2f81e04a0451ae1764fb13dc8d88b0490f95b47e189"
+    },
+    {
+      "asset_id": "iris_hello_1_50ec9c4d8327",
+      "character": "Iris",
+      "cue": "hello",
+      "estimated_credits": 40,
+      "event": "greet",
+      "family": "spark",
+      "request": {
+        "duration_seconds": 1.0,
+        "loop": false,
+        "model_id": "eleven_text_to_sound_v2",
+        "prompt_influence": 0.6,
+        "text": "One original imaginary small creature sound, a warm little greeting. Its distinctive timbre is rounded glass tones with a lilting three-note answer. Variation 1, gentle and expressive, one second, quiet, no words, no human voice, no music, no harsh transients, a clean isolated one-shot with silence at both ends."
+      },
+      "request_sha256": "50ec9c4d83272285874a757c718b8cea49660dc0f1aa1cacb944ce2149ebf06a"
+    },
+    {
+      "asset_id": "tide_hello_1_30c0051ea937",
+      "character": "Tide",
+      "cue": "hello",
+      "estimated_credits": 40,
+      "event": "greet",
+      "family": "bubble",
+      "request": {
+        "duration_seconds": 1.0,
+        "loop": false,
+        "model_id": "eleven_text_to_sound_v2",
+        "prompt_influence": 0.6,
+        "text": "One original imaginary small creature sound, a warm little greeting. Its distinctive timbre is a low liquid burble followed by a soft rising whistle. Variation 1, gentle and expressive, one second, quiet, no words, no human voice, no music, no harsh transients, a clean isolated one-shot with silence at both ends."
+      },
+      "request_sha256": "30c0051ea9372d1c03a8deb6da390ed0bdd9e0d7f5f8ccc1b065afa55007461b"
+    },
+    {
+      "asset_id": "orbit_hello_1_d04a19e0a500",
+      "character": "Orbit",
+      "cue": "hello",
+      "estimated_credits": 40,
+      "event": "greet",
+      "family": "spark",
+      "request": {
+        "duration_seconds": 1.0,
+        "loop": false,
+        "model_id": "eleven_text_to_sound_v2",
+        "prompt_influence": 0.6,
+        "text": "One original imaginary small creature sound, a warm little greeting. Its distinctive timbre is a bouncy round electronic pip with a springy wobble. Variation 1, gentle and expressive, one second, quiet, no words, no human voice, no music, no harsh transients, a clean isolated one-shot with silence at both ends."
+      },
+      "request_sha256": "d04a19e0a50085e0f1c0c4ce2dec1528843762001b19b7afe6c69799df5ca1c7"
+    },
+    {
+      "asset_id": "plum_hello_1_1dc3db7abeff",
+      "character": "Plum",
+      "cue": "hello",
+      "estimated_credits": 40,
+      "event": "greet",
+      "family": "pebble",
+      "request": {
+        "duration_seconds": 1.0,
+        "loop": false,
+        "model_id": "eleven_text_to_sound_v2",
+        "prompt_influence": 0.6,
+        "text": "One original imaginary small creature sound, a warm little greeting. Its distinctive timbre is a velvety low hum and one warm hollow wooden pop. Variation 1, gentle and expressive, one second, quiet, no words, no human voice, no music, no harsh transients, a clean isolated one-shot with silence at both ends."
+      },
+      "request_sha256": "1dc3db7abeff6feddfdb6a39f65a2f7b21dd2b3d2457778fde49e48087234867"
+    },
+    {
+      "asset_id": "poppy_hello_1_285aa366840f",
+      "character": "Poppy",
+      "cue": "hello",
+      "estimated_credits": 40,
+      "event": "greet",
+      "family": "bubble",
+      "request": {
+        "duration_seconds": 1.0,
+        "loop": false,
+        "model_id": "eleven_text_to_sound_v2",
+        "prompt_influence": 0.6,
+        "text": "One original imaginary small creature sound, a warm little greeting. Its distinctive timbre is a light bubbly trill ending in a playful double pop. Variation 1, gentle and expressive, one second, quiet, no words, no human voice, no music, no harsh transients, a clean isolated one-shot with silence at both ends."
+      },
+      "request_sha256": "285aa366840fe3f374deb88d54477c4ed4b3d3749b0454c9fc6aabeaf2284028"
+    },
+    {
+      "asset_id": "inky_hello_1_d79e940e265e",
+      "character": "Inky",
+      "cue": "hello",
+      "estimated_credits": 40,
+      "event": "greet",
+      "family": "pebble",
+      "request": {
+        "duration_seconds": 1.0,
+        "loop": false,
+        "model_id": "eleven_text_to_sound_v2",
+        "prompt_influence": 0.6,
+        "text": "One original imaginary small creature sound, a warm little greeting. Its distinctive timbre is a soft bassy murmur with a dry delicate click. Variation 1, gentle and expressive, one second, quiet, no words, no human voice, no music, no harsh transients, a clean isolated one-shot with silence at both ends."
+      },
+      "request_sha256": "d79e940e265ea1d3bc856551cea490c5c66483dd215123e71016282990493720"
+    },
+    {
+      "asset_id": "pebble_hello_1_ef7bd511d2ba",
+      "character": "Pebble",
+      "cue": "hello",
+      "estimated_credits": 40,
+      "event": "greet",
+      "family": "pebble",
+      "request": {
+        "duration_seconds": 1.0,
+        "loop": false,
+        "model_id": "eleven_text_to_sound_v2",
+        "prompt_influence": 0.6,
+        "text": "One original imaginary small creature sound, a warm little greeting. Its distinctive timbre is rounded hollow ceramic notes and a warm breathy coo. Variation 1, gentle and expressive, one second, quiet, no words, no human voice, no music, no harsh transients, a clean isolated one-shot with silence at both ends."
+      },
+      "request_sha256": "ef7bd511d2ba887a293f327cb6e3c2b8e18998871c7a8bd0aca97e0db8994f98"
+    },
+    {
+      "asset_id": "nori_hello_1_eaa2443b6665",
+      "character": "Nori",
+      "cue": "hello",
+      "estimated_credits": 40,
+      "event": "greet",
+      "family": "sprout",
+      "request": {
+        "duration_seconds": 1.0,
+        "loop": false,
+        "model_id": "eleven_text_to_sound_v2",
+        "prompt_influence": 0.6,
+        "text": "One original imaginary small creature sound, a warm little greeting. Its distinctive timbre is a mellow reed chirp with a little descending sigh. Variation 1, gentle and expressive, one second, quiet, no words, no human voice, no music, no harsh transients, a clean isolated one-shot with silence at both ends."
+      },
+      "request_sha256": "eaa2443b6665b972065b75542a25965b2e5871391a62ebe83d4cfbd5a1c8db09"
+    },
+    {
+      "asset_id": "ember_hello_1_bea52d546abf",
+      "character": "Ember",
+      "cue": "hello",
+      "estimated_credits": 40,
+      "event": "greet",
+      "family": "spark",
+      "request": {
+        "duration_seconds": 1.0,
+        "loop": false,
+        "model_id": "eleven_text_to_sound_v2",
+        "prompt_influence": 0.6,
+        "text": "One original imaginary small creature sound, a warm little greeting. Its distinctive timbre is a warm rounded shimmer and a bright little upward pip. Variation 1, gentle and expressive, one second, quiet, no words, no human voice, no music, no harsh transients, a clean isolated one-shot with silence at both ends."
+      },
+      "request_sha256": "bea52d546abfcbd913970075afc19b1d64275f37eb2aca99a6fb947fd73e9d1c"
+    },
+    {
+      "asset_id": "wisp_hello_1_68534ac7e19d",
+      "character": "Wisp",
+      "cue": "hello",
+      "estimated_credits": 40,
+      "event": "greet",
+      "family": "sprout",
+      "request": {
+        "duration_seconds": 1.0,
+        "loop": false,
+        "model_id": "eleven_text_to_sound_v2",
+        "prompt_influence": 0.6,
+        "text": "One original imaginary small creature sound, a warm little greeting. Its distinctive timbre is an airy gentle flute murmur ending in one tiny squeak. Variation 1, gentle and expressive, one second, quiet, no words, no human voice, no music, no harsh transients, a clean isolated one-shot with silence at both ends."
+      },
+      "request_sha256": "68534ac7e19d20edb73786b29e6ba0f70dd6e40b17a72fbb0fe98bf784f318e1"
+    },
+    {
+      "asset_id": "coral_delight_1_71d5d8c74a51",
+      "character": "Coral",
+      "cue": "delight",
+      "estimated_credits": 40,
+      "event": "play",
+      "family": "bubble",
+      "request": {
+        "duration_seconds": 1.0,
+        "loop": false,
+        "model_id": "eleven_text_to_sound_v2",
+        "prompt_influence": 0.6,
+        "text": "One original imaginary small creature sound, a pleased playful giggle. Its distinctive timbre is soft coral bells and two buoyant watery syllables. Variation 1, gentle and expressive, one second, quiet, no words, no human voice, no music, no harsh transients, a clean isolated one-shot with silence at both ends."
+      },
+      "request_sha256": "71d5d8c74a5161b99117bea1b31f10e094a96723c4a521736892bb7935f4a44e"
+    },
+    {
+      "asset_id": "moss_delight_1_1d088dea4323",
+      "character": "Moss",
+      "cue": "delight",
+      "estimated_credits": 40,
+      "event": "play",
+      "family": "sprout",
+      "request": {
+        "duration_seconds": 1.0,
+        "loop": false,
+        "model_id": "eleven_text_to_sound_v2",
+        "prompt_influence": 0.6,
+        "text": "One original imaginary small creature sound, a pleased playful giggle. Its distinctive timbre is a shy woodwind coo with a tiny leafy rustle. Variation 1, gentle and expressive, one second, quiet, no words, no human voice, no music, no harsh transients, a clean isolated one-shot with silence at both ends."
+      },
+      "request_sha256": "1d088dea43233b89e7ad87334848e0fd7cedff74fff2cc5a86ea1d6266283655"
+    },
+    {
+      "asset_id": "iris_delight_1_41ca11fa0c1f",
+      "character": "Iris",
+      "cue": "delight",
+      "estimated_credits": 40,
+      "event": "play",
+      "family": "spark",
+      "request": {
+        "duration_seconds": 1.0,
+        "loop": false,
+        "model_id": "eleven_text_to_sound_v2",
+        "prompt_influence": 0.6,
+        "text": "One original imaginary small creature sound, a pleased playful giggle. Its distinctive timbre is rounded glass tones with a lilting three-note answer. Variation 1, gentle and expressive, one second, quiet, no words, no human voice, no music, no harsh transients, a clean isolated one-shot with silence at both ends."
+      },
+      "request_sha256": "41ca11fa0c1fa489b915c296740f799db55338d2e2057e05f48338ea6c8d2970"
+    },
+    {
+      "asset_id": "tide_delight_1_ff16be1f7aea",
+      "character": "Tide",
+      "cue": "delight",
+      "estimated_credits": 40,
+      "event": "play",
+      "family": "bubble",
+      "request": {
+        "duration_seconds": 1.0,
+        "loop": false,
+        "model_id": "eleven_text_to_sound_v2",
+        "prompt_influence": 0.6,
+        "text": "One original imaginary small creature sound, a pleased playful giggle. Its distinctive timbre is a low liquid burble followed by a soft rising whistle. Variation 1, gentle and expressive, one second, quiet, no words, no human voice, no music, no harsh transients, a clean isolated one-shot with silence at both ends."
+      },
+      "request_sha256": "ff16be1f7aea5cea75f5027262871c49990b6067ea2f7cb3187863667e78313b"
+    },
+    {
+      "asset_id": "orbit_delight_1_d1784b91e2f4",
+      "character": "Orbit",
+      "cue": "delight",
+      "estimated_credits": 40,
+      "event": "play",
+      "family": "spark",
+      "request": {
+        "duration_seconds": 1.0,
+        "loop": false,
+        "model_id": "eleven_text_to_sound_v2",
+        "prompt_influence": 0.6,
+        "text": "One original imaginary small creature sound, a pleased playful giggle. Its distinctive timbre is a bouncy round electronic pip with a springy wobble. Variation 1, gentle and expressive, one second, quiet, no words, no human voice, no music, no harsh transients, a clean isolated one-shot with silence at both ends."
+      },
+      "request_sha256": "d1784b91e2f40cb98a2c97065ee065634315826d72695e0b0933229106158454"
+    },
+    {
+      "asset_id": "plum_delight_1_ab6be2a73d7d",
+      "character": "Plum",
+      "cue": "delight",
+      "estimated_credits": 40,
+      "event": "play",
+      "family": "pebble",
+      "request": {
+        "duration_seconds": 1.0,
+        "loop": false,
+        "model_id": "eleven_text_to_sound_v2",
+        "prompt_influence": 0.6,
+        "text": "One original imaginary small creature sound, a pleased playful giggle. Its distinctive timbre is a velvety low hum and one warm hollow wooden pop. Variation 1, gentle and expressive, one second, quiet, no words, no human voice, no music, no harsh transients, a clean isolated one-shot with silence at both ends."
+      },
+      "request_sha256": "ab6be2a73d7dcbeccb89e9f30e075328da5829add7f8a08a78ed8a7715aac0c8"
+    },
+    {
+      "asset_id": "poppy_delight_1_96324294070d",
+      "character": "Poppy",
+      "cue": "delight",
+      "estimated_credits": 40,
+      "event": "play",
+      "family": "bubble",
+      "request": {
+        "duration_seconds": 1.0,
+        "loop": false,
+        "model_id": "eleven_text_to_sound_v2",
+        "prompt_influence": 0.6,
+        "text": "One original imaginary small creature sound, a pleased playful giggle. Its distinctive timbre is a light bubbly trill ending in a playful double pop. Variation 1, gentle and expressive, one second, quiet, no words, no human voice, no music, no harsh transients, a clean isolated one-shot with silence at both ends."
+      },
+      "request_sha256": "96324294070d9e1f15a8e8943d1073bec4b5ec0198770e5e67b97c90ba3d6178"
+    },
+    {
+      "asset_id": "inky_delight_1_766c13394c17",
+      "character": "Inky",
+      "cue": "delight",
+      "estimated_credits": 40,
+      "event": "play",
+      "family": "pebble",
+      "request": {
+        "duration_seconds": 1.0,
+        "loop": false,
+        "model_id": "eleven_text_to_sound_v2",
+        "prompt_influence": 0.6,
+        "text": "One original imaginary small creature sound, a pleased playful giggle. Its distinctive timbre is a soft bassy murmur with a dry delicate click. Variation 1, gentle and expressive, one second, quiet, no words, no human voice, no music, no harsh transients, a clean isolated one-shot with silence at both ends."
+      },
+      "request_sha256": "766c13394c173baee189b7a03a26c6b069ab3474195b3147047422f83ae86f3a"
+    },
+    {
+      "asset_id": "pebble_delight_1_01bbf34c73ce",
+      "character": "Pebble",
+      "cue": "delight",
+      "estimated_credits": 40,
+      "event": "play",
+      "family": "pebble",
+      "request": {
+        "duration_seconds": 1.0,
+        "loop": false,
+        "model_id": "eleven_text_to_sound_v2",
+        "prompt_influence": 0.6,
+        "text": "One original imaginary small creature sound, a pleased playful giggle. Its distinctive timbre is rounded hollow ceramic notes and a warm breathy coo. Variation 1, gentle and expressive, one second, quiet, no words, no human voice, no music, no harsh transients, a clean isolated one-shot with silence at both ends."
+      },
+      "request_sha256": "01bbf34c73ce07b2498f4601bf739ca92eaa0cffdf05f9a6ba443d34b1f21750"
+    },
+    {
+      "asset_id": "nori_delight_1_5d5a49df40a2",
+      "character": "Nori",
+      "cue": "delight",
+      "estimated_credits": 40,
+      "event": "play",
+      "family": "sprout",
+      "request": {
+        "duration_seconds": 1.0,
+        "loop": false,
+        "model_id": "eleven_text_to_sound_v2",
+        "prompt_influence": 0.6,
+        "text": "One original imaginary small creature sound, a pleased playful giggle. Its distinctive timbre is a mellow reed chirp with a little descending sigh. Variation 1, gentle and expressive, one second, quiet, no words, no human voice, no music, no harsh transients, a clean isolated one-shot with silence at both ends."
+      },
+      "request_sha256": "5d5a49df40a2f860e923d8dec63163a73471333a01295ebb859b1e3e9353b819"
+    },
+    {
+      "asset_id": "ember_delight_1_87a10f46e255",
+      "character": "Ember",
+      "cue": "delight",
+      "estimated_credits": 40,
+      "event": "play",
+      "family": "spark",
+      "request": {
+        "duration_seconds": 1.0,
+        "loop": false,
+        "model_id": "eleven_text_to_sound_v2",
+        "prompt_influence": 0.6,
+        "text": "One original imaginary small creature sound, a pleased playful giggle. Its distinctive timbre is a warm rounded shimmer and a bright little upward pip. Variation 1, gentle and expressive, one second, quiet, no words, no human voice, no music, no harsh transients, a clean isolated one-shot with silence at both ends."
+      },
+      "request_sha256": "87a10f46e2556a10a9b33cb7951a749c01cd886a931958993eabf6c71cac35d0"
+    },
+    {
+      "asset_id": "wisp_delight_1_1c19d3fe0884",
+      "character": "Wisp",
+      "cue": "delight",
+      "estimated_credits": 40,
+      "event": "play",
+      "family": "sprout",
+      "request": {
+        "duration_seconds": 1.0,
+        "loop": false,
+        "model_id": "eleven_text_to_sound_v2",
+        "prompt_influence": 0.6,
+        "text": "One original imaginary small creature sound, a pleased playful giggle. Its distinctive timbre is an airy gentle flute murmur ending in one tiny squeak. Variation 1, gentle and expressive, one second, quiet, no words, no human voice, no music, no harsh transients, a clean isolated one-shot with silence at both ends."
+      },
+      "request_sha256": "1c19d3fe0884fdbfef2e14351df31db63e8e50da78b4428da3d91f7c17fb29b7"
+    },
+    {
+      "asset_id": "coral_rest_1_326f99c0f87d",
+      "character": "Coral",
+      "cue": "rest",
+      "estimated_credits": 40,
+      "event": "rest",
+      "family": "bubble",
+      "request": {
+        "duration_seconds": 1.0,
+        "loop": false,
+        "model_id": "eleven_text_to_sound_v2",
+        "prompt_influence": 0.6,
+        "text": "One original imaginary small creature sound, a comfortable sleepy sigh. Its distinctive timbre is soft coral bells and two buoyant watery syllables. Variation 1, gentle and expressive, one second, quiet, no words, no human voice, no music, no harsh transients, a clean isolated one-shot with silence at both ends."
+      },
+      "request_sha256": "326f99c0f87d03917c4f88d3aacf506f2ea6dc846a77487118e1b69143586b00"
+    },
+    {
+      "asset_id": "moss_rest_1_68c9062fa6cf",
+      "character": "Moss",
+      "cue": "rest",
+      "estimated_credits": 40,
+      "event": "rest",
+      "family": "sprout",
+      "request": {
+        "duration_seconds": 1.0,
+        "loop": false,
+        "model_id": "eleven_text_to_sound_v2",
+        "prompt_influence": 0.6,
+        "text": "One original imaginary small creature sound, a comfortable sleepy sigh. Its distinctive timbre is a shy woodwind coo with a tiny leafy rustle. Variation 1, gentle and expressive, one second, quiet, no words, no human voice, no music, no harsh transients, a clean isolated one-shot with silence at both ends."
+      },
+      "request_sha256": "68c9062fa6cfa903a0d17b85fb0a1c484d1c5fc80a63bdf3652b25a709c6b9d8"
+    },
+    {
+      "asset_id": "iris_rest_1_3cff3190b28d",
+      "character": "Iris",
+      "cue": "rest",
+      "estimated_credits": 40,
+      "event": "rest",
+      "family": "spark",
+      "request": {
+        "duration_seconds": 1.0,
+        "loop": false,
+        "model_id": "eleven_text_to_sound_v2",
+        "prompt_influence": 0.6,
+        "text": "One original imaginary small creature sound, a comfortable sleepy sigh. Its distinctive timbre is rounded glass tones with a lilting three-note answer. Variation 1, gentle and expressive, one second, quiet, no words, no human voice, no music, no harsh transients, a clean isolated one-shot with silence at both ends."
+      },
+      "request_sha256": "3cff3190b28defc82352c864fb717e2d342684652cbb9280baa31e14f8956c41"
+    },
+    {
+      "asset_id": "tide_rest_1_6fe391f254bf",
+      "character": "Tide",
+      "cue": "rest",
+      "estimated_credits": 40,
+      "event": "rest",
+      "family": "bubble",
+      "request": {
+        "duration_seconds": 1.0,
+        "loop": false,
+        "model_id": "eleven_text_to_sound_v2",
+        "prompt_influence": 0.6,
+        "text": "One original imaginary small creature sound, a comfortable sleepy sigh. Its distinctive timbre is a low liquid burble followed by a soft rising whistle. Variation 1, gentle and expressive, one second, quiet, no words, no human voice, no music, no harsh transients, a clean isolated one-shot with silence at both ends."
+      },
+      "request_sha256": "6fe391f254bfd3de1d083925ff54200d8c0ea86087b3bd9f0b0814a1823e60a6"
+    },
+    {
+      "asset_id": "orbit_rest_1_3a4cda094578",
+      "character": "Orbit",
+      "cue": "rest",
+      "estimated_credits": 40,
+      "event": "rest",
+      "family": "spark",
+      "request": {
+        "duration_seconds": 1.0,
+        "loop": false,
+        "model_id": "eleven_text_to_sound_v2",
+        "prompt_influence": 0.6,
+        "text": "One original imaginary small creature sound, a comfortable sleepy sigh. Its distinctive timbre is a bouncy round electronic pip with a springy wobble. Variation 1, gentle and expressive, one second, quiet, no words, no human voice, no music, no harsh transients, a clean isolated one-shot with silence at both ends."
+      },
+      "request_sha256": "3a4cda09457886a779f7284b25ed8a2a98e169514e481899b891b5a9afb5abcb"
+    },
+    {
+      "asset_id": "plum_rest_1_84fb9958db7f",
+      "character": "Plum",
+      "cue": "rest",
+      "estimated_credits": 40,
+      "event": "rest",
+      "family": "pebble",
+      "request": {
+        "duration_seconds": 1.0,
+        "loop": false,
+        "model_id": "eleven_text_to_sound_v2",
+        "prompt_influence": 0.6,
+        "text": "One original imaginary small creature sound, a comfortable sleepy sigh. Its distinctive timbre is a velvety low hum and one warm hollow wooden pop. Variation 1, gentle and expressive, one second, quiet, no words, no human voice, no music, no harsh transients, a clean isolated one-shot with silence at both ends."
+      },
+      "request_sha256": "84fb9958db7f186f049b62d0c9cf3fc0e19f1f6fa8ff8517bd27ed617b28a3d1"
+    },
+    {
+      "asset_id": "poppy_rest_1_a205022580cc",
+      "character": "Poppy",
+      "cue": "rest",
+      "estimated_credits": 40,
+      "event": "rest",
+      "family": "bubble",
+      "request": {
+        "duration_seconds": 1.0,
+        "loop": false,
+        "model_id": "eleven_text_to_sound_v2",
+        "prompt_influence": 0.6,
+        "text": "One original imaginary small creature sound, a comfortable sleepy sigh. Its distinctive timbre is a light bubbly trill ending in a playful double pop. Variation 1, gentle and expressive, one second, quiet, no words, no human voice, no music, no harsh transients, a clean isolated one-shot with silence at both ends."
+      },
+      "request_sha256": "a205022580cc03e776e3ff804c14c9e6d5e1384f9d39e27225fe087ddd53da63"
+    },
+    {
+      "asset_id": "inky_rest_1_3d91e2c66c65",
+      "character": "Inky",
+      "cue": "rest",
+      "estimated_credits": 40,
+      "event": "rest",
+      "family": "pebble",
+      "request": {
+        "duration_seconds": 1.0,
+        "loop": false,
+        "model_id": "eleven_text_to_sound_v2",
+        "prompt_influence": 0.6,
+        "text": "One original imaginary small creature sound, a comfortable sleepy sigh. Its distinctive timbre is a soft bassy murmur with a dry delicate click. Variation 1, gentle and expressive, one second, quiet, no words, no human voice, no music, no harsh transients, a clean isolated one-shot with silence at both ends."
+      },
+      "request_sha256": "3d91e2c66c65bb478957d8102011174640ec745888d70e067aedd57cf44a653f"
+    },
+    {
+      "asset_id": "pebble_rest_1_4b3355102c3f",
+      "character": "Pebble",
+      "cue": "rest",
+      "estimated_credits": 40,
+      "event": "rest",
+      "family": "pebble",
+      "request": {
+        "duration_seconds": 1.0,
+        "loop": false,
+        "model_id": "eleven_text_to_sound_v2",
+        "prompt_influence": 0.6,
+        "text": "One original imaginary small creature sound, a comfortable sleepy sigh. Its distinctive timbre is rounded hollow ceramic notes and a warm breathy coo. Variation 1, gentle and expressive, one second, quiet, no words, no human voice, no music, no harsh transients, a clean isolated one-shot with silence at both ends."
+      },
+      "request_sha256": "4b3355102c3f82c2c6ceabe25e03e5d68b756d93101cc4001a9cdeddbdeff3da"
+    },
+    {
+      "asset_id": "nori_rest_1_1002b2ce6ac5",
+      "character": "Nori",
+      "cue": "rest",
+      "estimated_credits": 40,
+      "event": "rest",
+      "family": "sprout",
+      "request": {
+        "duration_seconds": 1.0,
+        "loop": false,
+        "model_id": "eleven_text_to_sound_v2",
+        "prompt_influence": 0.6,
+        "text": "One original imaginary small creature sound, a comfortable sleepy sigh. Its distinctive timbre is a mellow reed chirp with a little descending sigh. Variation 1, gentle and expressive, one second, quiet, no words, no human voice, no music, no harsh transients, a clean isolated one-shot with silence at both ends."
+      },
+      "request_sha256": "1002b2ce6ac507d9df6b9cc35e0dc92adeae4a2f75e0140f938ec0e30e3995e3"
+    },
+    {
+      "asset_id": "ember_rest_1_b6d00adbc544",
+      "character": "Ember",
+      "cue": "rest",
+      "estimated_credits": 40,
+      "event": "rest",
+      "family": "spark",
+      "request": {
+        "duration_seconds": 1.0,
+        "loop": false,
+        "model_id": "eleven_text_to_sound_v2",
+        "prompt_influence": 0.6,
+        "text": "One original imaginary small creature sound, a comfortable sleepy sigh. Its distinctive timbre is a warm rounded shimmer and a bright little upward pip. Variation 1, gentle and expressive, one second, quiet, no words, no human voice, no music, no harsh transients, a clean isolated one-shot with silence at both ends."
+      },
+      "request_sha256": "b6d00adbc54484f6c866be82c74441aada87905661caeae8ab45a13b6929ebbb"
+    },
+    {
+      "asset_id": "wisp_rest_1_65822d698536",
+      "character": "Wisp",
+      "cue": "rest",
+      "estimated_credits": 40,
+      "event": "rest",
+      "family": "sprout",
+      "request": {
+        "duration_seconds": 1.0,
+        "loop": false,
+        "model_id": "eleven_text_to_sound_v2",
+        "prompt_influence": 0.6,
+        "text": "One original imaginary small creature sound, a comfortable sleepy sigh. Its distinctive timbre is an airy gentle flute murmur ending in one tiny squeak. Variation 1, gentle and expressive, one second, quiet, no words, no human voice, no music, no harsh transients, a clean isolated one-shot with silence at both ends."
+      },
+      "request_sha256": "65822d69853605a52a733af32b9cccdd0d0055cac5afc6ac9066259cf9aede11"
+    },
+    {
+      "asset_id": "coral_blink_1_084998012e1e",
+      "character": "Coral",
+      "cue": "blink",
+      "estimated_credits": 40,
+      "event": "blink",
+      "family": "bubble",
+      "request": {
+        "duration_seconds": 1.0,
+        "loop": false,
+        "model_id": "eleven_text_to_sound_v2",
+        "prompt_influence": 0.6,
+        "text": "One original imaginary small creature sound, a tiny soft surprised blink. Its distinctive timbre is soft coral bells and two buoyant watery syllables. Variation 1, gentle and expressive, one second, quiet, no words, no human voice, no music, no harsh transients, a clean isolated one-shot with silence at both ends."
+      },
+      "request_sha256": "084998012e1e2bcdcf9b8da3b5eb0c591e8316558261fb70802faa09731f5b8a"
+    },
+    {
+      "asset_id": "moss_blink_1_0e9c2ec31740",
+      "character": "Moss",
+      "cue": "blink",
+      "estimated_credits": 40,
+      "event": "blink",
+      "family": "sprout",
+      "request": {
+        "duration_seconds": 1.0,
+        "loop": false,
+        "model_id": "eleven_text_to_sound_v2",
+        "prompt_influence": 0.6,
+        "text": "One original imaginary small creature sound, a tiny soft surprised blink. Its distinctive timbre is a shy woodwind coo with a tiny leafy rustle. Variation 1, gentle and expressive, one second, quiet, no words, no human voice, no music, no harsh transients, a clean isolated one-shot with silence at both ends."
+      },
+      "request_sha256": "0e9c2ec31740f5352201ad516f00eb268ca9dfb8c1d40c2518da958c3080c42c"
+    },
+    {
+      "asset_id": "iris_blink_1_a7f430727385",
+      "character": "Iris",
+      "cue": "blink",
+      "estimated_credits": 40,
+      "event": "blink",
+      "family": "spark",
+      "request": {
+        "duration_seconds": 1.0,
+        "loop": false,
+        "model_id": "eleven_text_to_sound_v2",
+        "prompt_influence": 0.6,
+        "text": "One original imaginary small creature sound, a tiny soft surprised blink. Its distinctive timbre is rounded glass tones with a lilting three-note answer. Variation 1, gentle and expressive, one second, quiet, no words, no human voice, no music, no harsh transients, a clean isolated one-shot with silence at both ends."
+      },
+      "request_sha256": "a7f430727385c54e88b38338c0bac9cb36206261c950fcfb9ab0c7b6f3cc67fd"
+    },
+    {
+      "asset_id": "tide_blink_1_b0ee515f212e",
+      "character": "Tide",
+      "cue": "blink",
+      "estimated_credits": 40,
+      "event": "blink",
+      "family": "bubble",
+      "request": {
+        "duration_seconds": 1.0,
+        "loop": false,
+        "model_id": "eleven_text_to_sound_v2",
+        "prompt_influence": 0.6,
+        "text": "One original imaginary small creature sound, a tiny soft surprised blink. Its distinctive timbre is a low liquid burble followed by a soft rising whistle. Variation 1, gentle and expressive, one second, quiet, no words, no human voice, no music, no harsh transients, a clean isolated one-shot with silence at both ends."
+      },
+      "request_sha256": "b0ee515f212e586f658b7a248ae8acba1d07c452b101070907ee31763b13cf92"
+    },
+    {
+      "asset_id": "orbit_blink_1_6ebb17e576f2",
+      "character": "Orbit",
+      "cue": "blink",
+      "estimated_credits": 40,
+      "event": "blink",
+      "family": "spark",
+      "request": {
+        "duration_seconds": 1.0,
+        "loop": false,
+        "model_id": "eleven_text_to_sound_v2",
+        "prompt_influence": 0.6,
+        "text": "One original imaginary small creature sound, a tiny soft surprised blink. Its distinctive timbre is a bouncy round electronic pip with a springy wobble. Variation 1, gentle and expressive, one second, quiet, no words, no human voice, no music, no harsh transients, a clean isolated one-shot with silence at both ends."
+      },
+      "request_sha256": "6ebb17e576f2db93e9deec7607589709c247f9447055fad488d3a4c1d82b1d2e"
+    },
+    {
+      "asset_id": "plum_blink_1_0761ca4332a8",
+      "character": "Plum",
+      "cue": "blink",
+      "estimated_credits": 40,
+      "event": "blink",
+      "family": "pebble",
+      "request": {
+        "duration_seconds": 1.0,
+        "loop": false,
+        "model_id": "eleven_text_to_sound_v2",
+        "prompt_influence": 0.6,
+        "text": "One original imaginary small creature sound, a tiny soft surprised blink. Its distinctive timbre is a velvety low hum and one warm hollow wooden pop. Variation 1, gentle and expressive, one second, quiet, no words, no human voice, no music, no harsh transients, a clean isolated one-shot with silence at both ends."
+      },
+      "request_sha256": "0761ca4332a82abe2f777f9d841f771fc8faa60aa89d4108d5023a48254f037d"
+    },
+    {
+      "asset_id": "poppy_blink_1_6d445dd97298",
+      "character": "Poppy",
+      "cue": "blink",
+      "estimated_credits": 40,
+      "event": "blink",
+      "family": "bubble",
+      "request": {
+        "duration_seconds": 1.0,
+        "loop": false,
+        "model_id": "eleven_text_to_sound_v2",
+        "prompt_influence": 0.6,
+        "text": "One original imaginary small creature sound, a tiny soft surprised blink. Its distinctive timbre is a light bubbly trill ending in a playful double pop. Variation 1, gentle and expressive, one second, quiet, no words, no human voice, no music, no harsh transients, a clean isolated one-shot with silence at both ends."
+      },
+      "request_sha256": "6d445dd972988fc8d9456c9ef643a97aa3093a6f06e20a0e45a300b877c9984f"
+    },
+    {
+      "asset_id": "inky_blink_1_d39cd8e1d990",
+      "character": "Inky",
+      "cue": "blink",
+      "estimated_credits": 40,
+      "event": "blink",
+      "family": "pebble",
+      "request": {
+        "duration_seconds": 1.0,
+        "loop": false,
+        "model_id": "eleven_text_to_sound_v2",
+        "prompt_influence": 0.6,
+        "text": "One original imaginary small creature sound, a tiny soft surprised blink. Its distinctive timbre is a soft bassy murmur with a dry delicate click. Variation 1, gentle and expressive, one second, quiet, no words, no human voice, no music, no harsh transients, a clean isolated one-shot with silence at both ends."
+      },
+      "request_sha256": "d39cd8e1d990354ba3b985cbd26755d24b2dda63d658986e73b35c17997e2be5"
+    },
+    {
+      "asset_id": "pebble_blink_1_e799433f2228",
+      "character": "Pebble",
+      "cue": "blink",
+      "estimated_credits": 40,
+      "event": "blink",
+      "family": "pebble",
+      "request": {
+        "duration_seconds": 1.0,
+        "loop": false,
+        "model_id": "eleven_text_to_sound_v2",
+        "prompt_influence": 0.6,
+        "text": "One original imaginary small creature sound, a tiny soft surprised blink. Its distinctive timbre is rounded hollow ceramic notes and a warm breathy coo. Variation 1, gentle and expressive, one second, quiet, no words, no human voice, no music, no harsh transients, a clean isolated one-shot with silence at both ends."
+      },
+      "request_sha256": "e799433f22283f7f26f20ea36e98f82b4d7a12e0ebe3a5a08b36145f07394044"
+    },
+    {
+      "asset_id": "nori_blink_1_7a698518f248",
+      "character": "Nori",
+      "cue": "blink",
+      "estimated_credits": 40,
+      "event": "blink",
+      "family": "sprout",
+      "request": {
+        "duration_seconds": 1.0,
+        "loop": false,
+        "model_id": "eleven_text_to_sound_v2",
+        "prompt_influence": 0.6,
+        "text": "One original imaginary small creature sound, a tiny soft surprised blink. Its distinctive timbre is a mellow reed chirp with a little descending sigh. Variation 1, gentle and expressive, one second, quiet, no words, no human voice, no music, no harsh transients, a clean isolated one-shot with silence at both ends."
+      },
+      "request_sha256": "7a698518f2485bdb30214425860660b781f2dce6af646745a0d2e17f9ca15474"
+    },
+    {
+      "asset_id": "ember_blink_1_c446bbe526a1",
+      "character": "Ember",
+      "cue": "blink",
+      "estimated_credits": 40,
+      "event": "blink",
+      "family": "spark",
+      "request": {
+        "duration_seconds": 1.0,
+        "loop": false,
+        "model_id": "eleven_text_to_sound_v2",
+        "prompt_influence": 0.6,
+        "text": "One original imaginary small creature sound, a tiny soft surprised blink. Its distinctive timbre is a warm rounded shimmer and a bright little upward pip. Variation 1, gentle and expressive, one second, quiet, no words, no human voice, no music, no harsh transients, a clean isolated one-shot with silence at both ends."
+      },
+      "request_sha256": "c446bbe526a18cc8ec7448b2cfe5c284c7c38a7e97951a34acf057a369b48c36"
+    },
+    {
+      "asset_id": "wisp_blink_1_25c5ea712098",
+      "character": "Wisp",
+      "cue": "blink",
+      "estimated_credits": 40,
+      "event": "blink",
+      "family": "sprout",
+      "request": {
+        "duration_seconds": 1.0,
+        "loop": false,
+        "model_id": "eleven_text_to_sound_v2",
+        "prompt_influence": 0.6,
+        "text": "One original imaginary small creature sound, a tiny soft surprised blink. Its distinctive timbre is an airy gentle flute murmur ending in one tiny squeak. Variation 1, gentle and expressive, one second, quiet, no words, no human voice, no music, no harsh transients, a clean isolated one-shot with silence at both ends."
+      },
+      "request_sha256": "25c5ea7120985ad2e1454a6f0bc5dcc95d0f64e4c686849b72d79fcee8e0a84c"
+    },
+    {
+      "asset_id": "coral_curiosity_1_059bd8a46525",
+      "character": "Coral",
+      "cue": "curiosity",
+      "estimated_credits": 40,
+      "event": "look",
+      "family": "bubble",
+      "request": {
+        "duration_seconds": 1.0,
+        "loop": false,
+        "model_id": "eleven_text_to_sound_v2",
+        "prompt_influence": 0.6,
+        "text": "One original imaginary small creature sound, a questioning curious chirp. Its distinctive timbre is soft coral bells and two buoyant watery syllables. Variation 1, gentle and expressive, one second, quiet, no words, no human voice, no music, no harsh transients, a clean isolated one-shot with silence at both ends."
+      },
+      "request_sha256": "059bd8a465256225a3fc4516269b8011f852d8325eec6e62e85626db173bd915"
+    },
+    {
+      "asset_id": "moss_curiosity_1_a21bc52e2274",
+      "character": "Moss",
+      "cue": "curiosity",
+      "estimated_credits": 40,
+      "event": "look",
+      "family": "sprout",
+      "request": {
+        "duration_seconds": 1.0,
+        "loop": false,
+        "model_id": "eleven_text_to_sound_v2",
+        "prompt_influence": 0.6,
+        "text": "One original imaginary small creature sound, a questioning curious chirp. Its distinctive timbre is a shy woodwind coo with a tiny leafy rustle. Variation 1, gentle and expressive, one second, quiet, no words, no human voice, no music, no harsh transients, a clean isolated one-shot with silence at both ends."
+      },
+      "request_sha256": "a21bc52e2274274151986c1f2a914b3f1ba4290314f975976b8faa5f8ca533f7"
+    },
+    {
+      "asset_id": "iris_curiosity_1_9fa35bd0fcae",
+      "character": "Iris",
+      "cue": "curiosity",
+      "estimated_credits": 40,
+      "event": "look",
+      "family": "spark",
+      "request": {
+        "duration_seconds": 1.0,
+        "loop": false,
+        "model_id": "eleven_text_to_sound_v2",
+        "prompt_influence": 0.6,
+        "text": "One original imaginary small creature sound, a questioning curious chirp. Its distinctive timbre is rounded glass tones with a lilting three-note answer. Variation 1, gentle and expressive, one second, quiet, no words, no human voice, no music, no harsh transients, a clean isolated one-shot with silence at both ends."
+      },
+      "request_sha256": "9fa35bd0fcae7a92633394623f5ad3a2a257ca36e9b1f9ed0fb693eff1b50935"
+    },
+    {
+      "asset_id": "tide_curiosity_1_2dc393a3b0a6",
+      "character": "Tide",
+      "cue": "curiosity",
+      "estimated_credits": 40,
+      "event": "look",
+      "family": "bubble",
+      "request": {
+        "duration_seconds": 1.0,
+        "loop": false,
+        "model_id": "eleven_text_to_sound_v2",
+        "prompt_influence": 0.6,
+        "text": "One original imaginary small creature sound, a questioning curious chirp. Its distinctive timbre is a low liquid burble followed by a soft rising whistle. Variation 1, gentle and expressive, one second, quiet, no words, no human voice, no music, no harsh transients, a clean isolated one-shot with silence at both ends."
+      },
+      "request_sha256": "2dc393a3b0a654d9bceedd87b31eea2fd0b7a426835eb6b1076417ee94c024d3"
+    },
+    {
+      "asset_id": "orbit_curiosity_1_79404259a092",
+      "character": "Orbit",
+      "cue": "curiosity",
+      "estimated_credits": 40,
+      "event": "look",
+      "family": "spark",
+      "request": {
+        "duration_seconds": 1.0,
+        "loop": false,
+        "model_id": "eleven_text_to_sound_v2",
+        "prompt_influence": 0.6,
+        "text": "One original imaginary small creature sound, a questioning curious chirp. Its distinctive timbre is a bouncy round electronic pip with a springy wobble. Variation 1, gentle and expressive, one second, quiet, no words, no human voice, no music, no harsh transients, a clean isolated one-shot with silence at both ends."
+      },
+      "request_sha256": "79404259a0928c1810f23fce2a474b483ff0277b888596d99acde6a16b7adedc"
+    },
+    {
+      "asset_id": "plum_curiosity_1_43f759bce9e3",
+      "character": "Plum",
+      "cue": "curiosity",
+      "estimated_credits": 40,
+      "event": "look",
+      "family": "pebble",
+      "request": {
+        "duration_seconds": 1.0,
+        "loop": false,
+        "model_id": "eleven_text_to_sound_v2",
+        "prompt_influence": 0.6,
+        "text": "One original imaginary small creature sound, a questioning curious chirp. Its distinctive timbre is a velvety low hum and one warm hollow wooden pop. Variation 1, gentle and expressive, one second, quiet, no words, no human voice, no music, no harsh transients, a clean isolated one-shot with silence at both ends."
+      },
+      "request_sha256": "43f759bce9e36042952c8464c830ae17b7225062d34f21f24abbf01f1aea1df8"
+    },
+    {
+      "asset_id": "poppy_curiosity_1_474161a7c9e4",
+      "character": "Poppy",
+      "cue": "curiosity",
+      "estimated_credits": 40,
+      "event": "look",
+      "family": "bubble",
+      "request": {
+        "duration_seconds": 1.0,
+        "loop": false,
+        "model_id": "eleven_text_to_sound_v2",
+        "prompt_influence": 0.6,
+        "text": "One original imaginary small creature sound, a questioning curious chirp. Its distinctive timbre is a light bubbly trill ending in a playful double pop. Variation 1, gentle and expressive, one second, quiet, no words, no human voice, no music, no harsh transients, a clean isolated one-shot with silence at both ends."
+      },
+      "request_sha256": "474161a7c9e42077c262e3dfc79063e1d155dcf74502a62d5cb2801e409f807e"
+    },
+    {
+      "asset_id": "inky_curiosity_1_8c21f70b50ed",
+      "character": "Inky",
+      "cue": "curiosity",
+      "estimated_credits": 40,
+      "event": "look",
+      "family": "pebble",
+      "request": {
+        "duration_seconds": 1.0,
+        "loop": false,
+        "model_id": "eleven_text_to_sound_v2",
+        "prompt_influence": 0.6,
+        "text": "One original imaginary small creature sound, a questioning curious chirp. Its distinctive timbre is a soft bassy murmur with a dry delicate click. Variation 1, gentle and expressive, one second, quiet, no words, no human voice, no music, no harsh transients, a clean isolated one-shot with silence at both ends."
+      },
+      "request_sha256": "8c21f70b50eda436f164919d9f5f7630fa681ae00c249118bca8df757430fad0"
+    },
+    {
+      "asset_id": "pebble_curiosity_1_a2d3250ff7f9",
+      "character": "Pebble",
+      "cue": "curiosity",
+      "estimated_credits": 40,
+      "event": "look",
+      "family": "pebble",
+      "request": {
+        "duration_seconds": 1.0,
+        "loop": false,
+        "model_id": "eleven_text_to_sound_v2",
+        "prompt_influence": 0.6,
+        "text": "One original imaginary small creature sound, a questioning curious chirp. Its distinctive timbre is rounded hollow ceramic notes and a warm breathy coo. Variation 1, gentle and expressive, one second, quiet, no words, no human voice, no music, no harsh transients, a clean isolated one-shot with silence at both ends."
+      },
+      "request_sha256": "a2d3250ff7f9f63f54b24dc70f3fe291202a1e6a2314c08253600e7cf72b4063"
+    },
+    {
+      "asset_id": "nori_curiosity_1_3b8da7247f5a",
+      "character": "Nori",
+      "cue": "curiosity",
+      "estimated_credits": 40,
+      "event": "look",
+      "family": "sprout",
+      "request": {
+        "duration_seconds": 1.0,
+        "loop": false,
+        "model_id": "eleven_text_to_sound_v2",
+        "prompt_influence": 0.6,
+        "text": "One original imaginary small creature sound, a questioning curious chirp. Its distinctive timbre is a mellow reed chirp with a little descending sigh. Variation 1, gentle and expressive, one second, quiet, no words, no human voice, no music, no harsh transients, a clean isolated one-shot with silence at both ends."
+      },
+      "request_sha256": "3b8da7247f5a8bc926c59828abc532b40f1a0c173a35c8ab48d1780d2618564a"
+    },
+    {
+      "asset_id": "ember_curiosity_1_6ee0ba2b2388",
+      "character": "Ember",
+      "cue": "curiosity",
+      "estimated_credits": 40,
+      "event": "look",
+      "family": "spark",
+      "request": {
+        "duration_seconds": 1.0,
+        "loop": false,
+        "model_id": "eleven_text_to_sound_v2",
+        "prompt_influence": 0.6,
+        "text": "One original imaginary small creature sound, a questioning curious chirp. Its distinctive timbre is a warm rounded shimmer and a bright little upward pip. Variation 1, gentle and expressive, one second, quiet, no words, no human voice, no music, no harsh transients, a clean isolated one-shot with silence at both ends."
+      },
+      "request_sha256": "6ee0ba2b2388049aeb52187b25d1f6689bdfeef33154ed5958616ffac1c024f5"
+    },
+    {
+      "asset_id": "wisp_curiosity_1_41995006ec0c",
+      "character": "Wisp",
+      "cue": "curiosity",
+      "estimated_credits": 40,
+      "event": "look",
+      "family": "sprout",
+      "request": {
+        "duration_seconds": 1.0,
+        "loop": false,
+        "model_id": "eleven_text_to_sound_v2",
+        "prompt_influence": 0.6,
+        "text": "One original imaginary small creature sound, a questioning curious chirp. Its distinctive timbre is an airy gentle flute murmur ending in one tiny squeak. Variation 1, gentle and expressive, one second, quiet, no words, no human voice, no music, no harsh transients, a clean isolated one-shot with silence at both ends."
+      },
+      "request_sha256": "41995006ec0c6c71641f8442cdcaca6a7b677f0270fa4604cd5fdb6562b5699a"
+    },
+    {
+      "asset_id": "coral_idle_1_4cb84e7d173c",
+      "character": "Coral",
+      "cue": "idle",
+      "estimated_credits": 40,
+      "event": "idle",
+      "family": "bubble",
+      "request": {
+        "duration_seconds": 1.0,
+        "loop": false,
+        "model_id": "eleven_text_to_sound_v2",
+        "prompt_influence": 0.6,
+        "text": "One original imaginary small creature sound, a quiet contented idle murmur. Its distinctive timbre is soft coral bells and two buoyant watery syllables. Variation 1, gentle and expressive, one second, quiet, no words, no human voice, no music, no harsh transients, a clean isolated one-shot with silence at both ends."
+      },
+      "request_sha256": "4cb84e7d173c609d505247013f93e130a144076eeb0161ddcf1b06feff800ce0"
+    },
+    {
+      "asset_id": "moss_idle_1_535c22158381",
+      "character": "Moss",
+      "cue": "idle",
+      "estimated_credits": 40,
+      "event": "idle",
+      "family": "sprout",
+      "request": {
+        "duration_seconds": 1.0,
+        "loop": false,
+        "model_id": "eleven_text_to_sound_v2",
+        "prompt_influence": 0.6,
+        "text": "One original imaginary small creature sound, a quiet contented idle murmur. Its distinctive timbre is a shy woodwind coo with a tiny leafy rustle. Variation 1, gentle and expressive, one second, quiet, no words, no human voice, no music, no harsh transients, a clean isolated one-shot with silence at both ends."
+      },
+      "request_sha256": "535c221583813fbfe84cf7becaa03dc9ac7ed153922594aac2f70dc825f6fdc6"
+    },
+    {
+      "asset_id": "iris_idle_1_cc2fda720c0f",
+      "character": "Iris",
+      "cue": "idle",
+      "estimated_credits": 40,
+      "event": "idle",
+      "family": "spark",
+      "request": {
+        "duration_seconds": 1.0,
+        "loop": false,
+        "model_id": "eleven_text_to_sound_v2",
+        "prompt_influence": 0.6,
+        "text": "One original imaginary small creature sound, a quiet contented idle murmur. Its distinctive timbre is rounded glass tones with a lilting three-note answer. Variation 1, gentle and expressive, one second, quiet, no words, no human voice, no music, no harsh transients, a clean isolated one-shot with silence at both ends."
+      },
+      "request_sha256": "cc2fda720c0f8130e737a10d6342d0b8e26fbf9d0ca09f8ac17c36435134a423"
+    },
+    {
+      "asset_id": "tide_idle_1_b64e86e1a48f",
+      "character": "Tide",
+      "cue": "idle",
+      "estimated_credits": 40,
+      "event": "idle",
+      "family": "bubble",
+      "request": {
+        "duration_seconds": 1.0,
+        "loop": false,
+        "model_id": "eleven_text_to_sound_v2",
+        "prompt_influence": 0.6,
+        "text": "One original imaginary small creature sound, a quiet contented idle murmur. Its distinctive timbre is a low liquid burble followed by a soft rising whistle. Variation 1, gentle and expressive, one second, quiet, no words, no human voice, no music, no harsh transients, a clean isolated one-shot with silence at both ends."
+      },
+      "request_sha256": "b64e86e1a48f1131576e5e9af1308cba160786f80af2c196628bff980bd6acfb"
+    },
+    {
+      "asset_id": "orbit_idle_1_ca659f94b9f0",
+      "character": "Orbit",
+      "cue": "idle",
+      "estimated_credits": 40,
+      "event": "idle",
+      "family": "spark",
+      "request": {
+        "duration_seconds": 1.0,
+        "loop": false,
+        "model_id": "eleven_text_to_sound_v2",
+        "prompt_influence": 0.6,
+        "text": "One original imaginary small creature sound, a quiet contented idle murmur. Its distinctive timbre is a bouncy round electronic pip with a springy wobble. Variation 1, gentle and expressive, one second, quiet, no words, no human voice, no music, no harsh transients, a clean isolated one-shot with silence at both ends."
+      },
+      "request_sha256": "ca659f94b9f0734723a423d41cb840f61f3dd7f435ce051b6588bf255751dfd0"
+    },
+    {
+      "asset_id": "plum_idle_1_45a3f9c661b1",
+      "character": "Plum",
+      "cue": "idle",
+      "estimated_credits": 40,
+      "event": "idle",
+      "family": "pebble",
+      "request": {
+        "duration_seconds": 1.0,
+        "loop": false,
+        "model_id": "eleven_text_to_sound_v2",
+        "prompt_influence": 0.6,
+        "text": "One original imaginary small creature sound, a quiet contented idle murmur. Its distinctive timbre is a velvety low hum and one warm hollow wooden pop. Variation 1, gentle and expressive, one second, quiet, no words, no human voice, no music, no harsh transients, a clean isolated one-shot with silence at both ends."
+      },
+      "request_sha256": "45a3f9c661b1210fcc335de23c43158af840c8363711e54f37bd503d4b7fb0fb"
+    },
+    {
+      "asset_id": "poppy_idle_1_39a0a262d125",
+      "character": "Poppy",
+      "cue": "idle",
+      "estimated_credits": 40,
+      "event": "idle",
+      "family": "bubble",
+      "request": {
+        "duration_seconds": 1.0,
+        "loop": false,
+        "model_id": "eleven_text_to_sound_v2",
+        "prompt_influence": 0.6,
+        "text": "One original imaginary small creature sound, a quiet contented idle murmur. Its distinctive timbre is a light bubbly trill ending in a playful double pop. Variation 1, gentle and expressive, one second, quiet, no words, no human voice, no music, no harsh transients, a clean isolated one-shot with silence at both ends."
+      },
+      "request_sha256": "39a0a262d125662cbf2e998f8e19411af62e63a1b1a3c28028f408553ab497a1"
+    },
+    {
+      "asset_id": "inky_idle_1_515c71577282",
+      "character": "Inky",
+      "cue": "idle",
+      "estimated_credits": 40,
+      "event": "idle",
+      "family": "pebble",
+      "request": {
+        "duration_seconds": 1.0,
+        "loop": false,
+        "model_id": "eleven_text_to_sound_v2",
+        "prompt_influence": 0.6,
+        "text": "One original imaginary small creature sound, a quiet contented idle murmur. Its distinctive timbre is a soft bassy murmur with a dry delicate click. Variation 1, gentle and expressive, one second, quiet, no words, no human voice, no music, no harsh transients, a clean isolated one-shot with silence at both ends."
+      },
+      "request_sha256": "515c71577282a155f3eefcdfa255c1a0767c783245338fbf597ff52b6e8f53a1"
+    },
+    {
+      "asset_id": "pebble_idle_1_1ceed15780b5",
+      "character": "Pebble",
+      "cue": "idle",
+      "estimated_credits": 40,
+      "event": "idle",
+      "family": "pebble",
+      "request": {
+        "duration_seconds": 1.0,
+        "loop": false,
+        "model_id": "eleven_text_to_sound_v2",
+        "prompt_influence": 0.6,
+        "text": "One original imaginary small creature sound, a quiet contented idle murmur. Its distinctive timbre is rounded hollow ceramic notes and a warm breathy coo. Variation 1, gentle and expressive, one second, quiet, no words, no human voice, no music, no harsh transients, a clean isolated one-shot with silence at both ends."
+      },
+      "request_sha256": "1ceed15780b59d99d619c6208a39f01a9ac8f32da9d7c324e1114bbdc82ca392"
+    },
+    {
+      "asset_id": "nori_idle_1_79bde00eb2a9",
+      "character": "Nori",
+      "cue": "idle",
+      "estimated_credits": 40,
+      "event": "idle",
+      "family": "sprout",
+      "request": {
+        "duration_seconds": 1.0,
+        "loop": false,
+        "model_id": "eleven_text_to_sound_v2",
+        "prompt_influence": 0.6,
+        "text": "One original imaginary small creature sound, a quiet contented idle murmur. Its distinctive timbre is a mellow reed chirp with a little descending sigh. Variation 1, gentle and expressive, one second, quiet, no words, no human voice, no music, no harsh transients, a clean isolated one-shot with silence at both ends."
+      },
+      "request_sha256": "79bde00eb2a97ecd5fe8e2cfef9486da23df1241293c21e981b5b21e64798a27"
+    },
+    {
+      "asset_id": "ember_idle_1_da906f8ec1e5",
+      "character": "Ember",
+      "cue": "idle",
+      "estimated_credits": 40,
+      "event": "idle",
+      "family": "spark",
+      "request": {
+        "duration_seconds": 1.0,
+        "loop": false,
+        "model_id": "eleven_text_to_sound_v2",
+        "prompt_influence": 0.6,
+        "text": "One original imaginary small creature sound, a quiet contented idle murmur. Its distinctive timbre is a warm rounded shimmer and a bright little upward pip. Variation 1, gentle and expressive, one second, quiet, no words, no human voice, no music, no harsh transients, a clean isolated one-shot with silence at both ends."
+      },
+      "request_sha256": "da906f8ec1e555c54e937b6ef2a801c5a93e1785256e75fada998b81a8e3a463"
+    },
+    {
+      "asset_id": "wisp_idle_1_157b59abf2dc",
+      "character": "Wisp",
+      "cue": "idle",
+      "estimated_credits": 40,
+      "event": "idle",
+      "family": "sprout",
+      "request": {
+        "duration_seconds": 1.0,
+        "loop": false,
+        "model_id": "eleven_text_to_sound_v2",
+        "prompt_influence": 0.6,
+        "text": "One original imaginary small creature sound, a quiet contented idle murmur. Its distinctive timbre is an airy gentle flute murmur ending in one tiny squeak. Variation 1, gentle and expressive, one second, quiet, no words, no human voice, no music, no harsh transients, a clean isolated one-shot with silence at both ends."
+      },
+      "request_sha256": "157b59abf2dc91de0960c8463d935088f959911218ed43833db6a3fc3b65a24e"
+    },
+    {
+      "asset_id": "coral_catch_1_b96d78650233",
+      "character": "Coral",
+      "cue": "catch",
+      "estimated_credits": 40,
+      "event": "play",
+      "family": "bubble",
+      "request": {
+        "duration_seconds": 1.0,
+        "loop": false,
+        "model_id": "eleven_text_to_sound_v2",
+        "prompt_influence": 0.6,
+        "text": "One original imaginary small creature sound, a happy little catch of a toy ball. Its distinctive timbre is soft coral bells and two buoyant watery syllables. Variation 1, gentle and expressive, one second, quiet, no words, no human voice, no music, no harsh transients, a clean isolated one-shot with silence at both ends."
+      },
+      "request_sha256": "b96d7865023316164c70b2e20bc5f9c5e8d1eb45aa4c119ba178d5a5a299ea51"
+    },
+    {
+      "asset_id": "moss_catch_1_cc1abe40b1c1",
+      "character": "Moss",
+      "cue": "catch",
+      "estimated_credits": 40,
+      "event": "play",
+      "family": "sprout",
+      "request": {
+        "duration_seconds": 1.0,
+        "loop": false,
+        "model_id": "eleven_text_to_sound_v2",
+        "prompt_influence": 0.6,
+        "text": "One original imaginary small creature sound, a happy little catch of a toy ball. Its distinctive timbre is a shy woodwind coo with a tiny leafy rustle. Variation 1, gentle and expressive, one second, quiet, no words, no human voice, no music, no harsh transients, a clean isolated one-shot with silence at both ends."
+      },
+      "request_sha256": "cc1abe40b1c1120282f72c8f9c0158daec8656aad3f1af8316ce7a8a65a3488c"
+    },
+    {
+      "asset_id": "iris_catch_1_8efbd5337d32",
+      "character": "Iris",
+      "cue": "catch",
+      "estimated_credits": 40,
+      "event": "play",
+      "family": "spark",
+      "request": {
+        "duration_seconds": 1.0,
+        "loop": false,
+        "model_id": "eleven_text_to_sound_v2",
+        "prompt_influence": 0.6,
+        "text": "One original imaginary small creature sound, a happy little catch of a toy ball. Its distinctive timbre is rounded glass tones with a lilting three-note answer. Variation 1, gentle and expressive, one second, quiet, no words, no human voice, no music, no harsh transients, a clean isolated one-shot with silence at both ends."
+      },
+      "request_sha256": "8efbd5337d3299e7ad960149928da7936e253cdf44eb774fe844013f9fcf9a3e"
+    },
+    {
+      "asset_id": "tide_catch_1_1c19433d735b",
+      "character": "Tide",
+      "cue": "catch",
+      "estimated_credits": 40,
+      "event": "play",
+      "family": "bubble",
+      "request": {
+        "duration_seconds": 1.0,
+        "loop": false,
+        "model_id": "eleven_text_to_sound_v2",
+        "prompt_influence": 0.6,
+        "text": "One original imaginary small creature sound, a happy little catch of a toy ball. Its distinctive timbre is a low liquid burble followed by a soft rising whistle. Variation 1, gentle and expressive, one second, quiet, no words, no human voice, no music, no harsh transients, a clean isolated one-shot with silence at both ends."
+      },
+      "request_sha256": "1c19433d735b8021fb5798c02f3ed3250de86b788f311cb8ce7d0976f4cf17b6"
+    },
+    {
+      "asset_id": "orbit_catch_1_bab9997c3c72",
+      "character": "Orbit",
+      "cue": "catch",
+      "estimated_credits": 40,
+      "event": "play",
+      "family": "spark",
+      "request": {
+        "duration_seconds": 1.0,
+        "loop": false,
+        "model_id": "eleven_text_to_sound_v2",
+        "prompt_influence": 0.6,
+        "text": "One original imaginary small creature sound, a happy little catch of a toy ball. Its distinctive timbre is a bouncy round electronic pip with a springy wobble. Variation 1, gentle and expressive, one second, quiet, no words, no human voice, no music, no harsh transients, a clean isolated one-shot with silence at both ends."
+      },
+      "request_sha256": "bab9997c3c7283482cdf73f5f3b6ec65b59bd5424e310cd4aa81d8f68bd07fff"
+    },
+    {
+      "asset_id": "plum_catch_1_29472ea9a978",
+      "character": "Plum",
+      "cue": "catch",
+      "estimated_credits": 40,
+      "event": "play",
+      "family": "pebble",
+      "request": {
+        "duration_seconds": 1.0,
+        "loop": false,
+        "model_id": "eleven_text_to_sound_v2",
+        "prompt_influence": 0.6,
+        "text": "One original imaginary small creature sound, a happy little catch of a toy ball. Its distinctive timbre is a velvety low hum and one warm hollow wooden pop. Variation 1, gentle and expressive, one second, quiet, no words, no human voice, no music, no harsh transients, a clean isolated one-shot with silence at both ends."
+      },
+      "request_sha256": "29472ea9a9783fbda57b176c2c486790f1e244dd4ed28a83646e8db24a8e554e"
+    },
+    {
+      "asset_id": "poppy_catch_1_8bfbc53811f8",
+      "character": "Poppy",
+      "cue": "catch",
+      "estimated_credits": 40,
+      "event": "play",
+      "family": "bubble",
+      "request": {
+        "duration_seconds": 1.0,
+        "loop": false,
+        "model_id": "eleven_text_to_sound_v2",
+        "prompt_influence": 0.6,
+        "text": "One original imaginary small creature sound, a happy little catch of a toy ball. Its distinctive timbre is a light bubbly trill ending in a playful double pop. Variation 1, gentle and expressive, one second, quiet, no words, no human voice, no music, no harsh transients, a clean isolated one-shot with silence at both ends."
+      },
+      "request_sha256": "8bfbc53811f8cca81ae5261312f68fa18fc8799fd4ab5bd40995bf0b0bee8b14"
+    },
+    {
+      "asset_id": "inky_catch_1_e0cdd24d486d",
+      "character": "Inky",
+      "cue": "catch",
+      "estimated_credits": 40,
+      "event": "play",
+      "family": "pebble",
+      "request": {
+        "duration_seconds": 1.0,
+        "loop": false,
+        "model_id": "eleven_text_to_sound_v2",
+        "prompt_influence": 0.6,
+        "text": "One original imaginary small creature sound, a happy little catch of a toy ball. Its distinctive timbre is a soft bassy murmur with a dry delicate click. Variation 1, gentle and expressive, one second, quiet, no words, no human voice, no music, no harsh transients, a clean isolated one-shot with silence at both ends."
+      },
+      "request_sha256": "e0cdd24d486d89d506f421642d6332e500d2d8204ba936c92c47b317658844f5"
+    },
+    {
+      "asset_id": "pebble_catch_1_b1d23843c809",
+      "character": "Pebble",
+      "cue": "catch",
+      "estimated_credits": 40,
+      "event": "play",
+      "family": "pebble",
+      "request": {
+        "duration_seconds": 1.0,
+        "loop": false,
+        "model_id": "eleven_text_to_sound_v2",
+        "prompt_influence": 0.6,
+        "text": "One original imaginary small creature sound, a happy little catch of a toy ball. Its distinctive timbre is rounded hollow ceramic notes and a warm breathy coo. Variation 1, gentle and expressive, one second, quiet, no words, no human voice, no music, no harsh transients, a clean isolated one-shot with silence at both ends."
+      },
+      "request_sha256": "b1d23843c80931108ec5ffa7297d2307f6a6db0e6589381271bf7da114c86af5"
+    },
+    {
+      "asset_id": "nori_catch_1_bcfbdc2edb23",
+      "character": "Nori",
+      "cue": "catch",
+      "estimated_credits": 40,
+      "event": "play",
+      "family": "sprout",
+      "request": {
+        "duration_seconds": 1.0,
+        "loop": false,
+        "model_id": "eleven_text_to_sound_v2",
+        "prompt_influence": 0.6,
+        "text": "One original imaginary small creature sound, a happy little catch of a toy ball. Its distinctive timbre is a mellow reed chirp with a little descending sigh. Variation 1, gentle and expressive, one second, quiet, no words, no human voice, no music, no harsh transients, a clean isolated one-shot with silence at both ends."
+      },
+      "request_sha256": "bcfbdc2edb23bc326497a940c45f48b0c66b3c6ec60ec575a673b6ab1fc4a9fd"
+    },
+    {
+      "asset_id": "ember_catch_1_78b731e118f7",
+      "character": "Ember",
+      "cue": "catch",
+      "estimated_credits": 40,
+      "event": "play",
+      "family": "spark",
+      "request": {
+        "duration_seconds": 1.0,
+        "loop": false,
+        "model_id": "eleven_text_to_sound_v2",
+        "prompt_influence": 0.6,
+        "text": "One original imaginary small creature sound, a happy little catch of a toy ball. Its distinctive timbre is a warm rounded shimmer and a bright little upward pip. Variation 1, gentle and expressive, one second, quiet, no words, no human voice, no music, no harsh transients, a clean isolated one-shot with silence at both ends."
+      },
+      "request_sha256": "78b731e118f7781684b8ada5667a252c369fbdfce2c7c133e08988b55be7a6a8"
+    },
+    {
+      "asset_id": "wisp_catch_1_5aa102d45ee0",
+      "character": "Wisp",
+      "cue": "catch",
+      "estimated_credits": 40,
+      "event": "play",
+      "family": "sprout",
+      "request": {
+        "duration_seconds": 1.0,
+        "loop": false,
+        "model_id": "eleven_text_to_sound_v2",
+        "prompt_influence": 0.6,
+        "text": "One original imaginary small creature sound, a happy little catch of a toy ball. Its distinctive timbre is an airy gentle flute murmur ending in one tiny squeak. Variation 1, gentle and expressive, one second, quiet, no words, no human voice, no music, no harsh transients, a clean isolated one-shot with silence at both ends."
+      },
+      "request_sha256": "5aa102d45ee0f7b07cdc36cf027194027f098067de08fbc390bcdfaa1985eabb"
+    },
+    {
+      "asset_id": "coral_company_1_df62a371185b",
+      "character": "Coral",
+      "cue": "company",
+      "estimated_credits": 40,
+      "event": "rest",
+      "family": "bubble",
+      "request": {
+        "duration_seconds": 1.0,
+        "loop": false,
+        "model_id": "eleven_text_to_sound_v2",
+        "prompt_influence": 0.6,
+        "text": "One original imaginary small creature sound, a gentle reassuring coo to a nearby little friend. Its distinctive timbre is soft coral bells and two buoyant watery syllables. Variation 1, gentle and expressive, one second, quiet, no words, no human voice, no music, no harsh transients, a clean isolated one-shot with silence at both ends."
+      },
+      "request_sha256": "df62a371185b7b434410423120411b7e669592175a88e9c45792fba41f8882be"
+    },
+    {
+      "asset_id": "moss_company_1_9c8ed0206fe3",
+      "character": "Moss",
+      "cue": "company",
+      "estimated_credits": 40,
+      "event": "rest",
+      "family": "sprout",
+      "request": {
+        "duration_seconds": 1.0,
+        "loop": false,
+        "model_id": "eleven_text_to_sound_v2",
+        "prompt_influence": 0.6,
+        "text": "One original imaginary small creature sound, a gentle reassuring coo to a nearby little friend. Its distinctive timbre is a shy woodwind coo with a tiny leafy rustle. Variation 1, gentle and expressive, one second, quiet, no words, no human voice, no music, no harsh transients, a clean isolated one-shot with silence at both ends."
+      },
+      "request_sha256": "9c8ed0206fe34d66bbffc92023badf78166c9a70fe3a0296d180d9cb3be68dd8"
+    },
+    {
+      "asset_id": "iris_company_1_62f87786a9de",
+      "character": "Iris",
+      "cue": "company",
+      "estimated_credits": 40,
+      "event": "rest",
+      "family": "spark",
+      "request": {
+        "duration_seconds": 1.0,
+        "loop": false,
+        "model_id": "eleven_text_to_sound_v2",
+        "prompt_influence": 0.6,
+        "text": "One original imaginary small creature sound, a gentle reassuring coo to a nearby little friend. Its distinctive timbre is rounded glass tones with a lilting three-note answer. Variation 1, gentle and expressive, one second, quiet, no words, no human voice, no music, no harsh transients, a clean isolated one-shot with silence at both ends."
+      },
+      "request_sha256": "62f87786a9dea865d850545aca7555b94623f47cb8921e18a70c45614776fa00"
+    },
+    {
+      "asset_id": "tide_company_1_70f43c37d2a0",
+      "character": "Tide",
+      "cue": "company",
+      "estimated_credits": 40,
+      "event": "rest",
+      "family": "bubble",
+      "request": {
+        "duration_seconds": 1.0,
+        "loop": false,
+        "model_id": "eleven_text_to_sound_v2",
+        "prompt_influence": 0.6,
+        "text": "One original imaginary small creature sound, a gentle reassuring coo to a nearby little friend. Its distinctive timbre is a low liquid burble followed by a soft rising whistle. Variation 1, gentle and expressive, one second, quiet, no words, no human voice, no music, no harsh transients, a clean isolated one-shot with silence at both ends."
+      },
+      "request_sha256": "70f43c37d2a0a92feb9d25a0e9d21c6921c32fffa9c5a5a9a65f1137346339c0"
+    },
+    {
+      "asset_id": "orbit_company_1_b51d337aa192",
+      "character": "Orbit",
+      "cue": "company",
+      "estimated_credits": 40,
+      "event": "rest",
+      "family": "spark",
+      "request": {
+        "duration_seconds": 1.0,
+        "loop": false,
+        "model_id": "eleven_text_to_sound_v2",
+        "prompt_influence": 0.6,
+        "text": "One original imaginary small creature sound, a gentle reassuring coo to a nearby little friend. Its distinctive timbre is a bouncy round electronic pip with a springy wobble. Variation 1, gentle and expressive, one second, quiet, no words, no human voice, no music, no harsh transients, a clean isolated one-shot with silence at both ends."
+      },
+      "request_sha256": "b51d337aa192281361f81accdc4274960181c61343d054e88ad5294d0554d0e5"
+    },
+    {
+      "asset_id": "plum_company_1_fc249ca4fb17",
+      "character": "Plum",
+      "cue": "company",
+      "estimated_credits": 40,
+      "event": "rest",
+      "family": "pebble",
+      "request": {
+        "duration_seconds": 1.0,
+        "loop": false,
+        "model_id": "eleven_text_to_sound_v2",
+        "prompt_influence": 0.6,
+        "text": "One original imaginary small creature sound, a gentle reassuring coo to a nearby little friend. Its distinctive timbre is a velvety low hum and one warm hollow wooden pop. Variation 1, gentle and expressive, one second, quiet, no words, no human voice, no music, no harsh transients, a clean isolated one-shot with silence at both ends."
+      },
+      "request_sha256": "fc249ca4fb17b968c1fb3f55a0a066fd96465d900f4532265894f7ecbf48e505"
+    },
+    {
+      "asset_id": "poppy_company_1_a0c2355dd76f",
+      "character": "Poppy",
+      "cue": "company",
+      "estimated_credits": 40,
+      "event": "rest",
+      "family": "bubble",
+      "request": {
+        "duration_seconds": 1.0,
+        "loop": false,
+        "model_id": "eleven_text_to_sound_v2",
+        "prompt_influence": 0.6,
+        "text": "One original imaginary small creature sound, a gentle reassuring coo to a nearby little friend. Its distinctive timbre is a light bubbly trill ending in a playful double pop. Variation 1, gentle and expressive, one second, quiet, no words, no human voice, no music, no harsh transients, a clean isolated one-shot with silence at both ends."
+      },
+      "request_sha256": "a0c2355dd76ffb135599c9e217dcadf0f6b684a0ebdc271ff6a091eeeda9e7ef"
+    },
+    {
+      "asset_id": "inky_company_1_3bdbfa170917",
+      "character": "Inky",
+      "cue": "company",
+      "estimated_credits": 40,
+      "event": "rest",
+      "family": "pebble",
+      "request": {
+        "duration_seconds": 1.0,
+        "loop": false,
+        "model_id": "eleven_text_to_sound_v2",
+        "prompt_influence": 0.6,
+        "text": "One original imaginary small creature sound, a gentle reassuring coo to a nearby little friend. Its distinctive timbre is a soft bassy murmur with a dry delicate click. Variation 1, gentle and expressive, one second, quiet, no words, no human voice, no music, no harsh transients, a clean isolated one-shot with silence at both ends."
+      },
+      "request_sha256": "3bdbfa170917c30caea8295d488148f6aee4882b6adf497f36a9f0f5dcba2489"
+    },
+    {
+      "asset_id": "pebble_company_1_773c33523da5",
+      "character": "Pebble",
+      "cue": "company",
+      "estimated_credits": 40,
+      "event": "rest",
+      "family": "pebble",
+      "request": {
+        "duration_seconds": 1.0,
+        "loop": false,
+        "model_id": "eleven_text_to_sound_v2",
+        "prompt_influence": 0.6,
+        "text": "One original imaginary small creature sound, a gentle reassuring coo to a nearby little friend. Its distinctive timbre is rounded hollow ceramic notes and a warm breathy coo. Variation 1, gentle and expressive, one second, quiet, no words, no human voice, no music, no harsh transients, a clean isolated one-shot with silence at both ends."
+      },
+      "request_sha256": "773c33523da5aaf71286dd4c3111d3862f51ab6ce79b604427842473dae7ad79"
+    },
+    {
+      "asset_id": "nori_company_1_61e2c20de389",
+      "character": "Nori",
+      "cue": "company",
+      "estimated_credits": 40,
+      "event": "rest",
+      "family": "sprout",
+      "request": {
+        "duration_seconds": 1.0,
+        "loop": false,
+        "model_id": "eleven_text_to_sound_v2",
+        "prompt_influence": 0.6,
+        "text": "One original imaginary small creature sound, a gentle reassuring coo to a nearby little friend. Its distinctive timbre is a mellow reed chirp with a little descending sigh. Variation 1, gentle and expressive, one second, quiet, no words, no human voice, no music, no harsh transients, a clean isolated one-shot with silence at both ends."
+      },
+      "request_sha256": "61e2c20de38928d0bcd8e7132ff1621b8167c9f01be1455df9271d2cad1476ba"
+    },
+    {
+      "asset_id": "ember_company_1_f8ce36f0bf9a",
+      "character": "Ember",
+      "cue": "company",
+      "estimated_credits": 40,
+      "event": "rest",
+      "family": "spark",
+      "request": {
+        "duration_seconds": 1.0,
+        "loop": false,
+        "model_id": "eleven_text_to_sound_v2",
+        "prompt_influence": 0.6,
+        "text": "One original imaginary small creature sound, a gentle reassuring coo to a nearby little friend. Its distinctive timbre is a warm rounded shimmer and a bright little upward pip. Variation 1, gentle and expressive, one second, quiet, no words, no human voice, no music, no harsh transients, a clean isolated one-shot with silence at both ends."
+      },
+      "request_sha256": "f8ce36f0bf9a0815286c328c2dac1d75e83e61d8d5fe3e5e2b6bac5fcb480424"
+    },
+    {
+      "asset_id": "wisp_company_1_efce72ab10b8",
+      "character": "Wisp",
+      "cue": "company",
+      "estimated_credits": 40,
+      "event": "rest",
+      "family": "sprout",
+      "request": {
+        "duration_seconds": 1.0,
+        "loop": false,
+        "model_id": "eleven_text_to_sound_v2",
+        "prompt_influence": 0.6,
+        "text": "One original imaginary small creature sound, a gentle reassuring coo to a nearby little friend. Its distinctive timbre is an airy gentle flute murmur ending in one tiny squeak. Variation 1, gentle and expressive, one second, quiet, no words, no human voice, no music, no harsh transients, a clean isolated one-shot with silence at both ends."
+      },
+      "request_sha256": "efce72ab10b8c284752129d91e7e01afebb14a86663dfe6fa1e0d4b47b7256d4"
+    }
+  ],
+  "subscription_source": "https://elevenlabs.io/docs/api-reference/user/subscription/get",
+  "version": 1
+}

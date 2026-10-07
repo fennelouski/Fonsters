@@ -2,7 +2,11 @@
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
 <dict>
-	<key>LSApplicationCategoryType</key>
+    <key>NSMicrophoneUsageDescription</key>
+    <string>When you choose Listen, Fonsters uses sound levels to react. Audio stays on your Mac and is not recorded.</string>
+    <key>NSCameraUsageDescription</key>
+    <string>When you choose Camera look, Fonsters follows a face on your Mac. Camera frames are not saved or uploaded.</string>
+    <key>LSApplicationCategoryType</key>
 	<string>public.app-category.entertainment</string>
 	<key>UILaunchScreen</key>
 	<dict>
