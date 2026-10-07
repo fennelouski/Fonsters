@@ -1,8 +1,8 @@
-#if os(macOS)
+#if os(macOS) || os(iOS) || os(tvOS)
 import Foundation
 import Observation
 
-@available(macOS 15.0, *)
+@available(macOS 15.0, iOS 18.0, tvOS 26.0, *)
 @MainActor @Observable
 final class FonsterSocialDirector {
     enum Mode: String, CaseIterable, Identifiable {

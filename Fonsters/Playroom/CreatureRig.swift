@@ -1,11 +1,15 @@
-#if os(macOS)
+#if os(macOS) || os(iOS) || os(tvOS)
 import SwiftUI
-import RealityKit
+#if os(macOS)
 import AppKit
+#else
+import UIKit
+#endif
+import RealityKit
 import Metal
 import simd
 
-@available(macOS 15.0, *)
+@available(macOS 15.0, iOS 18.0, tvOS 26.0, *)
 @MainActor
 final class CreatureRig {
     enum FurDetail: String { case portrait, lobby, world }
@@ -98,7 +102,7 @@ final class CreatureRig {
             surface.baseColor = .init(tint: .white, texture: .init(texture, sampler: .init(sampler)))
         }
         let mesh = try headMesh()
-        let model = ModelEntity(mesh: mesh, materials: [surface, material(skin)])
+        let model = ModelEntity(mesh: mesh, materials: [surface, material(skin, roughness: 1)])
         model.name = "resolved-head"
         head.addChild(model)
         let bounds = model.visualBounds(relativeTo: head)
@@ -107,7 +111,7 @@ final class CreatureRig {
         touchSurfaces.append(.init(entity: head, center: bounds.center, radii: radii, zone: .cheek))
         let coat = try CreatureFur.surface(key: coatKey + ":head", name: "fuzzy-head") {
             CreatureFur.head(descriptor, radii: outlineRadii, pixel: pixel, depth: depth, skinIndex: skinIndex,
-                             count: furDetail == .portrait ? 12_000 : (furDetail == .lobby ? 6_000 : 2_800), toneVariation: furDetail == .portrait)
+                             count: furDetail == .portrait ? 22_000 : (furDetail == .lobby ? 7_000 : 2_800), toneVariation: furDetail == .portrait)
         }
         addCoat(coat, to: head, name: "fuzzy-head")
         groomedFaceStrands = coat.trimmedStrands
@@ -132,22 +136,23 @@ final class CreatureRig {
     func point(_ x: Double, _ y: Double, z: Float = 0) -> SIMD3<Float> {
         [(Float(x) - 15.5) * pixel, (15.5 - Float(y)) * pixel, z]
     }
-    func color(_ index: Int) -> NSColor {
+    func color(_ index: Int) -> FonsterPlatformColor {
         let p = descriptor.rgbaPalette[min(5, max(0, index))]
-        return NSColor(srgbRed: CGFloat(p[0]) / 255, green: CGFloat(p[1]) / 255,
+        return FonsterPlatformColor(srgbRed: CGFloat(p[0]) / 255, green: CGFloat(p[1]) / 255,
                        blue: CGFloat(p[2]) / 255, alpha: 1)
     }
-    func material(_ color: NSColor, roughness: Float = 0.52) -> PhysicallyBasedMaterial {
+    func material(_ color: FonsterPlatformColor, roughness: Float = 0.94) -> PhysicallyBasedMaterial {
         var mat = PhysicallyBasedMaterial()
         mat.baseColor = .init(tint: color)
         mat.roughness = .init(floatLiteral: roughness)
         mat.metallic = .init(floatLiteral: 0)
-        mat.clearcoat = .init(floatLiteral: 0.16)
+        mat.specular = .init(floatLiteral: 0.12)
+        mat.clearcoat = .init(floatLiteral: 0)
         mat.clearcoatRoughness = .init(floatLiteral: 0.35)
         return mat
     }
-    func ball(_ color: NSColor, radius: Float = 1, scale: SIMD3<Float>, at position: SIMD3<Float>, parent: Entity, furry: Bool = false) -> ModelEntity {
-        var surface = material(color, roughness: furry ? 0.96 : 0.52)
+    func ball(_ color: FonsterPlatformColor, radius: Float = 1, scale: SIMD3<Float>, at position: SIMD3<Float>, parent: Entity, furry: Bool = false) -> ModelEntity {
+        var surface = material(color, roughness: furry ? 1 : 0.88)
         if furry { surface.clearcoat = .init(floatLiteral: 0) }
         let model = ModelEntity(mesh: .generateSphere(radius: radius), materials: [surface])
         model.scale = scale; model.position = position; parent.addChild(model)
@@ -261,16 +266,16 @@ final class CreatureRig {
         let eye = Entity(); eye.name = part.id; eye.position = facePosition(part)
         let (w, h) = extent(part)
         // The resolved eye shape is retained as a rounded outline, with a glossy iris.
-        let white = NSColor(srgbRed: 0.98, green: 0.96, blue: 0.88, alpha: 1)
+        let white = FonsterPlatformColor(srgbRed: 0.98, green: 0.96, blue: 0.88, alpha: 1)
         if part.style == "square" {
-            let model = ModelEntity(mesh: .generateBox(size: [w * 1.35, h * 1.35, 0.15], cornerRadius: 0.045), materials: [material(white)])
+            let model = ModelEntity(mesh: .generateBox(size: [w * 1.35, h * 1.35, 0.15], cornerRadius: 0.045), materials: [material(white, roughness: 0.65)])
             eye.addChild(model)
         } else {
             _ = ball(white, scale: [w * 0.74, h * 0.74, 0.13], at: .zero, parent: eye)
         }
         let pupil = Entity(); pupil.position = [0, 0, 0.105]
         _ = ball(color(Int(part.paletteIndices.first ?? 2)), scale: [w * 0.44, h * 0.44, 0.062], at: .zero, parent: pupil)
-        _ = ball(NSColor(srgbRed: 0.05, green: 0.035, blue: 0.07, alpha: 1), scale: [w * 0.21, h * 0.31, 0.045], at: [0, 0, 0.046], parent: pupil)
+        _ = ball(FonsterPlatformColor(srgbRed: 0.05, green: 0.035, blue: 0.07, alpha: 1), scale: [w * 0.21, h * 0.31, 0.045], at: [0, 0, 0.046], parent: pupil)
         _ = ball(.white, scale: [0.028, 0.028, 0.015], at: [-0.025, 0.034, 0.09], parent: pupil)
         eye.addChild(pupil); head.addChild(eye); eyes.append(eye); pupils.append(pupil)
         touchSurfaces.append(.init(entity: eye, center: [0, 0, 0.035], radii: [w * 0.74, h * 0.74, 0.18], zone: .eye))
@@ -285,7 +290,7 @@ final class CreatureRig {
             let steps = 32
             func point(_ i: Int, lower: Bool) -> SIMD2<Float> {
                 let t = Float(i) / Float(steps) * 2 - 1
-                let y: Float = lower ? -0.48 + 0.66 * t * t : -0.04 + 0.22 * t * t
+                let y: Float = lower ? -0.52 + 0.82 * t * t : -0.02 + 0.32 * t * t
                 return [t * width / 2, y * height]
             }
             return (0...steps).map { point($0, lower: false) } +
@@ -300,14 +305,14 @@ final class CreatureRig {
             let w = Float((part.pixels.map(\.x).max() ?? 0) - (part.pixels.map(\.x).min() ?? 0) + 1) * pixel
             let h = Float((part.pixels.map(\.y).max() ?? 0) - (part.pixels.map(\.y).min() ?? 0) + 1) * pixel
             return .init(centerX: part.centerX, centerY: part.centerY,
-                         width: max(0.32, min(0.65, w * 1.05)), height: max(0.24, min(0.38, h * 0.85)),
+                         width: max(0.44, min(0.78, w * 1.32)), height: max(0.28, min(0.40, h * 0.90)),
                          paletteIndex: Int(part.paletteIndices.first ?? 3), hasLegacyMouth: true)
         }
         let h = descriptor.head
         let obstacles = descriptor.parts.filter { $0.kind == "eye" || $0.kind == "nose" }
             .flatMap(\.pixels).map(\.y).max().map { Double($0) + 1.6 } ?? h.centerY
         let y = min(h.centerY + h.radius * 0.72, max(h.centerY + h.radius * 0.40, obstacles))
-        return .init(centerX: h.centerX, centerY: y, width: 0.40, height: 0.27,
+        return .init(centerX: h.centerX, centerY: y, width: 0.48, height: 0.30,
                      paletteIndex: 3, hasLegacyMouth: false)
     }
     func addMouth() throws {
@@ -340,7 +345,7 @@ final class CreatureRig {
             descriptor.primitives = .triangles(indices)
             return try MeshResource.generate(from: [descriptor])
         }
-        var cavityMaterial = material(NSColor(srgbRed: 0.085, green: 0.045, blue: 0.075, alpha: 1), roughness: 0.85)
+        var cavityMaterial = material(FonsterPlatformColor(srgbRed: 0.085, green: 0.045, blue: 0.075, alpha: 1), roughness: 0.85)
         cavityMaterial.clearcoat = .init(floatLiteral: 0)
         let cavity = ModelEntity(mesh: try mesh("rounded-smile-cavity"), materials: [cavityMaterial])
         cavity.name = "smile-cavity"; group.addChild(cavity)
@@ -363,7 +368,7 @@ final class CreatureRig {
                 indices += [a, b, c, b, d, c]
             }
         }
-        let rim = ModelEntity(mesh: try mesh("soft-smile-rim"), materials: [material(color(layout.paletteIndex), roughness: 0.72)])
+        let rim = ModelEntity(mesh: try mesh("soft-smile-rim"), materials: [material(color(layout.paletteIndex), roughness: 0.96)])
         rim.name = "smile-rim"; group.addChild(rim)
         _ = ball(color(layout.paletteIndex), scale: [layout.width * 0.18, layout.height * 0.047, 0.012],
                  at: [0, -layout.height * 0.38, 0.061], parent: group)
@@ -380,24 +385,24 @@ final class CreatureRig {
         let (w, h) = extent(part)
         _ = ball(color(Int(part.paletteIndices.first ?? 2)), scale: [w * 0.52, h * 0.51, 0.14], at: facePosition(part), parent: head)
     }
-    func addBody(_ part: CreatureAppearanceDescriptor.Part, skin: NSColor) {
+    func addBody(_ part: CreatureAppearanceDescriptor.Part, skin: FonsterPlatformColor) {
         let (w, h) = extent(part)
         let body = ball(skin, scale: [w * 0.52, h * 0.52, 0.4], at: point(part.centerX, part.centerY, z: -0.10), parent: root, furry: true)
         body.name = "body"
         touchSurfaces.append(.init(entity: body, center: .zero, radii: .init(repeating: 1), zone: .belly))
     }
-    func addEar(_ part: CreatureAppearanceDescriptor.Part, skin: NSColor) {
+    func addEar(_ part: CreatureAppearanceDescriptor.Part, skin: FonsterPlatformColor) {
         let (w, h) = extent(part)
         let ear = ball(skin, scale: [w * 0.55, h * 0.55, 0.20], at: point(part.centerX, part.centerY, z: 0.02) - baseHead, parent: head, furry: true)
         touchSurfaces.append(.init(entity: ear, center: .zero, radii: .init(repeating: 1.05), zone: .crown))
     }
-    func addHorn(_ part: CreatureAppearanceDescriptor.Part, skin: NSColor) {
+    func addHorn(_ part: CreatureAppearanceDescriptor.Part, skin: FonsterPlatformColor) {
         let (w, h) = extent(part)
         let horn = ModelEntity(mesh: .generateCone(height: h, radius: w * 0.52), materials: [material(skin)])
         horn.position = point(part.centerX, part.centerY) - baseHead
         head.addChild(horn)
     }
-    func addAntlers(_ part: CreatureAppearanceDescriptor.Part, skin: NSColor) {
+    func addAntlers(_ part: CreatureAppearanceDescriptor.Part, skin: FonsterPlatformColor) {
         guard let top = part.pixels.map(\.y).min(), let bottom = part.pixels.map(\.y).max(),
               let left = part.pixels.map(\.x).min(), let right = part.pixels.map(\.x).max() else { return }
         let stemTop = point(15.5, Double(top + 2)) - baseHead
@@ -406,14 +411,14 @@ final class CreatureRig {
         tube(from: stemTop, to: point(Double(left), Double(top), z: -0.02) - baseHead, radius: 0.035, color: skin, parent: head)
         tube(from: stemTop, to: point(Double(right), Double(top), z: -0.02) - baseHead, radius: 0.035, color: skin, parent: head)
     }
-    func tube(from: SIMD3<Float>, to: SIMD3<Float>, radius: Float, color: NSColor, parent: Entity) {
+    func tube(from: SIMD3<Float>, to: SIMD3<Float>, radius: Float, color: FonsterPlatformColor, parent: Entity) {
         let delta = to - from
         let length = simd_length(delta)
         guard length > 0.001 else { return }
         let sphere = ball(color, scale: [radius, length / 2 + radius, radius], at: (from + to) / 2, parent: parent, furry: true)
         sphere.orientation = simd_quatf(from: [0, 1, 0], to: delta / length)
     }
-    func addLimb(_ part: CreatureAppearanceDescriptor.Part, skin: NSColor) {
+    func addLimb(_ part: CreatureAppearanceDescriptor.Part, skin: FonsterPlatformColor) {
         let h = descriptor.head
         let sorted = part.pixels.sorted {
             hypot(Double($0.x) - h.centerX, Double($0.y) - h.centerY) < hypot(Double($1.x) - h.centerX, Double($1.y) - h.centerY)

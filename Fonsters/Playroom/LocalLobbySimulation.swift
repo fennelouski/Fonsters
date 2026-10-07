@@ -17,6 +17,8 @@ struct LocalLobbySimulation {
         var route: [SIMD2<Float>] = []
         var nextWalk: Float = 0
         var walking = false
+        var exploredAreas: Set<LobbyWorld.Area> = []
+        var discoveries = 0
         var blocked: Float = 0
         var seatRequested = false
         var seated = false
@@ -188,7 +190,7 @@ struct LocalLobbySimulation {
                     let area = world.areas[(round + i + Int(elapsed / 9)) % world.areas.count]
                     let destination = world.destination(in: area, slot: i)
                     setGoal(destination, actor: i, hold: 0)
-                    agents[i].nextWalk = elapsed + 12 + Float(i % 4) * 2
+                    agents[i].nextWalk = elapsed + 6.5 + Float(i % 4) * 1.4
                 }
             }
             guard agents[i].reaction != "rest", !agents[i].seated else { continue }
@@ -231,6 +233,17 @@ struct LocalLobbySimulation {
                 agents[i].seated = true; agents[i].seatRequested = false; agents[i].reaction = "rest"; agents[i].remaining = 1000; agents[i].heading = 0
                 arrivals.append(.init(actor: i, peer: nil, action: "rest"))
             } else if agents[i].reaction == "idle" {
+                if wander && agents[i].wandering && agents[i].goalHold == 0 && elapsed < agents[i].nextWalk &&
+                    simd_distance(agents[i].position, agents[i].goal) < 0.08 && agents[i].route.isEmpty {
+                    let area = world.areas.min { simd_distance($0.center, agents[i].position) < simd_distance($1.center, agents[i].position) }!
+                    if agents[i].discoveries == 0 || agents[i].exploredAreas.insert(area).inserted {
+                        agents[i].exploredAreas.insert(area); agents[i].discoveries += 1
+                        let action = area == .park ? "hop" : area == .plaza ? "look" : area == .neighborhood ? "greet" : "stretch"
+                        agents[i].reaction = action; agents[i].remaining = 2.8
+                        agents[i].goalHold = 2.8
+                        arrivals.append(.init(actor: i, peer: nil, action: action))
+                    }
+                }
                 agents[i].heading *= max(0, 1 - dt * 0.6)
             }
         }

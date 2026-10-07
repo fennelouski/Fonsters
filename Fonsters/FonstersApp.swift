@@ -22,6 +22,8 @@ private var isPlayroomPrototype: Bool {
     #if os(macOS)
     return ProcessInfo.processInfo.arguments.contains("--prototype") ||
         Bundle.main.bundleIdentifier == "com.nathanfennel.Fonsters.Playroom"
+    #elseif os(iOS) || os(tvOS)
+    return ProcessInfo.processInfo.arguments.contains("--prototype")
     #else
     return false
     #endif
@@ -143,7 +145,7 @@ struct FonstersApp: App {
         let schema = Schema([
             Fonster.self,
         ])
-        #if os(macOS)
+        #if os(macOS) || os(iOS) || os(tvOS)
         if isPlayroomPrototype {
             return try! ModelContainer(for: schema, configurations: [ModelConfiguration(schema: schema, isStoredInMemoryOnly: true, cloudKitDatabase: .none)])
         }
@@ -195,10 +197,32 @@ struct FonstersApp: App {
                     else { PlayroomView() }
                 }
                 else { Text("The Playroom requires macOS 15 or later.") }
+                #elseif os(iOS)
+                Group {
+                    if ProcessInfo.processInfo.arguments.contains("--lobby") { MobileLobbyView() }
+                    else { MobileFonstersHome() }
+                }.environmentObject(pendingImportURL).environmentObject(featureFlags)
+                    .onOpenURL { url in pendingImportURL.url = url }
+                #elseif os(tvOS)
+                if #available(tvOS 26.0, *) { TelevisionFonstersHome().environmentObject(pendingImportURL).environmentObject(featureFlags) }
+                else { ContentView().environmentObject(pendingImportURL).environmentObject(featureFlags) }
                 #else
                 ContentView().environmentObject(pendingImportURL).environmentObject(featureFlags)
                 #endif
             } else if loadingComplete {
+                #if os(iOS)
+                MobileFonstersHome()
+                    .task { featureFlags.refreshFromRemote() }
+                    .environmentObject(pendingImportURL)
+                    .environmentObject(featureFlags)
+                    .onOpenURL { url in pendingImportURL.url = url }
+                #elseif os(tvOS)
+                Group {
+                    if #available(tvOS 26.0, *) { TelevisionFonstersHome() }
+                    else { ContentView() }
+                }.environmentObject(pendingImportURL).environmentObject(featureFlags)
+                    .task { featureFlags.refreshFromRemote() }
+                #else
                 ContentView()
                     .environmentObject(pendingImportURL)
                     .environmentObject(featureFlags)
@@ -208,6 +232,7 @@ struct FonstersApp: App {
                         pendingImportURL.url = url
                     }
                     #endif
+                #endif
             } else {
                 LoadingView(onComplete: { loadingComplete = true })
             }

@@ -1,4 +1,4 @@
-#if os(macOS)
+#if os(macOS) || os(iOS)
 import SwiftUI
 
 /// Shared visual vocabulary. Color groups actions; symbols, focus, checkmarks,

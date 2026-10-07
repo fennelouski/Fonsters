@@ -5,6 +5,24 @@ import simd
 @main struct VerifyWorld {
     @MainActor static func main() throws {
         setbuf(stdout, nil)
+        if CommandLine.arguments.contains("--camera-only") {
+            let lobby = LocalLobbyController(), camera = PerspectiveCamera()
+            camera.camera.fieldOfViewInDegrees = 42; lobby.camera = camera
+            let tangent = tan(Float.pi * 42 / 360)
+            for aspect: Float in [0.6, 0.9, 1.5, 2.8] {
+                lobby.viewportAspect = aspect; lobby.showOverview()
+                for i in 0..<128 {
+                    let a = Float(i) / 128 * 2 * Float.pi
+                    let point: SIMD3<Float> = [sin(a) * lobby.world.radius, 0, cos(a) * lobby.world.radius]
+                    let local = camera.convert(position: point, from: nil)
+                    precondition(local.z < 0)
+                    precondition(abs(local.x / -local.z / tangent / aspect) < 1)
+                    precondition(abs(local.y / -local.z / tangent) < 1)
+                }
+            }
+            print("PASS: complete playable terrain fits portrait phone, tablet, Mac and TV overview cameras")
+            return
+        }
         let fixtures = PlayroomCompanion.fixtures
         var lastRadius: Float = 0
         var routes = 0
@@ -30,14 +48,18 @@ import simd
         for count in [4, 8, 12] {
             var sim = LocalLobbySimulation(names: Array(fixtures.prefix(count)).map(\.name))
             let initial = sim.agents.map(\.position)
+            var expressions = Set<String>()
             for _ in 0..<9000 {
-                _ = sim.step(dt: 1.0 / 30, wander: true)
+                expressions.formUnion(sim.step(dt: 1.0 / 30, wander: true).map(\.action))
                 for i in sim.agents.indices {
                     precondition(sim.world.walkable(sim.agents[i].position))
                     for j in sim.agents.indices where j > i { precondition(simd_distance(sim.agents[i].position, sim.agents[j].position) >= 0.899) }
                 }
             }
             precondition(initial != sim.agents.map(\.position))
+            precondition(sim.agents.reduce(0) { $0 + $1.discoveries } > 0, "Exploration should lead to a visible discovery reaction")
+            precondition(expressions.contains("stretch") && expressions.contains("greet"))
+            print("PASS: \(count) companions discover \(sim.agents.map { $0.exploredAreas.count }) areas with reactions \(expressions.sorted())")
             _ = sim.act("rest", actor: 0); let rest = sim.agents[0].position
             for _ in 0..<1000 { _ = sim.step(dt: 1.0 / 30, wander: true) }
             precondition(sim.agents[0].position == rest)
