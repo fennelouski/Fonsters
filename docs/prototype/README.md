@@ -6,9 +6,50 @@ Rebuild with `./script/build_and_run.sh --verify` using the installed Xcode.
 
 Choose a creature on the left. Move the pointer over it, tap it, or use Hello / Play /
 Rest / Blink / Look. Keyboard shortcuts are H, P, R, B, L and Space for pause.
+Unmodified action shortcuts are suspended while the request field has focus, so letters
+and spaces can be typed normally.
 The Turn slider exposes the side and back. Still mode keeps reactions as single poses.
+Fonsters now take short walks, curious hops and stretches on their own. Turn off Wander
+to hold their spot. Double-tap for a high five, gently drag for a rub, or use the new
+Hop / Twirl / Stretch / Hi five / Gentle rub / Toss ball / Follow buttons. Follow moves
+the Fonster toward your pointer; typing “stop” ends following and wandering.
 Sounds starts off; enable it to hear the small original chirps.
 Open Personality to see your shared rituals and heart a favorite Warm, Clear or Bright voice.
+
+## Typed requests and a local lobby
+
+Try “do a little twirl,” “take a nap,” or “follow my pointer” in the request field.
+On this Mac, Apple's built-in on-device model is available and was exercised directly.
+Known phrases route immediately, including named actors and peer greetings. Broader wording
+uses Foundation Models guided generation to choose one of 15 physical intents,
+then validates the action and the creatures present before applying it. There are no
+generated scripts, model tools, arbitrary commands, cloud inference or model-created
+personality records. Typed text and model transcripts are not persisted or logged.
+Availability is checked before inference; Macs without an available model retain the
+small known-phrase parser. Unsupported or conflicting requests ask for one supported
+action. An explicit actor at the start is resolved before applying model output, and absent
+fixture names are rejected before inference. Cancel, a newer interaction, selection change, backgrounding, pause or Low Power
+discards a pending request. Reduce Motion and Still mode accept a single reaction pose.
+Interpretation quality beyond the tested requests still needs user playtesting.
+[Apple's model documentation](https://developer.apple.com/documentation/foundationmodels/systemlanguagemodel)
+and [framework overview](https://developer.apple.com/videos/play/wwdc2025/286/)
+were checked on 2026-10-07.
+
+Open **Lobby** in the Playroom header, or choose **Playroom → Open the local lobby**
+(Command-Shift-L). The header button pauses the solo room and its optional capture inputs.
+Coral, Moss, Iris and Orbit share a small local stage, take bounded walks, turn toward
+neighbors for greetings, and sometimes copy hops. Choose a member in the roster, then
+Wave to a friend, Play together, Toss ball, Come closer or take a Quiet moment.
+Try “Coral, wave to Moss” or “Moss, take a nap” in the lobby's request field.
+Wander & mingle, Still mode, Pause, Reduce Motion, app backgrounding and Low Power gates
+control the shared room clock. Rest remains held until an interaction wakes that creature.
+Automatic social events stay quiet and do not add personality memories. Deliberate rituals
+use the same shared local archive as the solo room, with its existing learning debounce.
+
+These are four local preview fixtures. The lobby does not connect other people's devices,
+import production pets, create accounts, synchronize relationships or introduce public
+share identifiers. An online lobby needs a separate product and backend design; it is not
+part of this local preview. All geometry, lighting and props are original procedural assets.
 
 ## A personality that grows beside you
 
@@ -123,6 +164,27 @@ Reproducible checks: `./script/verify_appearance.sh`, `./script/verify_motion.sh
 The demo GIF uses sampled screenshots of the real native app; screen-recording permission
 was unavailable and was not changed. It is an edited low-frame-rate visual demo, with
 long gaps shortened and no audio, rather than a continuous screen recording.
+
+### Additional movement, command and lobby checks
+
+| Check | Result |
+| --- | --- |
+| Updated native build and process launch | Passed with the installed Xcode on the Air. |
+| Frozen appearance/export regressions | Passed after these changes: 12 original RGBA baselines, 1,635 exact trace matches, descriptors/privacy/share-link round-trip, and original PNG/GIF decoding. See `evidence/phase2-appearance-checks.log`. |
+| Expanded actions and autonomous walks | Passed: every reaction stays finite and bounded; short walks change position; stop holds position; automatic actions do not learn. |
+| Repeated input and five motion gates | Existing motion checks rerun; the four-rig lobby separately passes pause, Still, Reduce Motion, background and Low Power frame/position checks while accepting static reactions. |
+| Local social simulation | Passed: 12,000 movement steps preserve separation/bounds; automatic greetings and copied hops occur; gathering works; deliberate rest stays held beyond 1,000 seconds of simulated time. |
+| Personality regression and room separation | Passed: rapid-input debounce, trait changes, preference/identity reload and unreadable/newer archive preservation. The real four-rig controller's autonomous activity leaves all four memory counts unchanged. |
+| Bounded text parser and stale requests | Passed: known phrases, exact present targets, absent/self peer rejection, conflicting actions, cancellation and newer input discard. Repeated Follow requests remain enabled; Wander exits Follow. |
+| Actual Apple Intelligence | The installed on-device model was available and tested directly. Exact native interpretation results are in `evidence/phase2-checks.log`; each test asserts its model or known-phrase source. The initial model-only named greeting reversed actor/peer, so known named phrases now route deterministically and a leading actor anchors broader model output. Broader interpretation still needs playtesting. |
+| Visual scene evidence | `evidence/lobby-renders-studio/` contains 12 RealityKit renders cloned from the running lobby's live entities, using the same original studio lighting. `evidence/lobby-scene-demo.gif` and the decoded 11-second H.264 `evidence/lobby-scene-demo.mp4` encode these sampled frames, without audio. These are scene exports, not desktop screenshots or a continuous screen recording. |
+| New window layout evidence | AppKit captures in `evidence/lobby-window-layout.png` and `evidence/solo-window-layout.png` show native controls/layout but omit the Metal-backed 3D view. Desktop automation was unavailable after the Air reconnected; no capture permissions were changed. |
+| New gestures, keyboard and full accessibility UI | Controller paths and native layouts were checked. Clicking the new buttons, double-tap/drag gestures, lobby shortcut, expanded window sizes, and a full VoiceOver session remain untested in the reconnected desktop. Earlier primary-action keyboard checks remain recorded above. |
+| Online multiplayer | Not implemented or connected; no networking/account/backend changes. |
+
+Run `./script/verify_phase2.sh` for deterministic offline routing and native controller
+checks, or `./script/verify_phase2.sh --live-model` to also exercise the installed
+on-device model when available. Test archives stay in task-local verification folders.
 
 For a distributed sandboxed Mac app, signing and camera/audio entitlements still require
 their own review. This locally built preview uses the existing unsigned local build path;

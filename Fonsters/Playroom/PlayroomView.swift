@@ -7,12 +7,15 @@ import UniformTypeIdentifiers
 struct PlayroomView: View {
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @Environment(\.scenePhase) private var scenePhase
+    @Environment(\.openWindow) private var openWindow
     @State private var controller = PlayroomController()
     @State private var inputs = CreatureInputs()
     @State private var companions = PlayroomCompanion.fixtures
     @State private var selection = 0
     @State private var exportMessage: String?
     @State private var showsPersonality = false
+    @State private var interpreter = TypedActionInterpreter()
+    @State private var typingRequest = false
     private let ink = Color(red: 0.19, green: 0.15, blue: 0.27)
     private let accent = Color(red: 0.45, green: 0.32, blue: 0.62)
     private var selected: PlayroomCompanion { companions[selection] }
@@ -22,18 +25,19 @@ struct PlayroomView: View {
             sidebar
                 .frame(width: 206)
             Rectangle().fill(ink.opacity(0.09)).frame(width: 1)
-            VStack(alignment: .leading, spacing: 18) {
+            VStack(alignment: .leading, spacing: 14) {
                 header
                 stage
                 controls
                 footer
             }
-            .padding(26)
+            .padding(22)
         }
-        .frame(minWidth: 950, minHeight: 690)
+        .frame(minWidth: 950, minHeight: 740)
         .background(Color(red: 0.98, green: 0.97, blue: 0.95))
         .foregroundStyle(ink)
         .preferredColorScheme(.light)
+        .background(VerificationWindowCapture().frame(width: 0, height: 0))
         .task(id: controller.shouldAnimate) {
             if controller.shouldAnimate { await controller.animate() }
             else { controller.refreshStillPose() }
@@ -61,7 +65,7 @@ struct PlayroomView: View {
             controller.lowPower = ProcessInfo.processInfo.isLowPowerModeEnabled
         }
         .onChange(of: controller.orbit) { controller.refreshStillPose() }
-        .onDisappear { inputs.stopAll(); controller.silence(); controller.rig = nil; controller.rendererReady = false }
+        .onDisappear { inputs.stopAll(); interpreter.cancel(); controller.silence(); controller.toyBall = nil; controller.rig = nil; controller.rendererReady = false }
     }
 
     private var sidebar: some View {
@@ -122,6 +126,11 @@ struct PlayroomView: View {
                 Text(selected.note).font(.system(size: 14)).foregroundStyle(ink.opacity(0.55))
             }
             Spacer()
+            Button {
+                controller.paused = true; interpreter.cancel()
+                openWindow(id: "lobby")
+            } label: { Label("Lobby", systemImage: "person.3") }
+                .buttonStyle(.bordered).help("A local hangout for four preview Fonsters.")
             Button { showsPersonality.toggle() } label: {
                 Label("Personality", systemImage: "heart.text.square")
                     .font(.system(size: 12, weight: .medium))
@@ -193,7 +202,7 @@ struct PlayroomView: View {
                     Spacer()
                     HStack {
                         Spacer()
-                        Text("Move your pointer · tap to say hello")
+                        Text("Tap hello · double tap high five · drag gently for a rub")
                             .font(.system(size: 11)).foregroundStyle(ink.opacity(0.47))
                         Spacer()
                     }.padding(.bottom, 16)
@@ -233,11 +242,11 @@ struct PlayroomView: View {
             .padding(20).frame(width: 196)
             .frame(maxHeight: .infinity)
             .background(.white.opacity(0.72), in: RoundedRectangle(cornerRadius: 24))
-        }.frame(minHeight: 300, maxHeight: .infinity)
+        }.frame(minHeight: 260, maxHeight: .infinity)
     }
 
     private var controls: some View {
-        VStack(alignment: .leading, spacing: 16) {
+        VStack(alignment: .leading, spacing: 10) {
             HStack(spacing: 9) {
                 reactionButton("Say hello", "hand.wave", .greet, "h")
                 reactionButton("Play", "sparkles", .play, "p")
@@ -245,6 +254,17 @@ struct PlayroomView: View {
                 reactionButton("Blink", "eye", .blink, "b")
                 reactionButton("Look", "eyes", .look, "l")
             }
+            HStack(spacing: 7) {
+                littleReaction("Hop", "hare", .hop)
+                littleReaction("Twirl", "arrow.trianglehead.2.clockwise.rotate.90", .spin)
+                littleReaction("Stretch", "figure.flexibility", .stretch)
+                littleReaction("High five", "hand.raised", .highFive)
+                littleReaction("Gentle rub", "heart", .rub)
+                littleReaction("Toss ball", "circle.dotted", .fetch)
+                Button { controller.followPointer() } label: {
+                    Label(controller.followingPointer ? "Following" : "Follow", systemImage: "cursorarrow.rays")
+                }.buttonStyle(.bordered).tint(controller.followingPointer ? accent : nil)
+            }.font(.system(size: 11)).controlSize(.small)
             HStack(spacing: 10) {
                 Image(systemName: "rotate.3d").font(.system(size: 14))
                 Text("Turn").font(.system(size: 12, weight: .medium))
@@ -253,6 +273,8 @@ struct PlayroomView: View {
                     .accessibilityLabel("Turn \(selected.name) in three dimensions")
                 Text("\(Int(controller.orbit))°").font(.system(size: 10, design: .monospaced)).frame(width: 36)
                 Spacer()
+                Toggle("Wander", isOn: Binding(get: { controller.roaming }, set: { controller.setRoaming($0) }))
+                    .toggleStyle(.checkbox).font(.system(size: 12))
                 Toggle("Still mode", isOn: $controller.staticMode)
                     .toggleStyle(.checkbox).font(.system(size: 12))
                 Button {
@@ -261,11 +283,20 @@ struct PlayroomView: View {
                     Label(controller.paused ? "Resume" : "Pause", systemImage: controller.paused ? "play.fill" : "pause.fill")
                         .font(.system(size: 12))
                 }
-                .buttonStyle(.bordered).keyboardShortcut(.space, modifiers: [])
+                .buttonStyle(.bordered).keyboardShortcut(typingRequest ? nil : KeyboardShortcut(.space, modifiers: []))
                 .accessibilityLabel(controller.paused ? "Resume motion" : "Pause motion")
             }.foregroundStyle(ink.opacity(0.65))
             inputControls
+            CreatureCommandBar(interpreter: interpreter, selected: selected.name, names: [selected.name],
+                               revision: controller.userRevision,
+                               enabled: controller.rendererReady && !controller.paused && !controller.backgrounded && !controller.lowPower,
+                               currentRevision: { controller.userRevision }, apply: { controller.execute($0) },
+                               onFocusChange: { typingRequest = $0 })
         }
+    }
+    private func littleReaction(_ title: String, _ icon: String, _ action: PlayroomController.Reaction) -> some View {
+        Button { controller.perform(action, name: selected.name) } label: { Label(title, systemImage: icon) }
+            .buttonStyle(.bordered).disabled(!controller.rendererReady)
     }
 
     private var inputControls: some View {
@@ -303,7 +334,7 @@ struct PlayroomView: View {
                 .foregroundStyle(controller.reaction == reaction ? .white : ink)
                 .overlay(RoundedRectangle(cornerRadius: 14).strokeBorder(ink.opacity(0.08)))
         }
-        .buttonStyle(.plain).keyboardShortcut(key, modifiers: [])
+        .buttonStyle(.plain).keyboardShortcut(typingRequest ? nil : KeyboardShortcut(key, modifiers: []))
         .help("\(title) (\(key.character.uppercased()))")
         .disabled(!selected.descriptor.supported || controller.rendererError != nil)
     }

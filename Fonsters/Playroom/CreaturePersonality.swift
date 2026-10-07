@@ -45,6 +45,7 @@ struct CreaturePersonality: Codable, Equatable {
 /// One isolated local preview file. Corrupt/newer data is preserved and never migrated.
 @MainActor
 final class PersonalityMemoryStore {
+    private static var sharedPreview: PersonalityMemoryStore?
     private struct Archive: Codable { let version: Int; var profiles: [String: CreaturePersonality] }
     private var archive = Archive(version: 1, profiles: [:])
     private let url: URL
@@ -68,6 +69,12 @@ final class PersonalityMemoryStore {
         }
     }
     static func localPreview() -> PersonalityMemoryStore {
+        if let sharedPreview { return sharedPreview }
+        let store = makeLocalPreview()
+        sharedPreview = store
+        return store
+    }
+    private static func makeLocalPreview() -> PersonalityMemoryStore {
         let args = ProcessInfo.processInfo.arguments
         // Tests can use an isolated path; normal use has its own preview namespace.
         if let i = args.firstIndex(of: "--personality-file"), i + 1 < args.count {

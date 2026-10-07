@@ -190,7 +190,10 @@ struct FonstersApp: App {
         WindowGroup {
             if isPlayroomPrototype {
                 #if os(macOS)
-                if #available(macOS 15.0, *) { PlayroomView() }
+                if #available(macOS 15.0, *) {
+                    if ProcessInfo.processInfo.arguments.contains("--lobby") { LocalLobbyView() }
+                    else { PlayroomView() }
+                }
                 else { Text("The Playroom requires macOS 15 or later.") }
                 #else
                 ContentView().environmentObject(pendingImportURL).environmentObject(featureFlags)
@@ -223,6 +226,11 @@ struct FonstersApp: App {
             } else { Text("The Playroom requires macOS 15 or later.") }
         }
         .defaultSize(width: 1080, height: 740)
+        Window("Fonsters Lobby", id: "lobby") {
+            if #available(macOS 15.0, *) { LocalLobbyView() }
+            else { Text("The local lobby requires macOS 15 or later.") }
+        }
+        .defaultSize(width: 1080, height: 740)
         #endif
     }
 }
@@ -234,6 +242,8 @@ private struct PlayroomCommands: Commands {
         CommandMenu("Playroom") {
             Button("Meet the 3D Fonsters") { openWindow(id: "playroom") }
                 .keyboardShortcut("m", modifiers: [.command, .shift])
+            Button("Open the local lobby") { openWindow(id: "lobby") }
+                .keyboardShortcut("l", modifiers: [.command, .shift])
         }
     }
 }

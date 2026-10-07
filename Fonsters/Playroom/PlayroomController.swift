@@ -7,7 +7,7 @@ import simd
 @available(macOS 15.0, *)
 @MainActor @Observable
 final class PlayroomController {
-    enum Reaction: String, CaseIterable { case idle, greet, play, rest, blink, look }
+    enum Reaction: String, CaseIterable { case idle, greet, play, rest, blink, look, hop, spin, stretch, highFive, rub, fetch }
     private(set) var reaction: Reaction = .idle
     private(set) var message = "Coral is happy to see you."
     var soundEnabled = false
@@ -24,7 +24,18 @@ final class PlayroomController {
     var orbit: Double = -16
     var rendererError: String?
     var rendererReady = false
+    var roaming = true
+    var followingPointer = false
+    private(set) var userRevision = 0
     @ObservationIgnored var rig: CreatureRig?
+    @ObservationIgnored var toyBall: ModelEntity?
+    @ObservationIgnored private(set) var groundPosition: SIMD2<Float> = .zero
+    @ObservationIgnored private var wanderGoal: SIMD2<Float> = .zero
+    @ObservationIgnored private var nextCuriosity: Float = 5
+    @ObservationIgnored private var curiosityIndex = 0
+    @ObservationIgnored private var locomotion: Float = 0
+    @ObservationIgnored var autonomyEnabled = true
+    @ObservationIgnored var writesProbe = true
     @ObservationIgnored private var elapsed: Float = 0
     @ObservationIgnored private var actionTime: Float = 0
     @ObservationIgnored private var lastTime: Date?
@@ -64,6 +75,8 @@ final class PlayroomController {
 
     func install(_ rig: CreatureRig, name: String) {
         self.rig = rig; elapsed = 0; actionTime = 0; lastTime = nil; pose = .init()
+        userRevision += 1
+        groundPosition = .zero; wanderGoal = .zero; nextCuriosity = 5; curiosityIndex = 0; locomotion = 0
         companionName = name
         if let memories { personality = memories.profile(for: name); memoryStatus = memories.status }
         reaction = .idle; message = "\(name) is happy to see you."
@@ -71,9 +84,17 @@ final class PlayroomController {
         apply(pose)
         writeVerificationProbe()
     }
-    func perform(_ action: Reaction, name: String, learn: Bool = true) {
+    func perform(_ action: Reaction, name: String, learn: Bool = true, audible: Bool = true) {
         reaction = action; actionTime = 0; actionCount += 1
-        if learn, let memories, let updated = memories.learn(action.rawValue, name: name) {
+        if learn { userRevision += 1; wanderGoal = groundPosition; nextCuriosity = elapsed + 6 }
+        let ritual: String
+        switch action {
+        case .hop, .spin, .fetch: ritual = "play"
+        case .highFive: ritual = "greet"
+        case .rub, .stretch: ritual = "rest"
+        default: ritual = action.rawValue
+        }
+        if learn, let memories, let updated = memories.learn(ritual, name: name) {
             personality = updated; memoryStatus = memories.status
         }
         switch action {
@@ -82,16 +103,57 @@ final class PlayroomController {
         case .rest: message = "\(name) settles in. No rush."
         case .blink: message = "A little blink from \(name)."
         case .look: message = "You have \(name)’s full attention."
+        case .hop: message = "\(name) tries a happy little hop."
+        case .spin: message = "One little twirl from \(name)."
+        case .stretch: message = "\(name) takes a lovely long stretch."
+        case .highFive: message = "A tiny high five from \(name)!"
+        case .rub: message = "\(name) leans into a gentle rub."
+        case .fetch: message = "\(name) is chasing the little ball."
         case .idle: message = "\(name) is happy to see you."
         }
-        if soundEnabled && !paused && !backgrounded && action != .idle { soundBank.play(action.rawValue, preferredVariant: personality?.favoriteSound) }
+        if audible && soundEnabled && !paused && !backgrounded && action != .idle {
+            let cue = ["greet", "play", "rest", "blink", "look"].contains(ritual) ? ritual : "play"
+            soundBank.play(cue, preferredVariant: personality?.favoriteSound)
+        }
         // One replaceable reaction and one pose. Repeated input cannot queue animations.
         if !shouldAnimate { pose = targetPose(); apply(pose) }
         writeVerificationProbe()
     }
     func silence() { soundBank.stop() }
     func look(_ point: SIMD2<Float>) {
-        gaze = point
+        gaze = [point.x.isFinite ? min(1, max(-1, point.x)) : 0,
+                point.y.isFinite ? min(1, max(-1, point.y)) : 0]
+    }
+    func followPointer() {
+        followingPointer.toggle(); userRevision += 1
+        if reaction == .rest { perform(.idle, name: companionName) }
+        message = followingPointer ? "\(companionName) follows your pointer. Try a slow little circle." : "\(companionName) is happy to see you."
+    }
+    func stopMoving() {
+        followingPointer = false; roaming = false; wanderGoal = groundPosition
+        perform(.idle, name: companionName)
+        message = "\(companionName) stays beside you."
+    }
+    func setRoaming(_ enabled: Bool) { roaming = enabled; userRevision += 1; if !enabled { wanderGoal = groundPosition } }
+    func execute(_ intent: CreatureCommandIntent) {
+        guard intent.targetName == companionName else { return }
+        switch intent.action {
+        case .hello: perform(.greet, name: companionName)
+        case .dance: perform(.play, name: companionName)
+        case .rest: perform(.rest, name: companionName)
+        case .blink: perform(.blink, name: companionName)
+        case .look: perform(.look, name: companionName)
+        case .hop: perform(.hop, name: companionName)
+        case .spin: perform(.spin, name: companionName)
+        case .stretch: perform(.stretch, name: companionName)
+        case .highFive: perform(.highFive, name: companionName)
+        case .rub: perform(.rub, name: companionName)
+        case .fetch: perform(.fetch, name: companionName)
+        case .follow: if !followingPointer { followPointer() }
+        case .roam: followingPointer = false; roaming = true; perform(.idle, name: companionName); nextCuriosity = elapsed + 0.5
+        case .stop: stopMoving()
+        case .greetFriend: break // Peer requests are validated and executed by the local lobby.
+        }
     }
     func refreshStillPose() {
         lastTime = nil
@@ -104,28 +166,50 @@ final class PlayroomController {
         while !Task.isCancelled && shouldAnimate {
             let now = Date()
             let dt = min(0.06, Float(lastTime.map { now.timeIntervalSince($0) } ?? (1.0 / 30)))
-            lastTime = now; elapsed += dt; actionTime += dt; frameCount += 1
-            if reaction != .rest && reaction != .idle && actionTime > duration {
-                reaction = .idle; actionTime = 0; message = "\(companionName) is happy to see you."
-            }
-            let target = targetPose()
-            let blend = 1 - exp(-dt * 11)
-            pose.y += (target.y - pose.y) * blend
-            pose.yaw += (target.yaw - pose.yaw) * blend
-            pose.tilt += (target.tilt - pose.tilt) * blend
-            pose.nod += (target.nod - pose.nod) * blend
-            pose.squash += (target.squash - pose.squash) * blend
-            pose.eyes += (target.eyes - pose.eyes) * min(1, blend * 2.3)
-            pose.mouth += (target.mouth - pose.mouth) * blend
-            pose.arms += (target.arms - pose.arms) * blend
-            actualGaze += (gaze - actualGaze) * blend
-            apply(pose)
-            if frameCount % 15 == 0 { writeVerificationProbe() }
+            lastTime = now; advance(dt: dt)
             do { try await Task.sleep(for: .milliseconds(33)) } catch { return }
         }
     }
+    /// The lobby uses one shared clock for all rigs; the solo view uses animate().
+    func advance(dt rawDT: Float) {
+        guard shouldAnimate && rawDT.isFinite else { return }
+        let dt = min(0.06, max(0, rawDT))
+        elapsed += dt; actionTime += dt; frameCount += 1
+        if reaction != .rest && reaction != .idle && actionTime > duration {
+            if reaction == .spin { pose.yaw -= 2 * .pi }
+            reaction = .idle; actionTime = 0; message = "\(companionName) is happy to see you."
+        }
+        if autonomyEnabled && roaming && !followingPointer && reaction == .idle && elapsed > nextCuriosity {
+            curiosityIndex += 1; nextCuriosity = elapsed + 7
+            wanderGoal = [sin(Float(curiosityIndex) * 2.1) * 0.27, cos(Float(curiosityIndex) * 1.7) * 0.15]
+            if curiosityIndex % 3 == 0 { perform(.stretch, name: companionName, learn: false, audible: false) }
+            else if curiosityIndex % 3 == 2 { perform(.hop, name: companionName, learn: false, audible: false) }
+        }
+        var targetGround = groundPosition
+        if reaction == .fetch {
+            targetGround = actionTime < 2.8 ? [-0.30, 0.10] : [0.15, 0]
+        } else if reaction == .idle {
+            if followingPointer { targetGround = [gaze.x * 0.32, -gaze.y * 0.15] }
+            else if roaming { targetGround = wanderGoal }
+        }
+        let delta = targetGround - groundPosition
+        let distance = simd_length(delta)
+        let step = min(distance, dt * (reaction == .fetch ? 0.36 : 0.14))
+        if distance > 0.0001 { groundPosition += delta / distance * step }
+        locomotion = dt > 0 ? step / dt : 0
+        let target = targetPose(), blend = 1 - exp(-dt * 11)
+        pose.y += (target.y - pose.y) * blend; pose.yaw += (target.yaw - pose.yaw) * blend
+        pose.tilt += (target.tilt - pose.tilt) * blend; pose.nod += (target.nod - pose.nod) * blend
+        pose.squash += (target.squash - pose.squash) * blend
+        pose.eyes += (target.eyes - pose.eyes) * min(1, blend * 2.3)
+        pose.mouth += (target.mouth - pose.mouth) * blend; pose.arms += (target.arms - pose.arms) * blend
+        actualGaze += (gaze - actualGaze) * blend
+        apply(pose)
+        if frameCount % 15 == 0 { writeVerificationProbe() }
+    }
     // Opt-in local test evidence. The probe contains no identity or input data.
     private func writeVerificationProbe() {
+        guard writesProbe else { return }
         let args = ProcessInfo.processInfo.arguments
         guard let index = args.firstIndex(of: "--probe-file"), index + 1 < args.count else { return }
         let state: [String: Any] = ["frames": frameCount, "animating": shouldAnimate,
@@ -133,14 +217,19 @@ final class PlayroomController {
             "reduceMotion": systemReduceMotion, "lowPower": lowPower, "reaction": reaction.rawValue,
             "actions": actionCount, "sounds": soundEnabled, "soundPlays": soundBank.playCount,
             "soundPlaying": soundBank.isPlaying, "learnedInteractions": personality?.interactionCount ?? 0,
-            "favoriteSound": personality?.favoriteSound ?? -1]
+            "favoriteSound": personality?.favoriteSound ?? -1, "roaming": roaming,
+            "groundX": groundPosition.x, "groundZ": groundPosition.y]
         if let data = try? JSONSerialization.data(withJSONObject: state, options: [.sortedKeys]) {
             try? data.write(to: URL(fileURLWithPath: args[index + 1]), options: .atomic)
         }
     }
 
     private var duration: Float {
-        switch reaction { case .greet: 2.6; case .play: 3.8; case .blink: 0.6; case .look: 2.8; default: 1000 }
+        switch reaction {
+        case .greet: 2.6; case .play: 3.8; case .blink: 0.6; case .look: 2.8
+        case .hop: 2.2; case .spin: 3; case .stretch: 3.4; case .highFive: 2; case .rub: 3.2; case .fetch: 5
+        default: 1000
+        }
     }
     private func targetPose() -> Pose {
         let moving = shouldAnimate
@@ -153,6 +242,7 @@ final class PlayroomController {
         if moving {
             let blink = t.truncatingRemainder(dividingBy: 4.7)
             if blink > 4.43 { result.eyes = max(0.055, abs(blink - 4.56) / 0.13) }
+            if locomotion > 0.02 { result.y += abs(sin(t * 8)) * 0.04; result.tilt += sin(t * 8) * 0.04; result.arms = sin(t * 8) * 0.12 }
         }
         switch reaction {
         case .greet:
@@ -173,6 +263,23 @@ final class PlayroomController {
             result.eyes = moving ? max(0.05, abs(a - 0.25) / 0.23) : 0.06
         case .look:
             result.yaw = 0.12; result.tilt = -0.11; result.eyes = 1.12
+        case .hop:
+            result.y = moving ? max(0, sin(a * 4.5)) * 0.36 : 0.10
+            result.squash = moving ? -cos(a * 9) * 0.055 : 0
+            result.arms = 0.30; result.mouth = 1.25
+        case .spin:
+            result.yaw = moving ? min(1, a / 2.4) * 2 * .pi : 0.45
+            result.arms = 0.4; result.tilt = 0.08; result.eyes = 0.8
+        case .stretch:
+            result.squash = 0.12; result.arms = 0.80; result.nod = -0.12; result.eyes = 0.5
+        case .highFive:
+            result.arms = 0.8; result.tilt = -0.12; result.mouth = 1.2; result.y = 0.08
+        case .rub:
+            result.tilt = moving ? sin(a * 3) * 0.12 : 0.12
+            result.eyes = 0.28; result.nod = -0.08; result.mouth = 0.7
+        case .fetch:
+            result.y = moving ? abs(sin(a * 8)) * 0.08 : 0
+            result.yaw = actionTime < 2.8 ? -0.35 : 0.30; result.arms = 0.15; result.eyes = 1.1
         case .idle: break
         }
         result.eyes = min(1.12, result.eyes)
@@ -180,7 +287,7 @@ final class PlayroomController {
     }
     private func apply(_ pose: Pose) {
         guard let rig else { return }
-        rig.root.position.y = rig.groundOffset + pose.y
+        rig.root.position = [groundPosition.x, rig.groundOffset + pose.y, groundPosition.y]
         rig.root.orientation = simd_quatf(angle: Float(orbit) * .pi / 180 + pose.yaw, axis: [0, 1, 0]) *
             simd_quatf(angle: pose.tilt, axis: [0, 0, 1])
         rig.root.scale = [1 - pose.squash * 0.5, 1 + pose.squash, 1 - pose.squash * 0.5]
@@ -197,6 +304,16 @@ final class PlayroomController {
             let wave = reaction == .greet && i > 1 ? pose.arms * 0.2 : pose.arms
             limb.joint.orientation = simd_quatf(angle: limb.angle + wave * side, axis: [0, 0, 1])
             limb.bend.orientation = simd_quatf(angle: wave * side * 0.9, axis: [0, 0, 1])
+        }
+        if let toyBall {
+            if reaction == .fetch {
+                let a = shouldAnimate ? actionTime : 1.3
+                if a < 1.2 {
+                    let fraction = a / 1.2
+                    toyBall.position = [0.68 - fraction * 1.20, -0.93 + sin(fraction * .pi) * 0.55, 0.32]
+                } else if a < 2.8 { toyBall.position = [-0.52, -0.93, 0.32] }
+                else { toyBall.position = [-0.52 + min(1, (a - 2.8) / 2) * 1.20, -0.93, 0.32] }
+            } else { toyBall.position = [0.68, -0.93, 0.32] }
         }
     }
 }

@@ -9,6 +9,7 @@ struct CapturedFrame: Decodable {
 }
 let directory = URL(fileURLWithPath: CommandLine.arguments[1])
 let output = URL(fileURLWithPath: CommandLine.arguments[2])
+let sourceLabel = CommandLine.arguments.count > 3 ? CommandLine.arguments[3] : "sampled screenshots of the real native app"
 let frames = try JSONDecoder().decode([CapturedFrame].self, from: Data(contentsOf: directory.appendingPathComponent("frames.json")))
 guard let destination = CGImageDestinationCreateWithURL(output as CFURL, UTType.gif.identifier as CFString, frames.count, nil) else { fatalError("Cannot create GIF") }
 CGImageDestinationSetProperties(destination, [kCGImagePropertyGIFDictionary: [kCGImagePropertyGIFLoopCount: 0]] as CFDictionary)
@@ -22,4 +23,4 @@ for (i, frame) in frames.enumerated() {
 precondition(CGImageDestinationFinalize(destination))
 let decoded = CGImageSourceCreateWithURL(output as CFURL, nil)!
 precondition(CGImageSourceGetCount(decoded) == frames.count)
-print("PASS: saved and decoded \(frames.count) sampled screenshots of the real native app as a GIF. No audio or camera frames recorded.")
+print("PASS: saved and decoded \(frames.count) \(sourceLabel) as a GIF. No audio or camera frames recorded.")
