@@ -62,6 +62,9 @@ echo "Built: $APP_BUNDLE"
 open_app() {
   /usr/bin/open -n "$APP_BUNDLE" --args -ApplePersistenceIgnoreState YES --prototype "${LAUNCH_ARGS[@]}"
   sleep 1
+  # Reopen this exact app to surface its SwiftUI window after launch/restoration.
+  # This activates the running instance rather than creating another process.
+  /usr/bin/open "$APP_BUNDLE"
   TASK_PID="$(pgrep -f "$APP_BUNDLE/Contents/MacOS/Fonsters" | head -1 || true)"
   if [[ -n "$TASK_PID" ]]; then printf '%s\n' "$TASK_PID" > "$BUILD_DIR/prototype.pid"; fi
 }
