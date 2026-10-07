@@ -4,6 +4,23 @@ ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 MODE="${1:-run}"
 if [[ $# -gt 0 ]]; then shift; fi
 LAUNCH_ARGS=("$@")
+HAS_SOCIAL_DEMO=false
+HAS_PERSONALITY_FILE=false
+for ARGUMENT in "${LAUNCH_ARGS[@]}"; do
+  case "$ARGUMENT" in
+    --social-demo) HAS_SOCIAL_DEMO=true ;;
+    --personality-file) HAS_PERSONALITY_FILE=true ;;
+  esac
+done
+# Scripted demonstrations use their own synthetic memories, even when no test
+# archive path was supplied. Normal interactive launches keep their existing file.
+if $HAS_SOCIAL_DEMO; then
+  DEMO_MEMORY_DIR="$ROOT_DIR/.prototype-build/native-social-demo"
+  mkdir -p "$DEMO_MEMORY_DIR"
+  if ! $HAS_PERSONALITY_FILE; then LAUNCH_ARGS+=(--personality-file "$DEMO_MEMORY_DIR/personality.json"); fi
+  # The social store uses the personality path too, unless an explicit social
+  # archive was supplied. Preserve both explicit archive choices.
+fi
 APP_NAME="Fonsters"
 BUILD_DIR="$ROOT_DIR/.prototype-build"
 APP_BUNDLE="$BUILD_DIR/Build/Products/Debug/Fonsters.app"

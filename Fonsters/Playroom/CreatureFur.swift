@@ -9,7 +9,7 @@ import simd
 @available(macOS 15.0, *)
 @MainActor
 enum CreatureFur {
-    static let styleVersion = 1
+    static let styleVersion = 2
     static let segments = 3
     static let sides = 4
     struct Surface {
@@ -98,12 +98,15 @@ enum CreatureFur {
         for part in descriptor.parts where ["beard", "hair", "marking"].contains(part.kind) {
             for (i, p) in part.pixels.enumerated() { paint[p.y * 32 + p.x] = Int(part.paletteIndices[i]) }
         }
-        let features = descriptor.parts.filter { ["eye", "mouth", "brow", "nose"].contains($0.kind) }.map { part in
+        var features = descriptor.parts.filter { ["eye", "brow", "nose"].contains($0.kind) }.map { part in
             let w = Float((part.pixels.map(\.x).max() ?? 0) - (part.pixels.map(\.x).min() ?? 0) + 1) * pixel
             let height = Float((part.pixels.map(\.y).max() ?? 0) - (part.pixels.map(\.y).min() ?? 0) + 1) * pixel
             return (x: Float(part.centerX - h.centerX) * pixel, y: Float(h.centerY - part.centerY) * pixel,
                     rx: w * 0.80 + 0.025, ry: height * 0.80 + 0.025)
         }
+        let smile = CreatureRig.smileLayout(for: descriptor)
+        features.append((x: Float(smile.centerX - h.centerX) * pixel, y: Float(h.centerY - smile.centerY) * pixel,
+                         rx: smile.width * 0.70 + 0.025, ry: smile.height * 0.78 + 0.025))
         for i in 0..<count {
             let z = 1 - 2 * (Float(i) + 0.5) / Float(count)
             let angle = (Float(i) * 2.39996323 + noise.unit() * 0.24).truncatingRemainder(dividingBy: 2 * .pi)

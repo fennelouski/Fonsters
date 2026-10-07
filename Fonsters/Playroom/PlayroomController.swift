@@ -57,7 +57,7 @@ final class PlayroomController {
     }
     struct Pose {
         var y: Float = 0, yaw: Float = 0, tilt: Float = 0, nod: Float = 0
-        var squash: Float = 0, eyes: Float = 1, mouth: Float = 1, arms: Float = 0
+        var squash: Float = 0, eyes: Float = 0.94, mouth: Float = 1, arms: Float = 0
     }
 
     func enablePersonalityLearning(_ store: PersonalityMemoryStore) {

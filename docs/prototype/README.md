@@ -18,6 +18,35 @@ Open Personality to see your shared rituals and heart a favorite Warm, Clear or 
 
 ## Fuzzy monsters
 
+### A happy default face
+
+The twelve 3D Fonsters now begin with an upturned, softly rounded smile and slightly
+relaxed eyes. Greeting and play open that smile; rest and gentle rub soften it; the same
+single-pose reactions work in Still and Reduce Motion. The mouth is original curved,
+extruded geometry with a rounded rim, attached to the head and groomed clear of the fur.
+It uses the original mouth's position and colour where a visible mouth exists, adapting
+its width to the rounded expression.
+Fonsters such as Tide, whose legacy mouth is absent, receive a small render-only smile
+below their eyes/nose. The descriptor still records the original absence, and all 2D
+portraits, seed links and exports stay frozen. The fur grooming style is version 2;
+appearance descriptor version 1 and saved identities are unchanged. The visual smile
+does not set an owner's chosen feeling or train personality.
+
+`evidence/smile-solo-scene/solo-02.png` and
+`evidence/smile-neutral-lobby-scene/lobby-02.png` are actual native RealityKit renders.
+`script/verify_motion.sh` now also checks every real smile mesh for finite/unit geometry,
+raised corners, head attachment, unchanged resolved appearance, play-to-idle recovery,
+and static rest/hello expression. The existing repeated-input and five-motion-gate
+checks pass. Frozen raster/descriptor/share/export regression checks pass as well.
+Window capture and physical gesture/VoiceOver limitations described below still apply.
+
+Scripted `--social-demo` launches now automatically use separate synthetic memory files,
+while respecting explicit verification archive paths. The first smile lobby demonstration
+used the regular prototype archive and added demo moments there; these records were
+preserved rather than overwritten. The original app's production records were unaffected.
+Subsequent default-face screenshots and checks use isolated archives, and normal interactive
+launches retain their existing prototype memories.
+
 All twelve 3D companions now wear original procedural fur. The coats use curved, tapered
 three-dimensional fibres, grouped into mesh surfaces instead of thousands of separate
 animated objects. Their colours come from the resolved appearance, including the existing
