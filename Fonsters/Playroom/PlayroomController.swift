@@ -14,6 +14,7 @@ final class PlayroomController {
     @ObservationIgnored private let soundBank = CreatureSoundBank()
     var isSpeaking: Bool { soundBank.isPlaying }
     private(set) var personality: CreaturePersonality?
+    var agentRituals = AgentRituals()
     private(set) var feeling: CreatureFeeling = .neutral
     private(set) var memoryStatus = "Memories stay on this Mac."
     @ObservationIgnored private var memories: PersonalityMemoryStore?
@@ -261,11 +262,11 @@ final class PlayroomController {
         }
         switch reaction {
         case .greet:
-            let warmth = Float(personality?.greetingWarmth ?? 0.5)
+            let warmth = Float(agentRituals.warmth(personality?.greetingWarmth ?? 0.5))
             result.tilt = -0.10; result.arms = moving ? sin(a * 13) * (0.27 + warmth * 0.3) + 0.22 : 0.3 + warmth * 0.3
             result.nod = moving ? -0.08 + sin(a * 5) * 0.09 : -0.1; result.mouth = 1.25
         case .play:
-            let energy = Float(personality?.playEnergy ?? 0.5) * feeling.energy
+            let energy = Float(agentRituals.energy(personality?.playEnergy ?? 0.5)) * feeling.energy
             result.y = moving ? abs(sin(a * 5)) * (0.13 + energy * 0.24) : 0.08
             result.tilt = moving ? sin(a * 5) * 0.18 : 0.16
             result.squash = moving ? -cos(a * 10) * 0.08 : 0

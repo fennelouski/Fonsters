@@ -19,10 +19,12 @@ for INDEX in "${!LAUNCH_ARGS[@]}"; do
   fi
 done
 HAS_SOCIAL_DEMO=false
+HAS_AGENT_DEMO=false
 HAS_PERSONALITY_FILE=false
 for ARGUMENT in "${LAUNCH_ARGS[@]}"; do
   case "$ARGUMENT" in
     --social-demo) HAS_SOCIAL_DEMO=true ;;
+    --agent-demo) HAS_AGENT_DEMO=true ;;
     --personality-file) HAS_PERSONALITY_FILE=true ;;
   esac
 done
@@ -34,6 +36,11 @@ if $HAS_SOCIAL_DEMO; then
   if ! $HAS_PERSONALITY_FILE; then LAUNCH_ARGS+=(--personality-file "$DEMO_MEMORY_DIR/personality.json"); fi
   # The social store uses the personality path too, unless an explicit social
   # archive was supplied. Preserve both explicit archive choices.
+fi
+if $HAS_AGENT_DEMO && ! $HAS_PERSONALITY_FILE; then
+  DEMO_MEMORY_DIR="$ROOT_DIR/.prototype-build/native-agent-demo"
+  mkdir -p "$DEMO_MEMORY_DIR"
+  LAUNCH_ARGS+=(--personality-file "$DEMO_MEMORY_DIR/personality.json")
 fi
 APP_NAME="Fonsters"
 BUILD_DIR="$ROOT_DIR/.prototype-build"

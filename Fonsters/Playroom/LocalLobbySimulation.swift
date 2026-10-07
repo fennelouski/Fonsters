@@ -134,6 +134,14 @@ struct LocalLobbySimulation {
         agents[actor].wandering = enabled; agents[actor].reaction = "idle"; agents[actor].remaining = 0
         agents[actor].goal = agents[actor].position; agents[actor].route = []; agents[actor].walking = false; agents[actor].seatRequested = false; agents[actor].seated = false
     }
+    mutating func stopAgentMotion(actor: Int) {
+        guard agents.indices.contains(actor) else { return }
+        interruptGame()
+        agents[actor].goal = agents[actor].position; agents[actor].route = []; agents[actor].walking = false
+        agents[actor].seatRequested = false; agents[actor].seated = false
+        agents[actor].reaction = "idle"; agents[actor].remaining = 0; agents[actor].goalHold = 8
+        agents[actor].nextWalk = elapsed + 8; nextSocial = elapsed + 8
+    }
     mutating func setFeeling(_ feeling: CreatureFeeling, actor: Int) {
         guard agents.indices.contains(actor) else { return }
         agents[actor].feeling = feeling

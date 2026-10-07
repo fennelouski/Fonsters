@@ -11,6 +11,8 @@ struct LocalLobbyView: View {
     @State private var lobby = LocalLobbyController()
     @State private var interpreter = TypedActionInterpreter()
     @State private var typingRequest = false
+    @State private var agentStudio = false
+    @State private var initialAgentStudioShown = false
     @State private var sharing = false
     @State private var importing = false
     @State private var reviewing = false
@@ -38,6 +40,7 @@ struct LocalLobbyView: View {
                 Button { importing = true } label: { Label("Invite…", systemImage: "person.crop.circle.badge.plus") }
                 if lobby.hasVisitor { Button("End visit") { interpreter.cancel(); lobby.endVisit() } }
             }
+            FonsterAgentStatus(lobby: lobby) { agentStudio = true }
             LobbyWorldToolbar(lobby: lobby, typing: typingRequest)
             HStack(spacing: 16) {
                 ZStack(alignment: .bottomLeading) {
@@ -102,15 +105,15 @@ struct LocalLobbyView: View {
                 Toggle("Wander & mingle", isOn: Binding(get: { lobby.wander }, set: { lobby.setWander($0) })).toggleStyle(.checkbox)
                 Toggle("Sounds", isOn: $lobby.sounds).toggleStyle(.checkbox)
                 Spacer()
-                Toggle("Still mode", isOn: $lobby.still).toggleStyle(.checkbox)
-                Button { lobby.paused.toggle() } label: { Label(lobby.paused ? "Resume" : "Pause", systemImage: lobby.paused ? "play.fill" : "pause.fill") }
+                Toggle("Still mode", isOn: Binding(get: { lobby.still }, set: { lobby.takeOwnerControl(); lobby.still = $0 })).toggleStyle(.checkbox)
+                Button { lobby.takeOwnerControl(); lobby.paused.toggle() } label: { Label(lobby.paused ? "Resume" : "Pause", systemImage: lobby.paused ? "play.fill" : "pause.fill") }
                     .buttonStyle(.bordered).keyboardShortcut(typingRequest ? nil : KeyboardShortcut(.space, modifiers: []))
             }.font(.system(size: 12)).foregroundStyle(.secondary)
             CreatureCommandBar(interpreter: interpreter, selected: lobby.selectedMember.name,
                                names: lobby.names, revision: lobby.userRevision,
                                enabled: lobby.ready && !lobby.paused && !lobby.backgrounded && !lobby.lowPower,
                                currentRevision: { lobby.userRevision }, apply: { lobby.execute($0) },
-                               onFocusChange: { typingRequest = $0 })
+                               onFocusChange: { typingRequest = $0; if $0 { lobby.takeOwnerControl() } })
             HStack {
                 Text(lobby.message).font(.system(size: 12, weight: .medium, design: .rounded))
                 Spacer()
@@ -120,6 +123,7 @@ struct LocalLobbyView: View {
         .padding(22).frame(minWidth: 1050, minHeight: 790)
         .background(Color(red: 0.98, green: 0.97, blue: 0.95)).foregroundStyle(ink).preferredColorScheme(.light)
         .background(VerificationWindowCapture().frame(width: 0, height: 0))
+        .sheet(isPresented: $agentStudio) { FonsterAgentStudio(lobby: lobby) }
         .sheet(isPresented: $sharing) { VisitShareSheet(lobby: lobby, member: lobby.selectedMember) }
         .sheet(isPresented: $reviewing) {
             if let card = pendingCard { VisitReviewSheet(card: card) { interpreter.cancel(); try lobby.invite(card) } }
@@ -147,11 +151,14 @@ struct LocalLobbyView: View {
         .onChange(of: lobby.lowPower) { lobby.refreshGates() }
         .onChange(of: lobby.sounds) { lobby.refreshGates() }
         .onChange(of: lobby.roomRevision) { interpreter.cancel() }
+        .onChange(of: lobby.ready) {
+            if lobby.ready && !initialAgentStudioShown && ProcessInfo.processInfo.arguments.contains("--agent-studio") { initialAgentStudioShown = true; agentStudio = true }
+        }
         .onReceive(NotificationCenter.default.publisher(for: Notification.Name.NSProcessInfoPowerStateDidChange)) { _ in
             lobby.lowPower = ProcessInfo.processInfo.isLowPowerModeEnabled
         }
         .onDisappear {
-            interpreter.cancel(); lobby.ready = false; lobby.containers = []; lobby.ball = nil; lobby.camera = nil; lobby.fountainDrops = []
+            interpreter.cancel(); lobby.agent.revoke(lobby: lobby); lobby.ready = false; lobby.containers = []; lobby.ball = nil; lobby.camera = nil; lobby.fountainDrops = []
             for member in lobby.members { member.controller.silence(); member.controller.rig = nil; member.controller.rendererReady = false }
         }
     }

@@ -18,6 +18,8 @@ final class LocalLobbyController {
     }
     private(set) var members: [Member]
     let social: FriendshipMemoryStore
+    let agent = FonsterAgentDirector()
+    var activeTime: Double { activeSeconds }
     @ObservationIgnored private var worldMemory: LobbyWorldMemory
     var focusArea: LobbyWorld.Area?
     var followSelected = false
@@ -37,8 +39,8 @@ final class LocalLobbyController {
         if let next = world.nextArea { return "\(members.count) Fonsters · \(next.title) at \(next.population)" }
         return "\(members.count) Fonsters · A whole little neighborhood"
     }
-    var buddy = 1
-    var selected = 0 { didSet { if oldValue != selected { userRevision += 1; if followSelected { updateCamera() } } } }
+    var buddy = 1 { didSet { if oldValue != buddy { ownerActed() } } }
+    var selected = 0 { didSet { if oldValue != selected { ownerActed(); if followSelected { updateCamera() } } } }
     var paused = false
     var still = false
     var reduceMotion = false
@@ -86,7 +88,10 @@ final class LocalLobbyController {
         members = newMembers
         simulation = .init(names: newMembers.map(\.name))
         for (i, member) in members.enumerated() { simulation.setFeeling(member.controller.feeling, actor: i) }
-        for member in members { try? social.register(card(for: member, includeFeeling: false)) }
+        for member in members {
+            member.controller.agentRituals = agent.memories.profile(member.id)
+            try? social.register(card(for: member, includeFeeling: false))
+        }
         let launchArgs = ProcessInfo.processInfo.arguments
         if let i = launchArgs.firstIndex(of: "--world-area"), i + 1 < launchArgs.count, let area = LobbyWorld.Area(rawValue: launchArgs[i + 1]), world.areas.contains(area) { focusArea = area; cameraOrbit = area == .neighborhood ? -0.5 : 0; simulation.travel(to: area, actor: selected, peer: peerIndex, instant: true) }
         if ProcessInfo.processInfo.arguments.contains("--social-demo") {
@@ -105,12 +110,12 @@ final class LocalLobbyController {
     func card(for member: Member, includeFeeling: Bool) -> FonsterVisitCard {
         let temperament = member.controller.personality
         return .init(publicID: member.id, name: member.visitCard?.name ?? member.name, appearance: member.descriptor,
-                     warmth: temperament?.greetingWarmth ?? 0.5, energy: temperament?.playEnergy ?? 0.5,
+                     warmth: member.controller.agentRituals.warmth(temperament?.greetingWarmth ?? 0.5), energy: member.controller.agentRituals.energy(temperament?.playEnergy ?? 0.5),
                      feeling: includeFeeling ? member.controller.feeling : nil)
     }
     func chooseFeeling(_ chosen: CreatureFeeling) {
         guard !selectedMember.isVisitor else { return }
-        userRevision += 1; social.setFeeling(chosen, for: selectedMember.id)
+        ownerActed(); social.setFeeling(chosen, for: selectedMember.id)
         selectedMember.controller.setFeeling(chosen); simulation.setFeeling(chosen, actor: selected)
         message = "\(selectedMember.name) wears the feeling you chose: \(chosen.title.lowercased())."
     }
@@ -137,12 +142,12 @@ final class LocalLobbyController {
         let fixture = PlayroomCompanion.fixtures.first { $0.name == worldMemory.names[slot] }!, id = social.identity(for: fixture.name)
         let controller = PlayroomController()
         controller.autonomyEnabled = false; controller.roaming = false; controller.writesProbe = false
-        controller.enablePersonalityLearning(PersonalityMemoryStore.localPreview()); controller.setFeeling(social.feeling(for: id))
+        controller.enablePersonalityLearning(PersonalityMemoryStore.localPreview()); controller.setFeeling(social.feeling(for: id)); controller.agentRituals = agent.memories.profile(id)
         members[slot] = .init(id: id, name: fixture.name, localCompanion: fixture, visitCard: nil, controller: controller)
         rebuildSimulation(); message = "The visit ended. Shared memories stay on this Mac."
     }
     private func invalidateRoom() {
-        ready = false; roomRevision += 1; userRevision += 1
+        ready = false; roomRevision += 1; ownerActed()
         containers = []; ball = nil; camera = nil; fountainDrops = []; error = nil
         for member in members { member.controller.silence(); member.controller.rig = nil; member.controller.rendererReady = false }
     }
@@ -156,7 +161,7 @@ final class LocalLobbyController {
         let controller = PlayroomController()
         controller.autonomyEnabled = false; controller.roaming = false; controller.writesProbe = false
         controller.enablePersonalityLearning(PersonalityMemoryStore.localPreview())
-        let id = social.identity(for: fixture.name); controller.setFeeling(social.feeling(for: id))
+        let id = social.identity(for: fixture.name); controller.setFeeling(social.feeling(for: id)); controller.agentRituals = agent.memories.profile(id)
         let member = Member(id: id, name: fixture.name, localCompanion: fixture, visitCard: nil, controller: controller)
         members.append(member); worldMemory.enroll(fixture.name)
         try? social.register(card(for: member, includeFeeling: false))
@@ -165,7 +170,7 @@ final class LocalLobbyController {
     }
     func explore(_ area: LobbyWorld.Area) {
         guard world.areas.contains(area), ready, !paused, !backgrounded, !lowPower else { return }
-        interruptPair(); userRevision += 1; focusArea = area; followSelected = false; cameraZoom = 1; cameraOrbit = area == .neighborhood ? -0.5 : 0
+        interruptPair(); ownerActed(); focusArea = area; followSelected = false; cameraZoom = 1; cameraOrbit = area == .neighborhood ? -0.5 : 0
         simulation.travel(to: area, actor: selected, peer: peerIndex, instant: still || reduceMotion)
         for i in [selected, peerIndex] { members[i].controller.perform(.idle, name: names[i], learn: false, audible: false) }
         message = "\(selectedMember.name) and \(names[peerIndex]) explore \(area.title.lowercased())."
@@ -173,7 +178,7 @@ final class LocalLobbyController {
     }
     func sitOnBench() {
         guard ready, !world.benches.isEmpty, !paused, !backgrounded, !lowPower else { return }
-        interruptPair(); userRevision += 1
+        interruptPair(); ownerActed()
         simulation.sit(actor: selected, instant: still || reduceMotion)
         selectedMember.controller.perform(still || reduceMotion ? .rest : .idle, name: selectedMember.name, learn: false, audible: false)
         message = "\(selectedMember.name) finds a soft afternoon on the bench."
@@ -207,7 +212,7 @@ final class LocalLobbyController {
     }
     func walk(to destination: SIMD2<Float>) {
         guard destination.x.isFinite, destination.y.isFinite, ready, !paused, !backgrounded, !lowPower else { return }
-        interruptPair(); userRevision += 1
+        interruptPair(); ownerActed()
         simulation.walk(to: destination, actor: selected, instant: still || reduceMotion)
         selectedMember.controller.perform(.idle, name: selectedMember.name, learn: false, audible: false)
         message = "\(selectedMember.name) takes a little walk."
@@ -226,20 +231,20 @@ final class LocalLobbyController {
         let index = actor ?? selected
         guard members.indices.contains(index) else { return }
         interruptPair()
-        userRevision += 1
+        ownerActed()
         dispatch(simulation.act(action.rawValue, actor: index), deliberate: true)
     }
     func waveToFriend() {
         greet(actor: selected, peer: peerIndex)
     }
     func greet(actor: Int, peer: Int) {
-        interruptPair(); userRevision += 1; dispatch(simulation.greet(actor: actor, peer: peer), deliberate: true)
+        interruptPair(); ownerActed(); dispatch(simulation.greet(actor: actor, peer: peer), deliberate: true)
         applyLayout()
     }
-    func playTogether() { interruptPair(); userRevision += 1; dispatch(simulation.playTogether(), deliberate: true) }
-    func gather() { interruptPair(); userRevision += 1; simulation.gather(); message = "Everyone comes a little closer." }
+    func playTogether() { interruptPair(); ownerActed(); dispatch(simulation.playTogether(), deliberate: true) }
+    func gather() { interruptPair(); ownerActed(); simulation.gather(); message = "Everyone comes a little closer." }
     func pair(quiet: Bool) {
-        interruptPair(); userRevision += 1
+        interruptPair(); ownerActed()
         let peer = peerIndex
         dispatch(simulation.together(actor: selected, peer: peer, quiet: quiet), deliberate: true)
         message = quiet ? "\(names[selected]) and \(names[peer]) share a quiet moment. No need to cheer up." : "\(names[selected]) and \(names[peer]) pass the ball back and forth."
@@ -250,22 +255,26 @@ final class LocalLobbyController {
         for i in [game.actor, game.peer] { members[i].controller.perform(.idle, name: names[i], learn: false, audible: false) }
         simulation.interruptGame()
     }
-    func setWander(_ enabled: Bool) { wander = enabled; userRevision += 1; if !enabled { simulation.freezeGoals() } }
+    func setWander(_ enabled: Bool) { wander = enabled; ownerActed(); if !enabled { simulation.freezeGoals() } }
     func execute(_ intent: CreatureCommandIntent) {
         guard let actor = names.firstIndex(of: intent.targetName) else { return }
         interruptPair()
         if intent.action == .greetFriend, let peerName = intent.peerName, let peer = names.firstIndex(of: peerName) {
             greet(actor: actor, peer: peer); return
         }
-        if intent.action == .roam { wander = true; userRevision += 1; simulation.setWandering(true, actor: actor); members[actor].controller.followingPointer = false; members[actor].controller.perform(.idle, name: names[actor]); return }
-        if intent.action == .stop { userRevision += 1; simulation.setWandering(false, actor: actor); members[actor].controller.stopMoving(); message = "\(names[actor]) stays beside you."; return }
-        if intent.action == .follow { if !members[actor].controller.followingPointer { members[actor].controller.followPointer() }; userRevision += 1; message = "\(names[actor]) follows your pointer."; return }
+        if intent.action == .roam { wander = true; ownerActed(); simulation.setWandering(true, actor: actor); members[actor].controller.followingPointer = false; members[actor].controller.perform(.idle, name: names[actor]); return }
+        if intent.action == .stop { ownerActed(); simulation.setWandering(false, actor: actor); members[actor].controller.stopMoving(); message = "\(names[actor]) stays beside you."; return }
+        if intent.action == .follow { if !members[actor].controller.followingPointer { members[actor].controller.followPointer() }; ownerActed(); message = "\(names[actor]) follows your pointer."; return }
         let actions: [CreatureCommandIntent.Action: PlayroomController.Reaction] = [.hello: .greet, .dance: .play, .rest: .rest, .blink: .blink, .look: .look, .hop: .hop, .spin: .spin, .stretch: .stretch, .highFive: .highFive, .rub: .rub, .fetch: .fetch]
         if let action = actions[intent.action] { perform(action, actor: actor) }
     }
-    func advance(dt: Float) {
+    func advance(dt: Float, now: Date = .now) {
         guard shouldAnimate, dt.isFinite, dt > 0 else { return }
         activeSeconds += Double(min(0.06, dt))
+        if ProcessInfo.processInfo.arguments.contains("--agent-demo"), frames == 20 {
+            try? agent.prepareDemo(lobby: self, now: now); try? agent.start(lobby: self, now: now)
+        }
+        agent.advance(lobby: self, now: now)
         let events = simulation.step(dt: dt, wander: wander)
         if !events.isEmpty { dispatch(events, deliberate: false) }
         for (i, member) in members.enumerated() { member.controller.worldWalking = simulation.agents[i].walking; member.controller.advance(dt: dt) }
@@ -286,11 +295,11 @@ final class LocalLobbyController {
             do { try await Task.sleep(for: .milliseconds(33)) } catch { return }
         }
     }
-    private func dispatch(_ events: [LocalLobbySimulation.Event], deliberate: Bool) {
+    private func dispatch(_ events: [LocalLobbySimulation.Event], deliberate: Bool, agentDriven: Bool = false) {
         for (offset, event) in events.enumerated() {
             guard let action = PlayroomController.Reaction(rawValue: event.action) else { continue }
             let member = members[event.actor]
-            member.controller.perform(action, name: member.name, learn: deliberate && !member.isVisitor, audible: deliberate && offset == 0)
+            member.controller.perform(action, name: member.name, learn: deliberate && !member.isVisitor, audible: (deliberate || agentDriven) && offset == 0)
         }
         if let first = events.first, let peer = first.peer, members.indices.contains(peer), !paused && !backgrounded && !lowPower {
             let kind = first.action == "rub" ? "quiet" : (["hop", "highFive", "play"].contains(first.action) ? "game" : "hello")
@@ -302,6 +311,49 @@ final class LocalLobbyController {
             else { message = members[first.actor].controller.message }
         }
         writeProbe()
+    }
+    func takeOwnerControl() { ownerActed() }
+    private func ownerActed() { userRevision += 1; agent.takeOver(lobby: self) }
+    func cancelAgentMotion(id: UUID) {
+        guard let actor = members.firstIndex(where: { $0.id == id }) else { return }
+        interruptPair()
+        simulation.stopAgentMotion(actor: actor)
+        members[actor].controller.perform(.idle, name: names[actor], learn: false, audible: false)
+        members[actor].controller.silence(); applyLayout()
+    }
+    func applyAgent(_ action: FonsterAgentAction, id: UUID, reflection: HumanReflectionRule?) throws {
+        guard let actor = members.firstIndex(where: { $0.id == id }), !members[actor].isVisitor else { throw FonsterAgentError.unavailable }
+        let peer = action.peerID.flatMap { id in members.firstIndex(where: { $0.id == id }) }
+        interruptPair()
+        switch action.kind {
+        case .feeling:
+            guard let feeling = action.feeling else { throw FonsterAgentError.invalid }
+            social.setFeeling(feeling, for: id); simulation.setFeeling(feeling, actor: actor); members[actor].controller.setFeeling(feeling)
+        case .explore:
+            guard let raw = action.area, let area = LobbyWorld.Area(rawValue: raw) else { throw FonsterAgentError.invalid }
+            simulation.travel(to: area, actor: actor, instant: still || reduceMotion)
+            members[actor].controller.perform(.idle, name: names[actor], learn: false, audible: false)
+        case .bench:
+            simulation.sit(actor: actor, instant: still || reduceMotion)
+            members[actor].controller.perform(still || reduceMotion ? .rest : .idle, name: names[actor], learn: false, audible: false)
+        case .react:
+            dispatch(simulation.act(action.reaction!, actor: actor), deliberate: false, agentDriven: true)
+        case .greet:
+            guard let peer else { throw FonsterAgentError.noPeer }
+            dispatch(simulation.greet(actor: actor, peer: peer), deliberate: false, agentDriven: true)
+        case .playTogether, .quietTogether:
+            guard let peer else { throw FonsterAgentError.noPeer }
+            dispatch(simulation.together(actor: actor, peer: peer, quiet: action.kind == .quietTogether), deliberate: false, agentDriven: true)
+        case .reflect:
+            // A transient pose from an owner-chosen coarse cue. Never changes
+            // saved feelings, visit files, appearance, or private personality.
+            guard let cue = action.cue, let reflection, reflection.enabled, reflection.cue == cue else { throw FonsterAgentError.reflectionDenied }
+            if reflection.audience == .localCompanions {
+                guard let peer else { throw FonsterAgentError.noPeer }
+                dispatch(simulation.together(actor: actor, peer: peer, quiet: cue.reaction == "rest"), deliberate: false, agentDriven: true)
+            } else { dispatch(simulation.act(cue.reaction, actor: actor), deliberate: false, agentDriven: true) }
+        }
+        applyLayout(); writeProbe()
     }
     func applyLayout() {
         for (i, container) in containers.enumerated() where simulation.agents.indices.contains(i) {
@@ -321,6 +373,8 @@ final class LocalLobbyController {
             "worldRadius": world.radius, "worldAreas": world.areas.map(\.rawValue), "focusArea": focusArea?.rawValue ?? "overview",
             "walking": simulation.agents.map(\.walking), "seated": simulation.agents.map(\.seated),
             "cameraPosition": camera.map { [Double($0.position.x), Double($0.position.y), Double($0.position.z)] } ?? [],
+            "agentRunning": agent.running, "agentSource": agent.source.rawValue, "agentCursor": agent.cursor, "agentHistory": agent.history.map { $0.title }, "agentRituals": members.map { $0.controller.agentRituals.total },
+            "humanReflectionEnabled": HumanReflectionField.allCases.filter { agent.reflections[$0]?.enabled == true }.map(\.rawValue),
             "socialEvents": socialCount, "localMembers": members.count, "revision": userRevision,
             "visitors": members.filter(\.isVisitor).count, "pairGame": simulation.pairGame != nil,
             "chosenFeelings": members.map { $0.feelingLabel }, "selectedFriendshipMoments": selectedFriendship.meaningfulMoments,
