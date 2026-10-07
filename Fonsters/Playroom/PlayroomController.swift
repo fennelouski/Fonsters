@@ -1,10 +1,10 @@
-#if os(macOS)
+#if os(macOS) || os(iOS) || os(tvOS)
 import SwiftUI
 import RealityKit
 import Observation
 import simd
 
-@available(macOS 15.0, *)
+@available(macOS 15.0, iOS 18.0, tvOS 26.0, *)
 @MainActor @Observable
 final class PlayroomController {
     enum Reaction: String, CaseIterable { case idle, greet, play, rest, blink, look, hop, spin, stretch, highFive, rub, fetch }
@@ -26,6 +26,7 @@ final class PlayroomController {
     var orbit: Double = -16
     var rendererError: String?
     var rendererReady = false
+    var environment = CompanionEnvironment.meadow
     var roaming = true
     var followingPointer = false
     private(set) var userRevision = 0
@@ -53,6 +54,13 @@ final class PlayroomController {
     @ObservationIgnored private var companionName = "Coral"
     private(set) var actionCount = 0
     @ObservationIgnored private(set) var frameCount = 0
+
+    init() {
+        let arguments = ProcessInfo.processInfo.arguments
+        if arguments.contains("--verify-manual") { autonomyEnabled = false; roaming = false }
+        if let i = arguments.firstIndex(of: "--environment"), i + 1 < arguments.count,
+           let theme = CompanionEnvironment(rawValue: arguments[i + 1]) { environment = theme }
+    }
 
     var shouldAnimate: Bool { !paused && !staticMode && !systemReduceMotion && !backgrounded && !lowPower && rendererReady }
     var motionStatus: String {
@@ -87,7 +95,7 @@ final class PlayroomController {
         refreshStillPose()
     }
     func auditionSound(_ variant: Int) {
-        guard soundEnabled && !paused && !backgrounded else { return }
+        guard soundEnabled && !paused && !backgrounded && !lowPower else { return }
         soundBank.play("greet", preferredVariant: variant)
     }
 
@@ -95,7 +103,7 @@ final class PlayroomController {
         cancelTouch()
         self.rig = rig; elapsed = 0; actionTime = 0; lastTime = nil; pose = .init()
         userRevision += 1
-        groundPosition = .zero; wanderGoal = .zero; nextCuriosity = 5; curiosityIndex = 0; locomotion = 0
+        groundPosition = .zero; wanderGoal = .zero; nextCuriosity = 2.5; curiosityIndex = 0; locomotion = 0
         companionName = name
         if let memories { personality = memories.profile(for: name); memoryStatus = memories.status }
         reaction = .idle; message = "\(name) is happy to see you."
@@ -131,7 +139,7 @@ final class PlayroomController {
         case .fetch: message = "\(name) is chasing the little ball."
         case .idle: message = "\(name) is happy to see you."
         }
-        if audible && soundEnabled && !paused && !backgrounded && action != .idle {
+        if audible && soundEnabled && !paused && !backgrounded && !lowPower && action != .idle {
             let cue = ["greet", "play", "rest", "blink", "look"].contains(ritual) ? ritual : "play"
             soundBank.play(cue, preferredVariant: personality?.favoriteSound)
         }
@@ -244,7 +252,7 @@ final class PlayroomController {
     func refreshStillPose() {
         lastTime = nil
         if !shouldAnimate { cancelTouch() }
-        if paused || backgrounded { soundBank.stop(); apply(pose) }
+        if paused || backgrounded || lowPower { soundBank.stop(); apply(pose) }
         else if !shouldAnimate { pose = targetPose(); apply(pose) }
         writeVerificationProbe()
     }
@@ -273,10 +281,11 @@ final class PlayroomController {
             reaction = .idle; actionTime = 0; message = "\(companionName) is happy to see you."
         }
         if !touch.active && touchRecovery == 0 && autonomyEnabled && roaming && !followingPointer && reaction == .idle && elapsed > nextCuriosity {
-            curiosityIndex += 1; nextCuriosity = elapsed + 7
-            wanderGoal = [sin(Float(curiosityIndex) * 2.1) * 0.27, cos(Float(curiosityIndex) * 1.7) * 0.15]
-            if curiosityIndex % 3 == 0 { perform(.stretch, name: companionName, learn: false, audible: false) }
-            else if curiosityIndex % 3 == 2 { perform(.hop, name: companionName, learn: false, audible: false) }
+            curiosityIndex += 1; nextCuriosity = elapsed + 3.8 + Float(curiosityIndex % 3) * 0.7
+            wanderGoal = [sin(Float(curiosityIndex) * 2.1) * 0.48, cos(Float(curiosityIndex) * 1.7) * 0.29]
+            let rituals: [Reaction] = [.look, .hop, .greet, .stretch, .play, .blink]
+            if curiosityIndex % 2 == 0 { perform(rituals[(curiosityIndex / 2) % rituals.count], name: companionName, learn: false, audible: false) }
+            gaze = [wanderGoal.x * 1.5, 0.12 + wanderGoal.y]
         }
         var targetGround = groundPosition
         if touch.active || touchRecovery > 0 {
@@ -289,7 +298,7 @@ final class PlayroomController {
         }
         let delta = targetGround - groundPosition
         let distance = simd_length(delta)
-        let step = min(distance, dt * (reaction == .fetch ? 0.36 : 0.14))
+        let step = min(distance, dt * (reaction == .fetch ? 0.48 : 0.24))
         if distance > 0.0001 { groundPosition += delta / distance * step }
         locomotion = dt > 0 ? step / dt : 0
         var target = targetPose()
@@ -349,7 +358,7 @@ final class PlayroomController {
         if moving {
             let blink = t.truncatingRemainder(dividingBy: 4.7)
             if blink > 4.43 { result.eyes = max(0.055, abs(blink - 4.56) / 0.13) }
-            if locomotion > 0.02 || worldWalking { result.y += abs(sin(t * 8)) * 0.04; result.tilt += sin(t * 8) * 0.04; result.arms = sin(t * 8) * 0.12 }
+            if locomotion > 0.02 || worldWalking { result.y += abs(sin(t * 8)) * 0.065; result.tilt += sin(t * 8) * 0.065; result.arms = sin(t * 8) * 0.20 }
         }
         switch reaction {
         case .greet:
@@ -399,7 +408,8 @@ final class PlayroomController {
             simd_quatf(angle: pose.tilt, axis: [0, 0, 1])
         rig.root.scale = [1 - pose.squash * 0.5, 1 + pose.squash, 1 - pose.squash * 0.5]
         rig.head.orientation = simd_quatf(angle: pose.nod, axis: [1, 0, 0]) *
-            simd_quatf(angle: actualGaze.x * 0.09, axis: [0, 1, 0])
+            simd_quatf(angle: actualGaze.x * 0.14, axis: [0, 1, 0]) *
+            simd_quatf(angle: pose.tilt * 0.45, axis: [0, 0, 1])
         for eye in rig.eyes { eye.scale.y = max(0.055, pose.eyes) }
         for pupil in rig.pupils { pupil.position.x = actualGaze.x * 0.045; pupil.position.y = actualGaze.y * 0.03 }
         rig.mouth?.scale = [1, pose.mouth, 1]

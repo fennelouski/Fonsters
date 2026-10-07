@@ -11,6 +11,10 @@ import AppKit
             var models = 0, parts = 0, largestBatch = 0
             func inspect(_ entity: Entity) {
                 if entity.name.hasPrefix("fuzzy-"), let component = entity.components[ModelComponent.self] {
+                    for material in component.materials {
+                        guard let plush = material as? PhysicallyBasedMaterial else { fatalError("Coat must use a matte material") }
+                        precondition(plush.roughness.scale >= 0.99 && plush.specular.scale <= 0.08 && plush.clearcoat.scale == 0)
+                    }
                     let count = component.mesh.contents.models.reduce(0) { $0 + $1.parts.count }
                     models += 1; parts += count; largestBatch = max(largestBatch, count)
                     precondition(count <= 18, "Fibres must be grouped by material, not emitted as individual render parts")
@@ -55,7 +59,8 @@ import AppKit
         precondition(a.positions.allSatisfy { [$0.x, $0.y, $0.z].allSatisfy(\.isFinite) })
         precondition(a.normals.allSatisfy { abs(simd_length($0) - 1) < 0.001 })
         precondition(a.materials.allSatisfy { $0 / 3 == 2 })
-        print("PASS: twelve furry rigs have substantial depth, visible groomed faces and bounded material batches; narrow-limb fibres are finite, deterministic and use only their resolved colour")
+        precondition(a.maximumLength < 0.08, "Soft groom should not become long bristles on a narrow limb")
+        print("PASS: matte non-clearcoated low-specular coats; twelve furry rigs have substantial depth, visible groomed faces and bounded material batches; narrow-limb fibres are finite, deterministic and use only their resolved colour")
         let data = try JSONSerialization.data(withJSONObject: ["version": 1, "styleVersion": CreatureFur.styleVersion, "fixtures": metrics], options: [.sortedKeys, .prettyPrinted])
         if CommandLine.arguments.count > 1 { try data.write(to: URL(fileURLWithPath: CommandLine.arguments[1]), options: .atomic) }
         print(String(decoding: data, as: UTF8.self))

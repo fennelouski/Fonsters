@@ -1,9 +1,9 @@
-#if os(macOS)
+#if os(macOS) || os(iOS) || os(tvOS)
 import SwiftUI
 import RealityKit
 import Observation
 
-@available(macOS 15.0, *)
+@available(macOS 15.0, iOS 18.0, tvOS 26.0, *)
 @MainActor @Observable
 final class LocalLobbyController {
     @MainActor struct Member: Identifiable {
@@ -26,6 +26,7 @@ final class LocalLobbyController {
     var followSelected = false
     var cameraZoom: Float = 1
     var cameraOrbit: Float = 0
+    var viewportAspect: Float = 1.5
     @ObservationIgnored var camera: PerspectiveCamera?
     @ObservationIgnored var fountainDrops: [Entity] = []
     @ObservationIgnored var dragOrbit: Float?
@@ -75,6 +76,7 @@ final class LocalLobbyController {
         return paused ? "Paused" : "Together, at their own pace"
     }
     init(presenceStore: FonsterSocialStore? = nil) {
+        wander = !ProcessInfo.processInfo.arguments.contains("--verify-manual")
         presence = FonsterSocialDirector(store: presenceStore)
         let social = FriendshipMemoryStore.localPreview(); self.social = social
         let memory = LobbyWorldMemory(); worldMemory = memory
@@ -206,8 +208,9 @@ final class LocalLobbyController {
         let overview = focusArea == nil && !followSelected
         let target2 = followSelected ? simulation.agents[selected].position : (focusArea?.center ?? SIMD2<Float>(0, -0.25))
         let target: SIMD3<Float> = [target2.x, overview ? 0.10 : 0.50, target2.y]
-        let distance = (overview ? world.radius * 1.68 : 5.9) * cameraZoom
-        let height = (overview ? world.radius * 1.15 : 4.1) * cameraZoom
+        let fit = overview ? max(1.25, 1.45 / max(0.35, viewportAspect)) : 1
+        let distance = (overview ? world.radius * 1.68 : 5.9) * cameraZoom * fit
+        let height = (overview ? world.radius * 1.15 : 4.1) * cameraZoom * fit
         let offset: SIMD3<Float> = [sin(cameraOrbit) * distance, height, cos(cameraOrbit) * distance]
         camera.look(at: target, from: target + offset, relativeTo: nil)
     }

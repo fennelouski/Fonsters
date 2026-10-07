@@ -27,6 +27,7 @@ final class FonstersScreenshotTests: XCTestCase {
     @MainActor
     func testCaptureAppStoreScreenshots() throws {
         let app = XCUIApplication()
+        app.launchArguments = ["--original-gallery"]
         // A freshly erased iPad simulator can boot into landscape; portrait keeps
         // taps aligned and produces the portrait screenshots the store expects.
         XCUIDevice.shared.orientation = .portrait

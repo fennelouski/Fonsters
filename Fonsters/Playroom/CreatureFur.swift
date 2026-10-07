@@ -1,15 +1,19 @@
+#if os(macOS) || os(iOS) || os(tvOS)
 #if os(macOS)
 import AppKit
+#else
+import UIKit
+#endif
 import RealityKit
 import CryptoKit
 import simd
 
 /// Original curved fibre geometry, batched per skin surface. No assets, textures or
 /// per-fibre entities/animation. The resolved appearance supplies every coat colour.
-@available(macOS 15.0, *)
+@available(macOS 15.0, iOS 18.0, tvOS 26.0, *)
 @MainActor
 enum CreatureFur {
-    static let styleVersion = 2
+    static let styleVersion = 3
     static let segments = 3
     static let sides = 4
     struct Surface {
@@ -76,11 +80,12 @@ enum CreatureFur {
     }
     static func materials(for descriptor: CreatureAppearanceDescriptor) -> [PhysicallyBasedMaterial] {
         descriptor.rgbaPalette.flatMap { rgba in
-            [0.90, 1.0, 1.10].map { tone in
+            [0.95, 1.0, 1.06].map { tone in
                 var material = PhysicallyBasedMaterial()
-                material.baseColor = .init(tint: NSColor(srgbRed: min(1, CGFloat(rgba[0]) / 255 * tone),
+                material.baseColor = .init(tint: FonsterPlatformColor(srgbRed: min(1, CGFloat(rgba[0]) / 255 * tone),
                     green: min(1, CGFloat(rgba[1]) / 255 * tone), blue: min(1, CGFloat(rgba[2]) / 255 * tone), alpha: 1))
-                material.roughness = .init(floatLiteral: 0.96)
+                material.roughness = .init(floatLiteral: 1)
+                material.specular = .init(floatLiteral: 0.06)
                 material.metallic = .init(floatLiteral: 0)
                 material.clearcoat = .init(floatLiteral: 0)
                 return material
@@ -119,8 +124,8 @@ enum CreatureFur {
                 let x = (root.x - f.x) / f.rx, y = (root.y - f.y) / f.ry
                 return x * x + y * y < 1
             }
-            let length: Float = nearFeature ? 0.007 + noise.unit() * 0.005 : 0.055 + pow(noise.unit(), 1.4) * 0.062
-            let width: Float = nearFeature ? 0.0011 : 0.0017 + noise.unit() * 0.0010
+            let length: Float = nearFeature ? 0.007 + noise.unit() * 0.005 : 0.028 + pow(noise.unit(), 1.4) * 0.049
+            let width: Float = nearFeature ? 0.0011 : 0.0025 + noise.unit() * 0.0016
             let px = min(31, max(0, Int((root.x / pixel + Float(h.centerX)).rounded())))
             let py = min(31, max(0, Int((Float(h.centerY) - root.y / pixel).rounded())))
             let color = z > 0 ? paint[py * 32 + px] : skinIndex
@@ -138,14 +143,14 @@ enum CreatureFur {
         let count = min(Int(4200 * density), max(80, Int(area * 2200 * density)))
         var geometry = Geometry(), noise = Noise(state: seed)
         reserve(&geometry, count: count)
-        let length = min(0.070, max(0.023, min(axes.x, axes.z) * 0.18))
+        let length = min(0.049, max(0.018, min(axes.x, axes.z) * 0.16))
         for i in 0..<count {
             let z = 1 - 2 * (Float(i) + 0.5) / Float(count)
             let angle = Float(i) * 2.39996323 + noise.unit() * 0.18, ring = sqrt(max(0, 1 - z * z))
             let point = SIMD3<Float>(cos(angle) * ring, sin(angle) * ring, z)
             let root = point * axes, normal = simd_normalize(point / axes)
             append(&geometry, root: root - normal * 0.001, normal: normal,
-                   length: length * (0.7 + noise.unit() * 0.8), width: 0.0014 + noise.unit() * 0.0006,
+                   length: length * (0.7 + noise.unit() * 0.8), width: 0.0020 + noise.unit() * 0.0010,
                    palette: palette, scale: axes, toneVariation: toneVariation, noise: &noise)
         }
         return geometry
@@ -164,20 +169,22 @@ enum CreatureFur {
         let swirl = noise.unit() * 2 * .pi
         let randomTangent = u * cos(swirl) + v * sin(swirl)
         let comb = SIMD3<Float>(0, -1, 0) - normal * simd_dot(SIMD3<Float>(0, -1, 0), normal)
-        let tangent = randomTangent * 0.32 + comb * 0.45
+        let tangent = randomTangent * 0.55 + comb * 0.65
         let start = UInt32(geometry.positions.count)
         let brightness = noise.unit()
         for band in 0...segments {
             let t = Float(band) / Float(segments)
-            let center = root + normal * length * t + tangent * length * (0.2 * t + 0.75 * t * t)
-            let direction = simd_normalize(normal + tangent * (0.2 + 1.5 * t))
+            let center = root + normal * length * t + tangent * length * (0.18 * t + 1.12 * t * t)
+            let direction = simd_normalize(normal + tangent * (0.18 + 2.24 * t))
             let a = simd_normalize(simd_cross(direction, reference)), b = simd_cross(direction, a)
-            let radius = width * (1 - t * 0.94)
+            let radius = width * (1 - t * 0.86)
             for side in 0..<sides {
                 let radial: SIMD3<Float>
                 switch side { case 0: radial = a; case 1: radial = b; case 2: radial = -a; default: radial = -b }
                 geometry.positions.append((center + radial * radius) / scale)
-                geometry.normals.append(simd_normalize(radial * scale))
+                // A rounded wool tuft shares its surface normal with its neighbors.
+                // Softer shading avoids a forest of black needle highlights.
+                geometry.normals.append(simd_normalize((radial * 0.32 + normal * 0.68) * scale))
             }
         }
         for band in 0..<segments {

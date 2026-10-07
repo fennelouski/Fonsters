@@ -1,9 +1,14 @@
+#if os(macOS) || os(iOS) || os(tvOS)
+import Foundation
 #if os(macOS)
 import AppKit
+#else
+import UIKit
+#endif
 import RealityKit
 
 /// An original soft studio environment shared by the native view and scene exports.
-@available(macOS 15.0, *)
+@available(macOS 15.0, iOS 18.0, tvOS 26.0, *)
 @MainActor
 enum CreatureSceneLighting {
     static let name = "fonsters-soft-studio"

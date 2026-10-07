@@ -37,6 +37,8 @@ Do not imply these are already played. Start with 3 distinct takes per event/voi
 | `world_bench_settle_T.wav` | Sit on bench | Subtle cushion/wood settling | 0.2–0.5 s / 3 |
 | `world_fountain_loop.wav` | Fountain nearby | Gentle small fountain, seamless, no loud hiss | 8–12 s / 1 |
 | `world_park_loop.wav` | Park nearby | Air through leaves, very sparse soft birds | 10–15 s / 1 |
+| `world_seaside_loop.wav` | Seaside setting | Gentle distant surf and airy shore breeze; seamless and quiet | 12–18 s / 1 |
+| `world_moonlit_loop.wav` | Moonlit garden setting | Soft night air, sparse friendly crickets; no spooky or startling sounds | 12–18 s / 1 |
 | `ui_select_T.wav` | Avatar/area selection | Small soft wooden/padded note | 0.08–0.15 s / 3 |
 | `ui_confirm.wav` | Owner approves local action/save | Two soft notes, no reward fanfare | 0.2–0.4 s / 1 |
 | `ui_cancel.wav` | Cancel/take over | Single quiet falling note | 0.1–0.2 s / 1 |

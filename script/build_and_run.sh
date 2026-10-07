@@ -54,13 +54,13 @@ if [[ -f "$BUILD_DIR/prototype.pid" ]]; then
 fi
 mkdir -p "$BUILD_DIR"
 xcodebuild -project Fonsters.xcodeproj -scheme Fonsters -configuration Debug \
-  -destination 'platform=macOS' -derivedDataPath "$BUILD_DIR" \
+  -destination 'platform=macOS' -derivedDataPath "$BUILD_DIR" -jobs 1 \
   PRODUCT_BUNDLE_IDENTIFIER=com.nathanfennel.Fonsters.Playroom \
   CODE_SIGN_ENTITLEMENTS='' CODE_SIGN_IDENTITY=- CODE_SIGNING_ALLOWED=NO \
   build > "$BUILD_DIR/build.log" 2>&1 || { tail -80 "$BUILD_DIR/build.log"; exit 1; }
 echo "Built: $APP_BUNDLE"
 open_app() {
-  /usr/bin/open -n "$APP_BUNDLE" --args --prototype "${LAUNCH_ARGS[@]}"
+  /usr/bin/open -n "$APP_BUNDLE" --args -ApplePersistenceIgnoreState YES --prototype "${LAUNCH_ARGS[@]}"
   sleep 1
   TASK_PID="$(pgrep -f "$APP_BUNDLE/Contents/MacOS/Fonsters" | head -1 || true)"
   if [[ -n "$TASK_PID" ]]; then printf '%s\n' "$TASK_PID" > "$BUILD_DIR/prototype.pid"; fi

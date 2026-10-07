@@ -1,10 +1,15 @@
+#if os(macOS) || os(iOS) || os(tvOS)
+import Foundation
 #if os(macOS)
 import AppKit
+#else
+import UIKit
+#endif
 import RealityKit
 import simd
 
 /// Original, lightweight toy-town scenery, built entirely with native geometry.
-@available(macOS 15.0, *)
+@available(macOS 15.0, iOS 18.0, tvOS 26.0, *)
 @MainActor
 enum LobbyWorldScene {
     struct Scene { let root: Entity; let fountainDrops: [Entity] }
@@ -83,7 +88,7 @@ enum LobbyWorldScene {
         }
     }
     static func material(_ r: CGFloat, _ g: CGFloat, _ b: CGFloat, roughness: Float = 0.85) -> SimpleMaterial {
-        SimpleMaterial(color: NSColor(srgbRed: r, green: g, blue: b, alpha: 1), roughness: .init(floatLiteral: roughness), isMetallic: false)
+        SimpleMaterial(color: FonsterPlatformColor(srgbRed: r, green: g, blue: b, alpha: 1), roughness: .init(floatLiteral: roughness), isMetallic: false)
     }
     private static func box(_ size: SIMD3<Float>, _ p: SIMD3<Float>, _ m: SimpleMaterial, corner: Float = 0.04) -> ModelEntity {
         let e = ModelEntity(mesh: .generateBox(size: size, cornerRadius: min(corner, min(size.x, min(size.y, size.z)) * 0.45)), materials: [m]); e.position = p; return e

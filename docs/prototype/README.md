@@ -4,6 +4,13 @@ Open `Launch Playroom.command` at the repository root, or double-click
 `.prototype-build/Build/Products/Debug/Fonsters.app`. The preview is already built locally.
 Rebuild with `./script/build_and_run.sh --verify` using the installed Xcode.
 
+The latest [soft world and mobile revision](soft-world-ios.md) adds matte wool-like
+groom version 3, wider smiles, meadow/seaside/moonlit settings and more expressive
+exploration. The same native companion and world now run on iPhone, and the world
+runs on tvOS 26 with native remote-focused buttons. That document records the current
+builds, real interaction evidence and platform limits; measurements below describe
+the earlier milestones. `script/Open Fonsters.command` is another Finder launcher.
+
 Choose a creature on the left. Move the pointer over it, tap it, or use Hello / Play /
 Rest / Blink / Look. Keyboard shortcuts are H, P, R, B, L and Space for pause.
 Unmodified action shortcuts are suspended while the request field has focus, so letters
@@ -39,7 +46,7 @@ It uses the original mouth's position and colour where a visible mouth exists, a
 its width to the rounded expression.
 Fonsters such as Tide, whose legacy mouth is absent, receive a small render-only smile
 below their eyes/nose. The descriptor still records the original absence, and all 2D
-portraits, seed links and exports stay frozen. The fur grooming style is version 2;
+portraits, seed links and exports stay frozen. This first smile milestone used fur grooming style version 2;
 appearance descriptor version 1 and saved identities are unchanged. The visual smile
 does not set an owner's chosen feeling or train personality.
 
@@ -65,7 +72,7 @@ hair, beard and surface markings. Fur on the body, ears, limbs and antlers follo
 existing joints; the eyes, mouth, nose and brows stay readable with shorter face grooming.
 The legacy 2D renderer, appearance descriptor version and seed identity are unchanged.
 
-Close-ups use 12,000 head fibres; the lobby uses 6,000 and half the body density, with
+The first fuzzy milestone used 12,000 close-up head fibres and 6,000 in the lobby, with half the body density and
 one colour tone per resolved palette index to reduce material groups at room distance. Across the
 twelve fixtures, portrait coats contain 12,000–19,644 fibres and 288,000–471,456 triangles.
 Each surface has at most nine observed material groups. An LRU cache reuses immutable mesh

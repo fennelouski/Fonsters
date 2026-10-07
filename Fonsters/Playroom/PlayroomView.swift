@@ -66,7 +66,7 @@ struct PlayroomView: View {
             controller.lowPower = ProcessInfo.processInfo.isLowPowerModeEnabled
         }
         .onChange(of: controller.orbit) { controller.refreshStillPose() }
-        .onDisappear { inputs.stopAll(); interpreter.cancel(); controller.silence(); controller.toyBall = nil; controller.rig = nil; controller.rendererReady = false }
+        .onDisappear { inputs.stopAll(); interpreter.cancel(); controller.silence(); controller.toyBall = nil; controller.touchCamera = nil; controller.rig = nil; controller.rendererReady = false }
     }
 
     private var sidebar: some View {
@@ -150,7 +150,7 @@ struct PlayroomView: View {
                     .fill(LinearGradient(colors: [Color(red: 0.91, green: 0.88, blue: 0.95), Color(red: 0.98, green: 0.95, blue: 0.92)], startPoint: .topLeading, endPoint: .bottomTrailing))
                 if selected.descriptor.supported && controller.rendererError == nil {
                     CreatureStageView(companion: selected, controller: controller)
-                        .id(selected.id)
+                        .id(selected.id.uuidString + controller.environment.rawValue)
                         .clipShape(RoundedRectangle(cornerRadius: 26))
                 } else {
                     VStack(spacing: 15) {
@@ -214,6 +214,13 @@ struct PlayroomView: View {
                 Slider(value: $controller.orbit, in: -180...180).tint(accent).frame(maxWidth: 150)
                     .accessibilityLabel("Turn \(selected.name) in three dimensions")
                 FonsterIconButton(title: "Follow the pointer", symbol: "cursorarrow.rays", selected: controller.followingPointer) { controller.followPointer() }
+                FonsterControlGroup(title: "Environments", tone: .world) {
+                    ForEach(CompanionEnvironment.allCases) { environment in
+                        FonsterIconButton(title: environment.title, symbol: environment.symbol, tone: .world, selected: controller.environment == environment) {
+                            controller.cancelTouch(); controller.rendererReady = false; controller.environment = environment
+                        }
+                    }
+                }
                 Spacer(minLength: 0)
                 inputControls
                 FonsterControlGroup(title: "Motion") {

@@ -128,13 +128,14 @@ struct ContentView: View {
             } message: {
                 Text("This cannot be undone.")
             }
-            .onChange(of: pendingImportURL.url) { _, url in
-                guard let url = url else { return }
+            .onChange(of: pendingImportURL.url, initial: true) { _, url in
+                guard let url, pendingImportURL.url == url else { return }
+                // Consume once before import, including the first lazy gallery presentation.
+                pendingImportURL.url = nil
                 if let seeds = parseSeedsFromShareURL(url.absoluteString),
                    let firstId = importSeeds(seeds) {
                     selectedId = firstId
                 }
-                pendingImportURL.url = nil
             }
             .task {
                 await seedInitialCreaturesIfNeeded()
