@@ -37,7 +37,7 @@ struct LocalLobbySimulation {
     init(names: [String], population: Int? = nil) {
         let layout = LobbyWorld(population: population ?? names.count)
         world = layout
-        agents = Array(names.prefix(12).enumerated()).map { i, name in
+        agents = Array(names.enumerated()).map { i, name in
             let home = layout.home(i)
             return .init(name: name, home: home, position: home, goal: home, nextWalk: Float(i) * 1.1 + 2)
         }

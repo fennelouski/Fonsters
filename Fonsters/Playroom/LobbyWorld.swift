@@ -76,7 +76,9 @@ struct LobbyWorld {
         let homes: [SIMD2<Float>] = [[-1.5, 0.8], [-0.5, 0.2], [0.5, 0.2], [1.5, 0.8],
                                   [-2.4, 1.8], [-1.2, 2.1], [0, 2.5], [1.2, 2.1], [2.4, 1.8],
                                   [-4.3, -1.5], [4.5, -1.0], [3.3, 2.1]]
-        return homes[min(max(0, index), homes.count - 1)]
+        if index < homes.count { return homes[max(0, index)] }
+        let slot = index - homes.count
+        return nearestWalkable(to: [Float(slot % 13) * 1.03 - 6.18, Float(slot / 13) * 1.03 - 5.5])
     }
     func destination(in area: Area, slot: Int) -> SIMD2<Float> {
         let offsets: [SIMD2<Float>] = [[-0.55, 0.35], [0.55, 0.35], [0, 1.2], [-1.0, 1.2], [1, 1.2], [0, -0.7]]

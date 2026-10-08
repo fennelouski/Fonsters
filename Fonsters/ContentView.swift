@@ -22,6 +22,7 @@ import UIKit
 #endif
 
 struct ContentView: View {
+    var initialSelectionID: UUID? = nil
     @Environment(\.modelContext) private var modelContext
     @Environment(\.colorScheme) private var colorScheme
     @EnvironmentObject private var pendingImportURL: PendingImportURLHolder
@@ -787,7 +788,7 @@ struct ContentView: View {
                 selectedId = f.id
             }
         } else if selectedId == nil {
-            selectedId = fonsters.first!.id
+            selectedId = initialSelectionID.flatMap { id in fonsters.first(where: { $0.id == id })?.id } ?? fonsters.first!.id
         }
     }
 }

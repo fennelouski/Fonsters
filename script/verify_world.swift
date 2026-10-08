@@ -58,6 +58,41 @@ import simd
             print("PASS: Stop clears held rests, walks and games without an immediate autonomous restart")
             lobby.backgrounded = true; precondition(!lobby.cameraKey("w", modifiers: []))
             print("PASS: twelve keyboard directions, horizontal/vertical orbit, planar drag, vertical translation, whole-gesture Undo, reset and extreme/invalid input bounds")
+            lobby.backgrounded = false; lobby.continuousGallery = true; lobby.ready = true; lobby.lowPower = false
+            lobby.search(""); let revision = lobby.roomRevision
+            let memberIDs = lobby.members.map(\.id), appearances = lobby.members.map(\.descriptor)
+            let originalPositions = lobby.simulation.agents.map(\.position), originalGoals = lobby.simulation.agents.map(\.goal)
+            lobby.search("Moss"); precondition(lobby.searchMatches.map { lobby.names[$0] } == ["Moss"])
+            for _ in 0..<30 { lobby.advance(dt: 1.0 / 30) }
+            lobby.openCare(lobby.searchMatches[0])
+            for _ in 0..<30 { lobby.advance(dt: 1.0 / 30) }
+            for _ in 0..<100 { lobby.perform(.play); lobby.perform(.rest) }
+            precondition(lobby.inCare && lobby.roomRevision == revision)
+            precondition(lobby.simulation.agents.map(\.position) == originalPositions && lobby.simulation.agents.map(\.goal) == originalGoals)
+            lobby.returnToLobby(); lobby.search("")
+            for _ in 0..<29 { lobby.advance(dt: 1.0 / 30) }
+            precondition(!lobby.inCare && lobby.members.map(\.id) == memberIDs && lobby.members.map(\.descriptor) == appearances)
+            precondition(lobby.simulation.agents.map(\.position) == originalPositions)
+            lobby.reduceMotion = true; lobby.refreshGates(); lobby.openCare(0)
+            precondition(lobby.presentation.poses[0].scale == 0.93 && !lobby.presentation.transitioning)
+            lobby.returnToLobby(); precondition(lobby.presentation.poses == lobby.naturalPoses)
+            let savedID = UUID(); lobby.showSaved([.init(id: savedID, name: "My Moss", seed: "little-fonster-138")])
+            let publicID = lobby.selectedMember.id
+            lobby.perform(.greet); lobby.chooseFeeling(.cozy)
+            let learned = lobby.selectedMember.controller.personality!
+            precondition(learned.hellos == 1)
+            precondition(publicID != savedID && lobby.selectedSavedID == savedID)
+            lobby.showSaved([.init(id: savedID, name: "My Moss renamed", seed: "little-fonster-138")])
+            precondition(lobby.selectedMember.id == publicID && lobby.selectedMember.name == "My Moss renamed")
+            precondition(lobby.selectedMember.controller.personality == learned && lobby.selectedMember.controller.feeling == .cozy)
+            lobby.showSaved([.init(id: savedID, name: "My Moss renamed", seed: "little-fonster-233")])
+            precondition(lobby.selectedMember.id != publicID && lobby.selectedMember.controller.personality == learned && lobby.selectedMember.controller.feeling == .cozy)
+            lobby.showSaved([.init(id: savedID, name: "My Moss renamed", seed: "little-fonster-138")])
+            precondition(lobby.selectedMember.id == publicID && lobby.selectedMember.controller.personality == learned && lobby.selectedMember.controller.feeling == .cozy)
+            let card = try lobby.card(for: lobby.selectedMember, includeFeeling: false).encoded()
+            let text = String(data: card, encoding: .utf8)!
+            precondition(!text.contains(savedID.uuidString) && !text.contains("little-fonster-138"))
+            print("PASS: same scene revision, IDs and descriptors through search/care/back; routes and positions held across 200 care reactions; immediate Reduce Motion; saved-record reconciliation uses stable random public IDs and keeps private IDs/seeds out of exports; renaming and appearance changes preserve learned care memory while appearance public identities remain stable")
             return
         }
         let fixtures = PlayroomCompanion.fixtures

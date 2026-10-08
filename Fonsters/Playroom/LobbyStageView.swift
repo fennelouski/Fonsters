@@ -26,7 +26,7 @@ struct LobbyStageView: View {
             platformStage(size: geometry.size, cameraState: cameraState)
                 .accessibilityElement(children: .ignore)
                 .accessibilityLabel(Text("Explorable Fonster world with " + lobby.names.joined(separator: ", ")))
-                .accessibilityValue(lobby.message + " " + lobby.cameraDescription)
+                .accessibilityValue(lobby.message + " " + lobby.motionStatus + " " + lobby.cameraDescription)
                 #if os(tvOS)
                 .accessibilityHint("Use the area, companion and camera buttons to explore. Friendship buttons let the selected Fonster greet and play.")
                 #else
@@ -62,8 +62,7 @@ struct LobbyStageView: View {
                     lobby.selectedMember.controller.look([Float(point.x / size.width - 0.5) * 2, Float(0.5 - point.y / size.height) * 2])
                 }
             }
-            .contentShape(Rectangle())
-            .gesture(contactGesture(size: size))
+            .overlay { Rectangle().fill(.clear).contentShape(Rectangle()).gesture(contactGesture(size: size)) }
             .simultaneousGesture(MagnifyGesture().onChanged { value in
                 if !lobby.cameraGestureActive { lobby.beginCameraGesture() }
                 if let origin = lobby.cameraGestureOrigin { lobby.cameraZoom = min(2.5, max(0.45, origin.zoom / Float(value.magnification))); lobby.updateCamera() }
@@ -71,7 +70,8 @@ struct LobbyStageView: View {
             .onChange(of: gestureActive) { _, active in
                 if !active && gestureStarted { lobby.cancelContact(); lobby.endCameraGesture(); lobby.dragOrbit = nil; gestureStarted = false; creatureCaptured = false }
             }
-            .onChange(of: size) { _, newSize in
+            .onChange(of: size, initial: true) { _, newSize in
+                lobby.viewportHeight = Float(newSize.height)
                 lobby.viewportAspect = Float(newSize.width / max(1, newSize.height)); lobby.updateCamera()
             }
             .onDisappear { lobby.cancelContact(); lobby.endCameraGesture() }
@@ -156,10 +156,21 @@ struct LobbyStageView: View {
         var roots: [Entity] = [camera]
         lobby.containers = []
         for member in lobby.members {
-            let rig = try CreatureRig(member.descriptor, furDetail: lobby.members.count > 6 ? .world : .lobby)
-            member.controller.install(rig, name: member.name); member.controller.orbit = 0
             let container = Entity(); container.scale = .init(repeating: 0.55)
-            container.addChild(rig.root); roots.append(container); lobby.containers.append(container)
+            if member.descriptor.supported {
+                let rig = try CreatureRig(member.descriptor, furDetail: lobby.members.count > 6 ? .world : .lobby)
+                member.controller.install(rig, name: member.name); member.controller.orbit = 0
+                container.addChild(rig.root)
+            } else if let seed = member.localCompanion?.seed, let image = creatureImage(for: seed) {
+                // Unsupported families retain their exact legacy portrait rather
+                // than inventing a different 3D silhouette.
+                let texture = try await TextureResource(image: image, options: .init(semantic: .color))
+                var material = UnlitMaterial(); material.color = .init(tint: .white, texture: .init(texture))
+                material.blending = .transparent(opacity: .init(floatLiteral: 1))
+                let portrait = ModelEntity(mesh: .generatePlane(width: 1.9, height: 1.9), materials: [material])
+                container.addChild(portrait)
+            }
+            roots.append(container); lobby.containers.append(container)
         }
         let neighborhood = try LobbyWorldScene.make(lobby.world)
         roots.append(neighborhood.root); lobby.fountainDrops = neighborhood.fountainDrops
