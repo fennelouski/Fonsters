@@ -36,4 +36,4 @@ Physical keyboard/trackpad use, iPad pointer hover, hardware VoiceOver, a physic
 - `full-window-contact-fixed-attachments/`: actual final iPhone simulator screenshots, with their test names in `manifest.json`.
 - `full-window-camera-and-help-demo.mp4`: silent simulator recording showing the actual camera orbit, Undo, activity controls, and panel guide.
 
-Evidence is local and ignored by Git. The original checkout and its existing user scheme change remain untouched. Source work is isolated on `ui/discoverable-controls`, based on `ad9935b616da8c1c2b5d247c88cdf9cff537b47a`; no push, merge, deployment, or external publication is part of this handoff.
+Evidence is local and ignored by Git. The original checkout and its existing user scheme change remain untouched. Initial validation was on `ui/discoverable-controls`, based on `ad9935b616da8c1c2b5d247c88cdf9cff537b47a`. The subsequent owner-requested remote-main merge and iPhone build/install are recorded separately in `evidence/soft-world/main-iphone-outcome.json`; its source revision and fresh device result distinguish that build from the initial local handoff. No App Store upload or deployment is performed.
