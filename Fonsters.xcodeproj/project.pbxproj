@@ -126,6 +126,7 @@
 		8085E0792F328F91009F6980 /* Exceptions for "Fonsters" folder in "Fonsters iMessage Extension" target */ = {
 			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
 			membershipExceptions = (
+				Playroom/ContinuousLobbyView.swift,
 				Playroom/MobilePlayroomView.swift,
 				Playroom/TelevisionPlayroomView.swift,
 				Assets.xcassets,

@@ -18,6 +18,7 @@ final class PlayroomController {
     private(set) var feeling: CreatureFeeling = .neutral
     private(set) var memoryStatus = "Memories stay on this Mac."
     @ObservationIgnored private var memories: PersonalityMemoryStore?
+    @ObservationIgnored private var memoryIdentity: String?
     var paused = false
     var staticMode = false
     var systemReduceMotion = false
@@ -103,14 +104,14 @@ final class PlayroomController {
         message = "Activity stopped. Shared memories stay with you."
     }
 
-    func enablePersonalityLearning(_ store: PersonalityMemoryStore) {
+    func enablePersonalityLearning(_ store: PersonalityMemoryStore, identity: String? = nil, name: String? = nil) {
         guard memories == nil else { return }
-        memories = store
-        personality = store.profile(for: companionName); memoryStatus = store.status
+        memories = store; memoryIdentity = identity
+        personality = store.profile(for: name ?? companionName, identity: identity); memoryStatus = store.status
     }
     func likeSound(_ variant: Int) {
         guard let memories else { return }
-        personality = memories.likeSound(variant, name: companionName); memoryStatus = memories.status
+        personality = memories.likeSound(variant, name: memoryIdentity ?? companionName); memoryStatus = memories.status
     }
     func useVisitorTemperament(_ card: FonsterVisitCard) {
         guard memories == nil else { return }
@@ -133,7 +134,7 @@ final class PlayroomController {
         userRevision += 1
         groundPosition = .zero; wanderGoal = .zero; nextCuriosity = 2.5; curiosityIndex = 0; locomotion = 0
         companionName = name
-        if let memories { personality = memories.profile(for: name); memoryStatus = memories.status }
+        if let memories { personality = memories.profile(for: name, identity: memoryIdentity); memoryStatus = memories.status }
         reaction = .idle; message = "\(name) is happy to see you."
         rendererReady = true
         apply(pose)
@@ -150,7 +151,7 @@ final class PlayroomController {
         case .rub, .stretch: ritual = "rest"
         default: ritual = action.rawValue
         }
-        if learn, let memories, let updated = memories.learn(ritual, name: name) {
+        if learn, let memories, let updated = memories.learn(ritual, name: memoryIdentity ?? name) {
             personality = updated; memoryStatus = memories.status
         }
         switch action {
@@ -203,7 +204,7 @@ final class PlayroomController {
         // Pointer samples never write memories or sound files.
         let meaningful = touch.duration >= 0.35 && touch.distance >= 0.08
         let ritual = manner == .tickle || manner == .lively ? "play" : manner == .highFive ? "greet" : "rest"
-        if meaningful, manner != .blink, let memories, let updated = memories.learn(ritual, name: companionName) {
+        if meaningful, manner != .blink, let memories, let updated = memories.learn(ritual, name: memoryIdentity ?? companionName) {
             personality = updated; memoryStatus = memories.status
         }
         if soundEnabled && !paused && !backgrounded && !lowPower && time - lastTouchSound >= 0.6 {

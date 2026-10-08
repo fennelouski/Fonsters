@@ -89,10 +89,11 @@ final class PersonalityMemoryStore {
             .appendingPathComponent("com.nathanfennel.Fonsters.Playroom", isDirectory: true)
         return .init(url: folder.appendingPathComponent("personality-v1.json"))
     }
-    func profile(for name: String) -> CreaturePersonality {
-        if let saved = archive.profiles[name] { return saved }
+    func profile(for name: String, identity: String? = nil) -> CreaturePersonality {
+        let key = identity ?? name
+        if let saved = archive.profiles[key] { return saved }
         let new = CreaturePersonality(name: name)
-        archive.profiles[name] = new; save()
+        archive.profiles[key] = new; save()
         return new
     }
     func learn(_ event: String, name: String, now: Date = .now) -> CreaturePersonality? {

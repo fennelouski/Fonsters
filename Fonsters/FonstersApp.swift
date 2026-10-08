@@ -65,49 +65,64 @@ private struct FonstersCommands: Commands {
                 actions?.addFonster()
             }
             .keyboardShortcut("n", modifiers: .command)
+            .disabled(actions == nil)
         }
         CommandGroup(after: .sidebar) {
             Button("Show/Hide Sidebar") {
                 actions?.toggleSidebar()
             }
             .keyboardShortcut(KeyEquivalent("`"), modifiers: [.command, .option])
+            .disabled(actions == nil)
         }
         CommandMenu("Fonsters") {
             Button("Share Current Fonster") {
                 actions?.shareCurrentFonster()
             }
             .keyboardShortcut("p", modifiers: .command)
+            .disabled(actions == nil)
             Divider()
             Button("Previous Fonster") {
                 actions?.selectPreviousFonster()
             }
             .keyboardShortcut(.upArrow, modifiers: [])
+            .disabled(actions == nil)
             Button("Next Fonster") {
                 actions?.selectNextFonster()
             }
             .keyboardShortcut(.downArrow, modifiers: [])
+            .disabled(actions == nil)
             Divider()
             Group {
                 Button("Go to 1st Fonster") { actions?.selectFonsterAt(1) }
                     .keyboardShortcut("1", modifiers: .command)
+                    .disabled(actions == nil)
                 Button("Go to 2nd Fonster") { actions?.selectFonsterAt(2) }
                     .keyboardShortcut("2", modifiers: .command)
+                    .disabled(actions == nil)
                 Button("Go to 3rd Fonster") { actions?.selectFonsterAt(3) }
                     .keyboardShortcut("3", modifiers: .command)
+                    .disabled(actions == nil)
                 Button("Go to 4th Fonster") { actions?.selectFonsterAt(4) }
                     .keyboardShortcut("4", modifiers: .command)
+                    .disabled(actions == nil)
                 Button("Go to 5th Fonster") { actions?.selectFonsterAt(5) }
                     .keyboardShortcut("5", modifiers: .command)
+                    .disabled(actions == nil)
                 Button("Go to 6th Fonster") { actions?.selectFonsterAt(6) }
                     .keyboardShortcut("6", modifiers: .command)
+                    .disabled(actions == nil)
                 Button("Go to 7th Fonster") { actions?.selectFonsterAt(7) }
                     .keyboardShortcut("7", modifiers: .command)
+                    .disabled(actions == nil)
                 Button("Go to 8th Fonster") { actions?.selectFonsterAt(8) }
                     .keyboardShortcut("8", modifiers: .command)
+                    .disabled(actions == nil)
                 Button("Go to 9th Fonster") { actions?.selectFonsterAt(9) }
                     .keyboardShortcut("9", modifiers: .command)
+                    .disabled(actions == nil)
                 Button("Go to 10th Fonster") { actions?.selectFonsterAt(10) }
                     .keyboardShortcut("0", modifiers: .command)
+                    .disabled(actions == nil)
             }
         }
     }
@@ -193,14 +208,16 @@ struct FonstersApp: App {
             if isPlayroomPrototype {
                 #if os(macOS)
                 if #available(macOS 15.0, *) {
-                    if ProcessInfo.processInfo.arguments.contains("--lobby") { LocalLobbyView() }
-                    else { PlayroomView() }
+                    if ProcessInfo.processInfo.arguments.contains("--legacy-playroom") { PlayroomView() }
+                    else if ProcessInfo.processInfo.arguments.contains("--legacy-world") { LocalLobbyView() }
+                    else { ContinuousLobbyView().environmentObject(pendingImportURL).environmentObject(featureFlags).onOpenURL { pendingImportURL.url = $0 } }
                 }
                 else { Text("The Playroom requires macOS 15 or later.") }
                 #elseif os(iOS)
                 Group {
-                    if ProcessInfo.processInfo.arguments.contains("--lobby") { MobileLobbyView() }
-                    else { MobileFonstersHome() }
+                    if ProcessInfo.processInfo.arguments.contains("--legacy-world") { MobileLobbyView() }
+                    else if ProcessInfo.processInfo.arguments.contains("--legacy-playroom") { MobileFonstersHome() }
+                    else { ContinuousLobbyView() }
                 }.environmentObject(pendingImportURL).environmentObject(featureFlags)
                     .onOpenURL { url in pendingImportURL.url = url }
                 #elseif os(tvOS)
@@ -211,7 +228,10 @@ struct FonstersApp: App {
                 #endif
             } else if loadingComplete {
                 #if os(iOS)
-                MobileFonstersHome()
+                Group {
+                    if ProcessInfo.processInfo.arguments.contains("--original-gallery") { ContentView() }
+                    else { ContinuousLobbyView() }
+                }
                     .task { featureFlags.refreshFromRemote() }
                     .environmentObject(pendingImportURL)
                     .environmentObject(featureFlags)
@@ -222,6 +242,15 @@ struct FonstersApp: App {
                     else { ContentView() }
                 }.environmentObject(pendingImportURL).environmentObject(featureFlags)
                     .task { featureFlags.refreshFromRemote() }
+                #elseif os(macOS)
+                Group {
+                    if #available(macOS 15.0, *), !ProcessInfo.processInfo.arguments.contains("--original-gallery") { ContinuousLobbyView() }
+                    else { ContentView() }
+                }
+                    .environmentObject(pendingImportURL)
+                    .environmentObject(featureFlags)
+                    .task { featureFlags.refreshFromRemote() }
+                    .onOpenURL { pendingImportURL.url = $0 }
                 #else
                 ContentView()
                     .environmentObject(pendingImportURL)
@@ -238,6 +267,9 @@ struct FonstersApp: App {
             }
         }
         .modelContainer(sharedModelContainer)
+        #if os(macOS)
+        .defaultSize(width: 1080, height: 740)
+        #endif
         #if os(macOS)
         .commands {
             FonstersCommands()

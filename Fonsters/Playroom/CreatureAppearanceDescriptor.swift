@@ -110,6 +110,7 @@ struct PlayroomCompanion: Identifiable {
         self.name = name; self.seed = "little-fonster-\(number)"; self.note = note
         self.descriptor = .resolve(seed: seed)
     }
+    init(name: String, seed: String) { self.name = name; self.seed = seed; self.note = ""; self.descriptor = .resolve(seed: seed) }
     static let fixtures = [
         Self("Coral", 135, "A little wave goes a long way."),
         Self("Moss", 138, "Curious, wiggly, and a little shy."),

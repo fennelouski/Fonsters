@@ -1,9 +1,9 @@
-#if os(macOS)
+#if os(macOS) || os(iOS)
 import SwiftUI
 import Observation
 import FoundationModels
 
-@available(macOS 26.0, *)
+@available(macOS 26.0, iOS 26.0, *)
 @Generable
 struct GeneratedCreatureCommand {
     @Guide(description: "One available physical action. Use unknown for unsupported, unclear, or multiple different actions.",
@@ -17,12 +17,12 @@ struct GeneratedCreatureCommand {
     var peer: String
 }
 
-@available(macOS 15.0, *)
+@available(macOS 15.0, iOS 18.0, *)
 @MainActor @Observable
 final class TypedActionInterpreter {
     private(set) var isBusy = false
     private(set) var status = "Try ‘do a little twirl’ or ‘take a nap’."
-    private(set) var capability = "Known commands · on this Mac"
+    private(set) var capability = "Known commands · on this device"
     @ObservationIgnored private var pending: Task<Void, Never>?
     @ObservationIgnored private var generation = 0
     @ObservationIgnored private(set) var appliedCount = 0
@@ -33,13 +33,13 @@ final class TypedActionInterpreter {
     init() { refreshCapability() }
     func refreshCapability() {
         if ProcessInfo.processInfo.arguments.contains("--verify-command-fallback") { capability = "Known commands · verification"; return }
-        if #available(macOS 26.0, *) {
+        if #available(macOS 26.0, iOS 26.0, *) {
             switch SystemLanguageModel.default.availability {
-            case .available: capability = "Apple Intelligence · on this Mac"
+            case .available: capability = "Apple Intelligence · on this device"
             case .unavailable(.appleIntelligenceNotEnabled): capability = "Apple Intelligence is off · known commands work"
             case .unavailable(.deviceNotEligible): capability = "Known commands · Apple Intelligence isn’t supported here"
             case .unavailable(.modelNotReady): capability = "Apple Intelligence is getting ready · known commands work"
-            @unknown default: capability = "Known commands · on this Mac"
+            @unknown default: capability = "Known commands · on this device"
             }
         }
     }
@@ -65,7 +65,7 @@ final class TypedActionInterpreter {
             var usedModel = false
             if let known = CreatureCommandIntent.fallback(input, selected: selected, allowed: allowed) {
                 intent = known
-            } else if #available(macOS 26.0, *),
+            } else if #available(macOS 26.0, iOS 26.0, *),
                !ProcessInfo.processInfo.arguments.contains("--verify-command-fallback"),
                SystemLanguageModel.default.availability == .available {
                 do {
@@ -102,12 +102,12 @@ final class TypedActionInterpreter {
             guard revision == currentRevision() else { self.status = "Your newer interaction took over. Try another request."; return }
             guard let intent else { self.status = "Try one action: hello, dance, nap, hop, twirl, stretch, high five, rub, fetch, follow, wander or stop."; return }
             self.appliedCount += 1; apply(intent)
-            self.status = "\(intent.targetName) will \(intent.action.title). \(usedModel ? "Interpreted on this Mac." : "Known command, on this Mac.")"
+            self.status = "\(intent.targetName) will \(intent.action.title). \(usedModel ? "Interpreted on this device." : "Known command, on this device.")"
         }
     }
 }
 
-@available(macOS 15.0, *)
+@available(macOS 15.0, iOS 18.0, *)
 struct CreatureCommandBar: View {
     let interpreter: TypedActionInterpreter
     let selected: String
