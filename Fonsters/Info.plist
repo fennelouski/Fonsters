@@ -7,7 +7,7 @@
     <key>NSSpeechRecognitionUsageDescription</key>
     <string>Fonsters uses on-device speech to understand commands like wave, dance and sleep. Recognized words are not saved or shared.</string>
     <key>NSCameraUsageDescription</key>
-    <string>When you enable the camera, Fonsters mirrors your eyes, head and raised hands on this device. Camera frames are not saved or uploaded.</string>
+    <string>When you enable the camera, Fonsters mirrors your eyes, mouth shape, head and raised hands on this device. Frames and measurements are not saved or uploaded.</string>
     <key>LSApplicationCategoryType</key>
 	<string>public.app-category.entertainment</string>
 	<key>UILaunchScreen</key>
