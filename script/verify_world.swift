@@ -1,4 +1,5 @@
 import Foundation
+import SwiftUI
 import RealityKit
 import simd
 
@@ -21,6 +22,42 @@ import simd
                 }
             }
             print("PASS: complete playable terrain fits portrait phone, tablet, Mac and TV overview cameras")
+            lobby.ready = true; lobby.lowPower = false
+            for key: KeyEquivalent in [.leftArrow, .rightArrow, .upArrow, .downArrow, "a", "d", "w", "s", "q", "e", "+", "-"] {
+                lobby.showOverview(); let before = camera.transform
+                precondition(lobby.cameraKey(key, modifiers: []))
+                precondition(camera.transform != before, "camera key did not navigate")
+                precondition([camera.position.x, camera.position.y, camera.position.z].allSatisfy(\.isFinite))
+            }
+            lobby.showOverview(); let before = lobby.controls
+            lobby.beginCameraGesture(); lobby.dragCamera(CGSize(width: 100, height: 80), pan: false)
+            precondition(lobby.cameraOrbit != before.orbit && lobby.cameraPitch != before.pitch)
+            lobby.endCameraGesture(); var history = FonsterControlHistory<LocalLobbyController.ControlState>()
+            history.record(old: before, new: lobby.controls); lobby.restoreControls(history.undo()!)
+            precondition(lobby.controls == before && !history.canUndo)
+            lobby.beginCameraGesture(); lobby.dragCamera(CGSize(width: 100, height: 80), pan: true); lobby.endCameraGesture()
+            precondition(lobby.cameraPan.x != 0 && lobby.cameraPan.z != 0)
+            lobby.showOverview(); lobby.beginCameraGesture()
+            lobby.dragCamera(CGSize(width: 40, height: -80), pan: true, verticalPan: true); lobby.endCameraGesture()
+            precondition(lobby.cameraPan.x != 0 && lobby.cameraPan.y > 0 && lobby.cameraPan.z == 0)
+            for _ in 0..<1000 {
+                lobby.rotateCamera(20, vertical: 20); lobby.panCamera([100, 100, -100]); lobby.zoomCamera(0.5)
+            }
+            precondition(lobby.cameraZoom == 0.45 && lobby.cameraPitch == 0.80)
+            precondition([camera.position.x, camera.position.y, camera.position.z].allSatisfy(\.isFinite))
+            let bounded = lobby.controls
+            lobby.rotateCamera(.nan, vertical: .infinity); lobby.panCamera([.nan, 0, 0]); lobby.zoomCamera(.nan)
+            precondition(lobby.controls == bounded)
+            precondition(!lobby.cameraKey("w", modifiers: .command) && lobby.controls == bounded)
+            lobby.showOverview(); precondition(lobby.cameraPan == .zero && lobby.cameraPitch == 0 && lobby.cameraOrbit == 0 && lobby.cameraZoom == 1)
+            lobby.perform(.rest); lobby.stopActivity()
+            precondition(lobby.simulation.agents.allSatisfy { $0.reaction == "idle" && $0.remaining == 0 && !$0.walking && $0.route.isEmpty && !$0.seated })
+            precondition(lobby.members.allSatisfy { $0.controller.reaction == .idle })
+            for _ in 0..<90 { lobby.advance(dt: 1.0 / 30) }
+            precondition(lobby.simulation.agents.allSatisfy { $0.reaction == "idle" && !$0.walking })
+            print("PASS: Stop clears held rests, walks and games without an immediate autonomous restart")
+            lobby.backgrounded = true; precondition(!lobby.cameraKey("w", modifiers: []))
+            print("PASS: twelve keyboard directions, horizontal/vertical orbit, planar drag, vertical translation, whole-gesture Undo, reset and extreme/invalid input bounds")
             return
         }
         let fixtures = PlayroomCompanion.fixtures
@@ -157,9 +194,9 @@ import simd
         lobby.walk(at: CGPoint(x: 640, y: 450), size: CGSize(width: 1280, height: 900))
         precondition(lobby.simulation.world.walkable(lobby.simulation.agents[lobby.selected].goal))
         for _ in 0..<100 { lobby.zoomCamera(0.5); lobby.rotateCamera(0.3) }
-        precondition(lobby.cameraZoom == 0.65 && camera.position.x.isFinite)
+        precondition(lobby.cameraZoom == 0.45 && camera.position.x.isFinite)
         for _ in 0..<100 { lobby.zoomCamera(2) }
-        precondition(lobby.cameraZoom == 1.7)
+        precondition(lobby.cameraZoom == 2.5)
         print("PASS: actual 12 native furry rigs and world scenery construct; 100 replacement interactions, camera controls, all five motion gates and resume preserve geometry and learning")
         print("PASS: native ray-to-ground navigation and bounded camera zoom accept finite destinations")
     }

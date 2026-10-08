@@ -14,14 +14,14 @@ for INDEX in "${!LAUNCH_ARGS[@]}"; do
     EXPECT_PATH=false
   else
     case "$ARGUMENT" in
-      --personality-file|--social-file|--probe-file|--lobby-probe-file|--scene-export-dir|--window-export-file|--sample-visit-file|--touch-evidence-dir) EXPECT_PATH=true ;;
+      --personality-file|--social-file|--probe-file|--lobby-probe-file|--scene-export-dir|--window-export-file|--sample-visit-file|--touch-evidence-dir|--camera-ui-verification-file) EXPECT_PATH=true ;;
     esac
   fi
 done
 HAS_SOCIAL_DEMO=false
 HAS_AGENT_DEMO=false
 HAS_PERSONALITY_FILE=false
-for ARGUMENT in "${LAUNCH_ARGS[@]}"; do
+for ARGUMENT in ${LAUNCH_ARGS[@]+"${LAUNCH_ARGS[@]}"}; do
   case "$ARGUMENT" in
     --social-demo) HAS_SOCIAL_DEMO=true ;;
     --agent-demo) HAS_AGENT_DEMO=true ;;
@@ -60,7 +60,7 @@ xcodebuild -project Fonsters.xcodeproj -scheme Fonsters -configuration Debug \
   build > "$BUILD_DIR/build.log" 2>&1 || { tail -80 "$BUILD_DIR/build.log"; exit 1; }
 echo "Built: $APP_BUNDLE"
 open_app() {
-  /usr/bin/open -n "$APP_BUNDLE" --args -ApplePersistenceIgnoreState YES --prototype "${LAUNCH_ARGS[@]}"
+  /usr/bin/open -n "$APP_BUNDLE" --args -ApplePersistenceIgnoreState YES --prototype ${LAUNCH_ARGS[@]+"${LAUNCH_ARGS[@]}"}
   sleep 1
   # Reopen this exact app to surface its SwiftUI window after launch/restoration.
   # This activates the running instance rather than creating another process.

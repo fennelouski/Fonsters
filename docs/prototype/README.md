@@ -4,6 +4,8 @@ Open `Launch Playroom.command` at the repository root, or double-click
 `.prototype-build/Build/Products/Debug/Fonsters.app`. The preview is already built locally.
 Rebuild with `./script/build_and_run.sh --verify` using the installed Xcode.
 
+The latest [full-window controls revision](full-window-controls.md) makes the lobby fill the native window, with a small icon HUD, grouped panels, hover help, question-mark guides, Undo and all-axis camera navigation. Double-click `script/Open Fonsters World.command` for the twelve-companion world with isolated preview memories. Drag to orbit; Shift-drag pans, Option-Shift-drag changes height, arrow keys orbit, W/A/S/D pan, Q/E change height, +/− zoom and 0 restores the overview.
+
 The latest [soft world and mobile revision](soft-world-ios.md) adds matte wool-like
 groom version 3, wider smiles, meadow/seaside/moonlit settings and more expressive
 exploration. The same native companion and world now run on iPhone, and the world
@@ -89,7 +91,7 @@ background and Low Power hold the same rig pose and existing room clock.
 `evidence/fur-lobby-efficient-scene/lobby-03.png` shows furry Coral, Moss, Iris and Orbit.
 `evidence/fur-lobby-efficient-demo.mp4` and `.gif` use twelve sampled native RealityKit renders,
 without audio. They are scene exports, not desktop screenshots or continuous recordings.
-Current screen-capture preflight returns false; no recording permissions were changed.
+At that milestone, screen-capture preflight returned false; no recording permissions were changed. The later full-window revision captures the actual owned Mac window using existing authorization.
 The original full-window screenshots remain available as evidence of the earlier layout.
 
 The fuzzy revision passed the native Xcode build/launch, all twelve groomed/deep/finite rigs,

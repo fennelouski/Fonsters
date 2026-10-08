@@ -20,6 +20,7 @@ struct WatchListView: View {
     @State private var hasPerformedLaunchSelectionCheck = false
     @State private var pendingDeleteOffsets: IndexSet?
     @State private var showDeleteConfirmation = false
+    @State private var showsHelp = false
 
     var body: some View {
         NavigationStack {
@@ -64,7 +65,23 @@ struct WatchListView: View {
                 ToolbarItem(placement: .confirmationAction) {
                     Button(action: addFonster) {
                         Image(systemName: "plus")
-                    }
+                    }.help("Add a Fonster").accessibilityLabel("Add a Fonster")
+                }
+            }
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button { showsHelp = true } label: { Image(systemName: "questionmark.circle") }
+                        .help("Explain the gallery controls").accessibilityLabel("Gallery help")
+                }
+            }
+            .sheet(isPresented: $showsHelp) {
+                ScrollView {
+                    VStack(alignment: .leading, spacing: 12) {
+                        Label("Plus adds a portrait. Tap a portrait to visit it; Back returns to the list.", systemImage: "plus")
+                        Label("Turn the Digital Crown to preview evolution. The pencil opens appearance controls with Undo and Redo.", systemImage: "pencil")
+                        Label("Swipe to delete. Cancel keeps the portrait; confirmed deletion cannot be undone.", systemImage: "trash")
+                        Button { showsHelp = false } label: { Image(systemName: "xmark") }.accessibilityLabel("Close help").help("Close help")
+                    }.padding()
                 }
             }
             .confirmationDialog(deleteConfirmationTitle, isPresented: $showDeleteConfirmation, titleVisibility: .visible) {

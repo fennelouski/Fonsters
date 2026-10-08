@@ -52,7 +52,7 @@ struct WatchDetailView: View {
                     WatchModifyView(fonster: fonster)
                 } label: {
                     Image(systemName: "pencil")
-                }
+                }.help("Appearance controls with Undo and Redo").accessibilityLabel("Edit appearance")
             }
         }
     }

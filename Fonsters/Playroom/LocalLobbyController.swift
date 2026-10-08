@@ -26,8 +26,13 @@ final class LocalLobbyController {
     var followSelected = false
     var cameraZoom: Float = 1
     var cameraOrbit: Float = 0
+    var cameraPitch: Float = 0
+    var cameraPan: SIMD3<Float> = .zero
+    var cameraGestureActive = false
+    var cameraGestureOrigin: ControlState?
     var viewportAspect: Float = 1.5
     @ObservationIgnored var camera: PerspectiveCamera?
+    @ObservationIgnored var sceneCameraDetails: [String] = []
     @ObservationIgnored var fountainDrops: [Entity] = []
     @ObservationIgnored var dragOrbit: Float?
     @ObservationIgnored private(set) var contactID: UUID?
@@ -121,6 +126,43 @@ final class LocalLobbyController {
             }
         }
     }
+    struct ControlState: Equatable {
+        var selected: Int
+        var buddy: Int
+        var area: LobbyWorld.Area?
+        var follow: Bool
+        var zoom: Float
+        var orbit: Float
+        var pitch: Float
+        var pan: SIMD3<Float>
+        var paused: Bool
+        var still: Bool
+        var wander: Bool
+        var sounds: Bool
+        var feeling: CreatureFeeling
+    }
+    var controls: ControlState {
+        .init(selected: selected, buddy: buddy, area: focusArea, follow: followSelected, zoom: cameraZoom, orbit: cameraOrbit, pitch: cameraPitch, pan: cameraPan,
+              paused: paused, still: still, wander: wander, sounds: sounds, feeling: selectedMember.controller.feeling)
+    }
+    func restoreControls(_ state: ControlState) {
+        guard members.indices.contains(state.selected), members.indices.contains(state.buddy) else { return }
+        takeOwnerControl(); selected = state.selected; buddy = state.buddy
+        focusArea = state.area; followSelected = state.follow; cameraZoom = state.zoom; cameraOrbit = state.orbit; cameraPitch = state.pitch; cameraPan = state.pan
+        paused = state.paused; still = state.still; setWander(state.wander); sounds = state.sounds
+        if selectedMember.controller.feeling != state.feeling { chooseFeeling(state.feeling) }
+        message = "Previous controls restored."
+        updateCamera(); refreshGates()
+    }
+    func stopActivity() {
+        interruptPair(); ownerActed()
+        for i in members.indices {
+            simulation.stopAgentMotion(actor: i); members[i].controller.stopActivity()
+        }
+        message = "Activity stopped. Shared memories stay with you."
+        applyLayout(); writeProbe()
+    }
+
     func card(for member: Member, includeFeeling: Bool) -> FonsterVisitCard {
         let temperament = member.controller.personality
         return .init(publicID: member.id, name: member.visitCard?.name ?? member.name, appearance: member.descriptor,
@@ -184,7 +226,7 @@ final class LocalLobbyController {
     }
     func explore(_ area: LobbyWorld.Area) {
         guard world.areas.contains(area), ready, !paused, !backgrounded, !lowPower else { return }
-        interruptPair(); ownerActed(); focusArea = area; followSelected = false; cameraZoom = 1; cameraOrbit = area == .neighborhood ? -0.5 : 0
+        interruptPair(); ownerActed(); focusArea = area; followSelected = false; cameraZoom = 1; cameraOrbit = area == .neighborhood ? -0.5 : 0; cameraPitch = 0; cameraPan = .zero
         simulation.travel(to: area, actor: selected, peer: peerIndex, instant: still || reduceMotion)
         for i in [selected, peerIndex] { members[i].controller.perform(.idle, name: names[i], learn: false, audible: false) }
         message = "\(selectedMember.name) and \(names[peerIndex]) explore \(area.title.lowercased())."
@@ -199,19 +241,83 @@ final class LocalLobbyController {
         message = "\(selectedMember.name) finds a soft afternoon on the bench."
         applyLayout(); writeProbe()
     }
-    func showOverview() { focusArea = nil; followSelected = false; cameraZoom = 1; cameraOrbit = 0; updateCamera(); writeProbe() }
-    func lookAtSelected() { followSelected = true; cameraZoom = 1; updateCamera(); writeProbe() }
-    func rotateCamera(_ angle: Float) { cameraOrbit += angle; updateCamera() }
-    func zoomCamera(_ factor: Float) { cameraZoom = min(1.7, max(0.65, cameraZoom * factor)); updateCamera() }
+    func showOverview() { focusArea = nil; followSelected = false; cameraZoom = 1; cameraOrbit = 0; cameraPitch = 0; cameraPan = .zero; updateCamera(); writeProbe() }
+    func lookAtSelected() { followSelected = true; cameraZoom = 1; cameraPan = .zero; updateCamera(); writeProbe() }
+    func rotateCamera(_ angle: Float, vertical: Float = 0) {
+        guard angle.isFinite, vertical.isFinite else { return }
+        cameraOrbit = (cameraOrbit + angle).remainder(dividingBy: 2 * .pi)
+        cameraPitch = min(0.80, max(-0.42, cameraPitch + vertical))
+        updateCamera()
+    }
+    func zoomCamera(_ factor: Float) {
+        guard factor.isFinite, factor > 0 else { return }
+        cameraZoom = min(2.5, max(0.45, cameraZoom * factor)); updateCamera()
+    }
+    func panCamera(_ translation: SIMD3<Float>) {
+        guard translation.x.isFinite, translation.y.isFinite, translation.z.isFinite else { return }
+        cameraPan += translation
+        let limit = world.radius * 1.5
+        cameraPan.x = min(limit, max(-limit, cameraPan.x)); cameraPan.z = min(limit, max(-limit, cameraPan.z))
+        cameraPan.y = min(10, max(-0.25, cameraPan.y)); updateCamera()
+    }
+    func beginCameraGesture() {
+        guard !cameraGestureActive else { return }
+        cameraGestureOrigin = controls; cameraGestureActive = true; cancelContact()
+    }
+    func dragCamera(_ translation: CGSize, pan: Bool, verticalPan: Bool = false) {
+        guard let origin = cameraGestureOrigin, translation.width.isFinite, translation.height.isFinite else { return }
+        if pan {
+            let amount = Float(max(1, world.radius)) * origin.zoom * 0.0025
+            let right = SIMD3<Float>(cos(origin.orbit), 0, -sin(origin.orbit))
+            let forward = SIMD3<Float>(sin(origin.orbit), 0, cos(origin.orbit))
+            cameraPan = origin.pan
+            let vertical = verticalPan ? SIMD3<Float>(0, 1, 0) : forward
+            panCamera(right * Float(-translation.width) * amount + vertical * Float(-translation.height) * amount)
+        } else {
+            cameraOrbit = origin.orbit; cameraPitch = origin.pitch
+            rotateCamera(Float(-translation.width) * 0.008, vertical: Float(translation.height) * 0.006)
+        }
+    }
+    func endCameraGesture() { cameraGestureActive = false }
+    func cameraKey(_ key: KeyEquivalent, modifiers: EventModifiers) -> Bool {
+        guard ready, !backgrounded, !modifiers.contains(.command), !modifiers.contains(.control) else { return false }
+        let speed: Float = modifiers.contains(.shift) ? 0.6 : 0.2
+        let right = SIMD3<Float>(cos(cameraOrbit), 0, -sin(cameraOrbit))
+        let forward = SIMD3<Float>(sin(cameraOrbit), 0, cos(cameraOrbit))
+        switch key {
+        case .leftArrow: rotateCamera(-0.08)
+        case .rightArrow: rotateCamera(0.08)
+        case .upArrow: rotateCamera(0, vertical: 0.06)
+        case .downArrow: rotateCamera(0, vertical: -0.06)
+        case "a": panCamera(-right * speed)
+        case "d": panCamera(right * speed)
+        case "w": panCamera(-forward * speed)
+        case "s": panCamera(forward * speed)
+        case "q": panCamera([0, -speed, 0])
+        case "e": panCamera([0, speed, 0])
+        case "-": zoomCamera(1.08)
+        case "+", "=": zoomCamera(1 / 1.08)
+        case "0": showOverview()
+        case "[": rotateCamera(-0.08)
+        case "]": rotateCamera(0.08)
+        default: return false
+        }
+        return true
+    }
+    var cameraDescription: String {
+        "Camera angle \(Int(cameraOrbit * 180 / .pi)) degrees, elevation \(Int(cameraPitch * 180 / .pi)) degrees, zoom \(Int(100 / cameraZoom)) percent, position \(String(format: "%.1f, %.1f, %.1f", cameraPan.x, cameraPan.y, cameraPan.z))."
+    }
     func updateCamera() {
         guard let camera else { return }
         let overview = focusArea == nil && !followSelected
         let target2 = followSelected ? simulation.agents[selected].position : (focusArea?.center ?? SIMD2<Float>(0, -0.25))
-        let target: SIMD3<Float> = [target2.x, overview ? 0.10 : 0.50, target2.y]
+        let target: SIMD3<Float> = [target2.x, overview ? 0.10 : 0.50, target2.y] + cameraPan
         let fit = overview ? max(1.25, 1.45 / max(0.35, viewportAspect)) : 1
         let distance = (overview ? world.radius * 1.68 : 5.9) * cameraZoom * fit
         let height = (overview ? world.radius * 1.15 : 4.1) * cameraZoom * fit
-        let offset: SIMD3<Float> = [sin(cameraOrbit) * distance, height, cos(cameraOrbit) * distance]
+        let radius = hypot(distance, height)
+        let pitch = min(1.40, max(0.17, atan2(height, distance) + cameraPitch))
+        let offset: SIMD3<Float> = [sin(cameraOrbit) * radius * cos(pitch), radius * sin(pitch), cos(cameraOrbit) * radius * cos(pitch)]
         camera.look(at: target, from: target + offset, relativeTo: nil)
     }
     func walk(at point: CGPoint, size: CGSize) {
@@ -424,13 +530,18 @@ final class LocalLobbyController {
     }
     private func writeProbe() {
         let args = ProcessInfo.processInfo.arguments
-        guard let i = args.firstIndex(of: "--lobby-probe-file"), i + 1 < args.count else { return }
+        let probePath: String
+        if let i = args.firstIndex(of: "--lobby-probe-file"), i + 1 < args.count { probePath = args[i + 1] }
+        else if args.contains("--world-camera-diagnostics") { probePath = NSTemporaryDirectory() + "fonsters-world-camera.json" }
+        else { return }
         let state: [String: Any] = ["frames": frames, "animating": shouldAnimate, "paused": paused,
             "rendererReady": ready, "rendererError": error ?? "",
             "still": still, "reduceMotion": reduceMotion, "background": backgrounded, "lowPower": lowPower,
             "worldRadius": world.radius, "worldAreas": world.areas.map(\.rawValue), "focusArea": focusArea?.rawValue ?? "overview",
             "walking": simulation.agents.map(\.walking), "seated": simulation.agents.map(\.seated),
             "cameraPosition": camera.map { [Double($0.position.x), Double($0.position.y), Double($0.position.z)] } ?? [],
+            "viewportAspect": viewportAspect, "cameraAttached": camera?.scene != nil,
+            "sceneCameras": sceneCameraDetails,
             "agentRunning": agent.running, "agentSource": agent.source.rawValue, "agentCursor": agent.cursor, "agentHistory": agent.history.map { $0.title }, "agentRituals": members.map { $0.controller.agentRituals.total },
             "humanReflectionEnabled": HumanReflectionField.allCases.filter { agent.reflections[$0]?.enabled == true }.map(\.rawValue),
             "profileAgentRunning": presence.running, "profileCount": presence.store.profiles.count,
@@ -443,7 +554,7 @@ final class LocalLobbyController {
             "learnedInteractions": members.map { $0.controller.personality?.interactionCount ?? 0 },
             "positions": simulation.agents.map { [Double($0.position.x), Double($0.position.y)] }]
         if let data = try? JSONSerialization.data(withJSONObject: state, options: [.sortedKeys]) {
-            try? data.write(to: URL(fileURLWithPath: args[i + 1]), options: .atomic)
+            try? data.write(to: URL(fileURLWithPath: probePath), options: .atomic)
         }
     }
 }

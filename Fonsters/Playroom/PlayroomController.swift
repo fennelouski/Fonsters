@@ -75,6 +75,34 @@ final class PlayroomController {
         var squash: Float = 0, eyes: Float = 0.94, mouth: Float = 1, arms: Float = 0
     }
 
+    struct ControlState: Equatable {
+        var selection: Int
+        var environment: CompanionEnvironment
+        var orbit: Double
+        var sounds: Bool
+        var roaming: Bool
+        var following: Bool
+        var paused: Bool
+        var still: Bool
+    }
+    func controls(selection: Int) -> ControlState {
+        .init(selection: selection, environment: environment, orbit: orbit, sounds: soundEnabled,
+              roaming: roaming, following: followingPointer, paused: paused, still: staticMode)
+    }
+    func restoreControls(_ state: ControlState) {
+        cancelTouch(); silence(); userRevision += 1
+        if environment != state.environment { rendererReady = false }
+        environment = state.environment; orbit = state.orbit; soundEnabled = state.sounds
+        setRoaming(state.roaming); followingPointer = state.following; paused = state.paused; staticMode = state.still
+        message = "Previous controls restored."
+        refreshStillPose()
+    }
+    func stopActivity() {
+        cancelTouch(); silence(); wanderGoal = groundPosition; nextCuriosity = elapsed + 6
+        perform(.idle, name: companionName, learn: false, audible: false); userRevision += 1
+        message = "Activity stopped. Shared memories stay with you."
+    }
+
     func enablePersonalityLearning(_ store: PersonalityMemoryStore) {
         guard memories == nil else { return }
         memories = store
