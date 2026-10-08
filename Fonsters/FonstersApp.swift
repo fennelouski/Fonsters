@@ -256,6 +256,7 @@ struct FonstersApp: App {
             else { Text("The local lobby requires macOS 15 or later.") }
         }
         .defaultSize(width: 1080, height: 740)
+        .windowStyle(.hiddenTitleBar)
         #endif
     }
 }

@@ -22,15 +22,31 @@ private func watchLocalRandomSeed() -> String {
 struct WatchModifyView: View {
     @Bindable var fonster: Fonster
     @Environment(\.dismiss) private var dismiss
+    @State private var showsHelp = false
 
     var body: some View {
         List {
             Section("Get random") {
-                Button("Random") {
+                Button {
                     let seed = watchLocalRandomSeed()
                     fonster.randomSource = nil
                     fonster.pushHistoryAndSetSeed(seed)
-                }
+                } label: { Image(systemName: "shuffle") }
+                    .help("New random appearance; Undo restores the previous one").accessibilityLabel("Random appearance")
+                Button { _ = fonster.undo() } label: { Image(systemName: "arrow.uturn.backward") }
+                    .help("Restore the previous appearance").accessibilityLabel("Undo appearance").disabled(fonster.history.isEmpty)
+                Button { _ = fonster.redo() } label: { Image(systemName: "arrow.uturn.forward") }
+                    .help("Restore the appearance you undid").accessibilityLabel("Redo appearance").disabled(fonster.future.isEmpty)
+                Button { showsHelp = true } label: { Image(systemName: "questionmark.circle") }
+                    .help("Explain these controls").accessibilityLabel("Appearance help")
+            }
+        }
+        .sheet(isPresented: $showsHelp) {
+            ScrollView {
+                VStack(alignment: .leading, spacing: 12) {
+                    Label("Shuffle creates a new appearance locally. Undo restores the previous source and portrait; Redo brings the change back.", systemImage: "shuffle")
+                    Button { showsHelp = false } label: { Image(systemName: "xmark") }.help("Close help").accessibilityLabel("Close help")
+                }.padding()
             }
         }
         .navigationTitle("Edit")

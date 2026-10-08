@@ -236,6 +236,7 @@ struct CreatureNameFontPickerView: View {
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
                     Button("Done") { dismiss() }
+                    .fonsterHoverHelp("Done")
                 }
             }
         }
@@ -256,6 +257,7 @@ struct CreatureNameFontPickerView: View {
                             .padding(.horizontal, 16)
                             .padding(.vertical, 10)
                     }
+                    .fonsterHoverHelp("Choose " + option.displayName + ". Reopen the font picker to change it again.")
                     .buttonStyle(.plain)
                 }
             }
@@ -269,6 +271,7 @@ struct CreatureNameFontPickerView: View {
             } label: {
                 fontOptionRow(option: option)
             }
+            .fonsterHoverHelp("Choose " + option.displayName + ". Reopen the font picker to change it again.")
         }
         #endif
     }

@@ -43,9 +43,11 @@ struct VerificationWindowCapture: NSViewRepresentable {
 @available(macOS 15.0, *)
 struct VerificationSceneMarker: NSViewRepresentable {
     let entities: [Entity]
+    var cornerRadius: CGFloat = 26
     final class MarkerView: NSView {
         var entities: [Entity] = []
         var photo: NSImage?
+        var cornerRadius: CGFloat = 26
         private var pending = false
         override func hitTest(_ point: NSPoint) -> NSView? { nil }
         override func viewDidMoveToWindow() { super.viewDidMoveToWindow(); captureIfNeeded() }
@@ -66,7 +68,7 @@ struct VerificationSceneMarker: NSViewRepresentable {
         }
     }
     func makeNSView(context: Context) -> MarkerView { MarkerView() }
-    func updateNSView(_ view: MarkerView, context: Context) { view.entities = entities; view.captureIfNeeded() }
+    func updateNSView(_ view: MarkerView, context: Context) { view.entities = entities; view.cornerRadius = cornerRadius; view.captureIfNeeded() }
     static func composite(_ bitmap: NSBitmapImageRep, contentView: NSView, window: NSWindow) -> NSBitmapImageRep? {
         guard ProcessInfo.processInfo.arguments.contains("--ui-scene-photo"), let base = bitmap.cgImage,
               let context = CGContext(data: nil, width: base.width, height: base.height, bitsPerComponent: 8, bytesPerRow: 0,
@@ -80,13 +82,32 @@ struct VerificationSceneMarker: NSViewRepresentable {
                 let y = contentView.isFlipped ? contentView.bounds.height - bounds.maxY : bounds.minY
                 let rect = CGRect(x: bounds.minX * sx, y: y * sy, width: bounds.width * sx, height: bounds.height * sy)
                 context.saveGState()
-                context.addPath(CGPath(roundedRect: rect, cornerWidth: 26 * sx, cornerHeight: 26 * sy, transform: nil)); context.clip()
+                context.addPath(CGPath(roundedRect: rect, cornerWidth: marker.cornerRadius * sx, cornerHeight: marker.cornerRadius * sy, transform: nil)); context.clip()
                 context.draw(cg, in: rect); context.restoreGState()
             }
             view.subviews.forEach(visit)
         }
         visit(contentView)
+        // Restore genuine app-owned HUD pixels over the live scene render.
+        // The bitmap cannot capture Metal; these measured UI regions can.
+        func restoreHUD(_ view: NSView) {
+            if view is VerificationHUDMarker.MarkerView {
+                let bounds = view.convert(view.bounds, to: contentView)
+                let y = contentView.isFlipped ? contentView.bounds.height - bounds.maxY : bounds.minY
+                let rect = CGRect(x: bounds.minX * sx, y: y * sy, width: bounds.width * sx, height: bounds.height * sy)
+                context.saveGState(); context.clip(to: rect)
+                context.draw(base, in: CGRect(x: 0, y: 0, width: base.width, height: base.height)); context.restoreGState()
+            }
+            view.subviews.forEach(restoreHUD)
+        }
+        restoreHUD(contentView)
         return context.makeImage().map { NSBitmapImageRep(cgImage: $0) }
     }
+}
+/// Only a verification marker; it never receives input or changes layout.
+struct VerificationHUDMarker: NSViewRepresentable {
+    final class MarkerView: NSView { override func hitTest(_ point: NSPoint) -> NSView? { nil } }
+    func makeNSView(context: Context) -> MarkerView { MarkerView() }
+    func updateNSView(_ view: MarkerView, context: Context) {}
 }
 #endif

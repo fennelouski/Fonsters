@@ -19,55 +19,113 @@ struct TelevisionWorldView: View {
     @Environment(\.scenePhase) private var scenePhase
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @State private var lobby = LocalLobbyController()
-    @State private var choosingCompanion = false
+    @State private var controlHistory = FonsterControlHistory<LocalLobbyController.ControlState>()
     private let ink = Color(red: 0.30, green: 0.23, blue: 0.43)
     var body: some View {
-        VStack(spacing: 18) {
+        ZStack {
+            Color(red: 0.91, green: 0.94, blue: 0.87).ignoresSafeArea()
+            LobbyStageView(lobby: lobby).id(lobby.roomRevision).ignoresSafeArea()
+            if let error = lobby.error { Text(error).font(.callout).padding().background(.regularMaterial) }
+            VStack(spacing: 18) {
             HStack(spacing: 24) {
-                Text(lobby.selectedMember.name).font(.system(.title, design: .rounded, weight: .bold))
+
                 Spacer()
-                ForEach(LobbyWorld.Area.allCases, id: \.rawValue) { area in
-                    control(area.title, area.symbol, selected: lobby.focusArea == area) { lobby.explore(area) }
-                        .disabled(!lobby.world.areas.contains(area))
+                FonsterControlPanel(title: "World areas", symbol: "map", tone: .world) {
+                    FonsterControlGroup(title: "World areas", tone: .world) {
+                        ForEach(LobbyWorld.Area.allCases, id: \.rawValue) { area in
+                            control(area.title, area.symbol, selected: lobby.focusArea == area,
+                                    detail: "Walk into this area and look around. Undo restores the preceding camera view; Stop activity ends the walk. Locked areas open as local companions join.") { lobby.explore(area) }
+                                .disabled(!lobby.world.areas.contains(area) || !lobby.ready || lobby.paused || lobby.backgrounded || lobby.lowPower)
+                        }
+                    }
                 }
-                control("Add a companion", "person.badge.plus") { choosingCompanion = true }.disabled(lobby.availableCompanions.isEmpty)
+                FonsterControlPanel(title: "Companions", symbol: "person.2", tone: .company) {
+                    FonsterControlGroup(title: "Companions", tone: .company) {
+                        LazyVGrid(columns: Array(repeating: GridItem(.fixed(90)), count: 4), spacing: 24) {
+                            ForEach(Array(lobby.members.enumerated()), id: \.element.id) { index, member in
+                                Button { lobby.selected = index; lobby.lookAtSelected() } label: {
+                                    if let fixture = member.localCompanion { CreatureAvatarView(seed: fixture.seed, size: 54).padding(6) }
+                                }.buttonStyle(.bordered).tint(index == lobby.selected ? ink : Color.gray.opacity(0.25))
+                                    .fonsterHelp("Meet " + member.name, symbol: "person.crop.circle", detail: "Choose this companion. A border marks the selected portrait. Choose another or Undo to return.")
+                                    .accessibilityLabel("Meet " + member.name).accessibilityAddTraits(index == lobby.selected ? .isSelected : [])
+                            }
+                        }
+                    }
+                    FonsterControlPanel(title: "Add a companion", symbol: "person.badge.plus", tone: .company) {
+                        FonsterControlGroup(title: "New companions", tone: .company) {
+                            LazyVGrid(columns: Array(repeating: GridItem(.fixed(90)), count: 4), spacing: 24) {
+                                ForEach(lobby.availableCompanions) { companion in
+                                    FonsterPortraitChoice(name: "Add " + companion.name, selected: false,
+                                        detail: "Adds a local companion. Undo returns to the previous selection; the companion stays in this world.",
+                                        portrait: { CreatureAvatarView(seed: companion.seed, size: 48) }, action: { lobby.addCompanion(companion) })
+                                }
+                            }
+                        }
+                    }.disabled(lobby.availableCompanions.isEmpty)
+                }
+                FonsterControlPanel(title: "Camera controls", symbol: "rotate.3d", tone: .world) {
+                    FonsterControlGroup(title: "Camera", tone: .world) {
+                        VStack(spacing: 24) {
+                            HStack {
+                                control("World overview", "map") { lobby.showOverview() }
+                                control("Follow selected", "scope") { lobby.lookAtSelected() }
+                                control("Turn left", "arrow.counterclockwise") { lobby.rotateCamera(-.pi / 6) }
+                                control("Turn right", "arrow.clockwise") { lobby.rotateCamera(.pi / 6) }
+                            }
+                            HStack {
+                                control("Closer", "plus.magnifyingglass") { lobby.zoomCamera(0.8) }
+                                control("Further", "minus.magnifyingglass") { lobby.zoomCamera(1.2) }
+                                control("Tilt up", "arrow.up") { lobby.rotateCamera(0, vertical: 0.12) }
+                                control("Tilt down", "arrow.down") { lobby.rotateCamera(0, vertical: -0.12) }
+                            }
+                            HStack {
+                                control("Pan left", "arrow.left") { _ = lobby.cameraKey("a", modifiers: []) }
+                                control("Pan right", "arrow.right") { _ = lobby.cameraKey("d", modifiers: []) }
+                                control("Pan forward", "arrow.up.forward") { _ = lobby.cameraKey("w", modifiers: []) }
+                                control("Pan back", "arrow.down.backward") { _ = lobby.cameraKey("s", modifiers: []) }
+                                control("Raise camera", "arrow.up.to.line") { lobby.panCamera([0, 0.3, 0]) }
+                                control("Lower camera", "arrow.down.to.line") { lobby.panCamera([0, -0.3, 0]) }
+                            }
+                        }
+                    }
+                }
+                FonsterControlPanel(title: "Motion and sound", symbol: "slider.horizontal.3") {
+                    FonsterControlGroup(title: "Motion and sound") {
+                        control("Wander", "figure.walk", selected: lobby.wander) { lobby.setWander(!lobby.wander) }
+                        control("Still mode", "snowflake", selected: lobby.still) { lobby.still.toggle() }
+                        control("Sounds", "speaker.wave.2", selected: lobby.sounds) { lobby.sounds.toggle() }
+                    }
+                }
+
             }
-            ZStack {
-                Color(red: 0.91, green: 0.94, blue: 0.87)
-                LobbyStageView(lobby: lobby).id(lobby.roomRevision)
-                if let error = lobby.error { Text(error).font(.callout).padding().background(.regularMaterial) }
-            }.clipShape(RoundedRectangle(cornerRadius: 30)).frame(maxWidth: .infinity, maxHeight: .infinity)
-            HStack(spacing: 16) {
-                ForEach(Array(lobby.members.enumerated()), id: \.element.id) { index, member in
-                    Button {
-                        lobby.selected = index; lobby.lookAtSelected()
-                    } label: {
-                        if let fixture = member.localCompanion { CreatureAvatarView(seed: fixture.seed, size: 54).padding(6) }
-                    }.buttonStyle(.bordered).tint(index == lobby.selected ? ink : Color.gray.opacity(0.25))
-                        .accessibilityLabel("Meet " + member.name).accessibilityAddTraits(index == lobby.selected ? .isSelected : [])
+            Spacer()
+            HStack(spacing: 24) {
+                FonsterControlGroup(title: "Friends", tone: .company) {
+                    control("Wave to a friend", "hand.wave") { lobby.waveToFriend() }
+                    control("Pass a ball", "tennisball") { lobby.pair(quiet: false) }
+                    FonsterControlPanel(title: "More activities", symbol: "ellipsis", tone: .play) {
+                        FonsterControlGroup(title: "Shared activities", tone: .play) {
+                            control("Dance together", "sparkles") { lobby.playTogether() }
+                            control("Sit on a bench", "chair.lounge") { lobby.sitOnBench() }
+                        }
+                    }
+                    control("Stop activity", "stop.fill") { lobby.stopActivity() }
                 }
-            }.frame(height: 80).focusSection()
-            HStack(spacing: 14) {
-                control("Wave to a friend", "hand.wave") { lobby.waveToFriend() }
-                control("Pass a ball", "tennisball") { lobby.pair(quiet: false) }
-                control("Dance together", "sparkles") { lobby.playTogether() }
-                control("Sit on a bench", "chair.lounge") { lobby.sitOnBench() }
-                control("World overview", "map") { lobby.showOverview() }
-                control("Follow selected", "scope") { lobby.lookAtSelected() }
-                control("Turn left", "arrow.counterclockwise") { lobby.rotateCamera(-.pi / 6) }
-                control("Turn right", "arrow.clockwise") { lobby.rotateCamera(.pi / 6) }
-                control("Closer", "plus.magnifyingglass") { lobby.zoomCamera(0.8) }
-                control("Further", "minus.magnifyingglass") { lobby.zoomCamera(1.2) }
+                Spacer()
+                control("Undo last control change", "arrow.uturn.backward") { if let state = controlHistory.undo() { lobby.restoreControls(state) } }.disabled(!controlHistory.canUndo)
                 control(lobby.paused ? "Resume" : "Pause", lobby.paused ? "play.fill" : "pause.fill", selected: lobby.paused) { lobby.paused.toggle() }
-                control("Still mode", "snowflake", selected: lobby.still) { lobby.still.toggle() }
-                control("Sounds", "speaker.wave.2", selected: lobby.sounds) { lobby.sounds.toggle() }
-            }.frame(height: 80).disabled(!lobby.ready).focusSection()
-        }.padding(36).background(Color(red: 0.98, green: 0.97, blue: 0.95))
+            }.disabled(!lobby.ready).focusSection()
+            }.padding(48)
+        }.frame(maxWidth: .infinity, maxHeight: .infinity)
             .foregroundStyle(ink).preferredColorScheme(.light)
-            .confirmationDialog("Invite a companion", isPresented: $choosingCompanion) {
-                ForEach(lobby.availableCompanions) { companion in Button(companion.name) { lobby.addCompanion(companion) } }
-            }
             .onPlayPauseCommand { lobby.paused.toggle() }
+            .onKeyPress(phases: [.down, .repeat]) { press in
+                let direction = [KeyEquivalent.leftArrow, .rightArrow, .upArrow, .downArrow].contains(press.key)
+                // Remote directions continue moving native focus. A physical
+                // keyboard can orbit with Shift-arrow and pan with W A S D Q E.
+                guard !direction || press.modifiers.contains(.shift) else { return .ignored }
+                return lobby.cameraKey(press.key, modifiers: press.modifiers) ? .handled : .ignored
+            }
             .task { await verifyRuntimeIfRequested() }
             .task(id: lobby.shouldAnimate) { if lobby.shouldAnimate { await lobby.animate() } else { lobby.refreshGates() } }
             .onChange(of: scenePhase, initial: true) { lobby.backgrounded = scenePhase != .active; lobby.refreshGates() }
@@ -75,6 +133,7 @@ struct TelevisionWorldView: View {
             .onChange(of: lobby.paused) { lobby.refreshGates() }
             .onChange(of: lobby.still) { lobby.refreshGates() }
             .onChange(of: lobby.sounds) { lobby.refreshGates() }
+            .onChange(of: lobby.controls) { old, new in controlHistory.record(old: old, new: new) }
             .onReceive(NotificationCenter.default.publisher(for: .NSProcessInfoPowerStateDidChange)) { _ in lobby.lowPower = ProcessInfo.processInfo.isLowPowerModeEnabled; lobby.refreshGates() }
             .onAppear { lobby.backgrounded = scenePhase != .active; lobby.refreshGates() }
             .onDisappear { lobby.backgrounded = true; lobby.refreshGates() }
@@ -120,10 +179,11 @@ struct TelevisionWorldView: View {
         let url = requested.hasPrefix("/") ? URL(fileURLWithPath: requested) : FileManager.default.temporaryDirectory.appendingPathComponent(requested)
         if let data = try? JSONSerialization.data(withJSONObject: result, options: [.prettyPrinted, .sortedKeys]) { try? data.write(to: url, options: .atomic) }
     }
-    private func control(_ title: String, _ symbol: String, selected: Bool = false, action: @escaping () -> Void) -> some View {
+    private func control(_ title: String, _ symbol: String, selected: Bool = false, detail: String? = nil, action: @escaping () -> Void) -> some View {
         Button(action: action) { Image(systemName: symbol).font(.system(size: 25, weight: .medium)).frame(width: 48, height: 36) }
             .buttonStyle(.bordered).tint(Color(red: 0.84, green: 0.81, blue: 0.91))
             .overlay(RoundedRectangle(cornerRadius: 12).strokeBorder(selected ? ink : .clear, lineWidth: 3))
+            .fonsterHelp(title, symbol: symbol, detail: detail)
             .accessibilityLabel(title).accessibilityAddTraits(selected ? .isSelected : [])
     }
 }

@@ -107,24 +107,28 @@ struct ContentView: View {
             }
             .alert("Share link too long", isPresented: $shareURLWarning) {
                 Button("OK", role: .cancel) { }
+                .fonsterHoverHelp("OK")
             } message: {
                 Text("Try fewer creatures or shorter text so the link stays under 2,000 characters.")
             }
             #if os(tvOS)
             .alert("Share URL", isPresented: $showShareURLAlert) {
                 Button("OK", role: .cancel) { shareURLToShow = nil }
+                .fonsterHoverHelp("OK")
             } message: {
                 Text(shareURLToShow ?? "")
             }
             #endif
             .confirmationDialog(deleteConfirmationTitle, isPresented: $showDeleteConfirmation, titleVisibility: .visible) {
                 Button("Cancel", role: .cancel) { pendingDeleteOffsets = nil }
+                .fonsterHoverHelp("Cancel")
                 Button("Delete", role: .destructive) {
                     if let offsets = pendingDeleteOffsets {
                         performDeleteFonsters(offsets: offsets)
                         pendingDeleteOffsets = nil
                     }
                 }
+                .fonsterHoverHelp("Delete")
             } message: {
                 Text("This cannot be undone.")
             }
@@ -184,6 +188,7 @@ struct ContentView: View {
                         }
                         .frame(maxWidth: .infinity, minHeight: 44)
                     }
+                    .fonsterHoverHelp("Add Fonster")
                     .buttonStyle(.borderless)
                     .popoverTip(AddFonsterTip())
                 } else {
@@ -195,6 +200,7 @@ struct ContentView: View {
                         }
                         .frame(maxWidth: .infinity, minHeight: 44)
                     }
+                    .fonsterHoverHelp("Add Fonster")
                     .buttonStyle(.borderless)
                 }
             }
@@ -210,6 +216,7 @@ struct ContentView: View {
                 }
                 .frame(maxWidth: .infinity, minHeight: 44)
             }
+            .fonsterHoverHelp("Show tips again")
             .buttonStyle(.borderless)
             .padding(.horizontal, 12)
             .background(.ultraThinMaterial)
@@ -222,6 +229,7 @@ struct ContentView: View {
                 }
                 .frame(maxWidth: .infinity, minHeight: 44)
             }
+            .fonsterHoverHelp("Add Fonster")
             .buttonStyle(.plain)
             .padding(.horizontal, 12)
             .background(.ultraThinMaterial)
@@ -235,6 +243,7 @@ struct ContentView: View {
                 }
                 .frame(maxWidth: .infinity, minHeight: 44)
             }
+            .fonsterHoverHelp("How to use Fonsters")
             .buttonStyle(.plain)
             .padding(.horizontal, 12)
             .background(.ultraThinMaterial)
@@ -248,6 +257,7 @@ struct ContentView: View {
             Label("Show tips again", systemImage: "lightbulb")
                 .font(.caption)
         }
+        .fonsterHoverHelp("Show tips again")
         .buttonStyle(.borderless)
         .frame(maxWidth: .infinity, alignment: .leading)
         .padding(.horizontal, 12)
@@ -262,6 +272,7 @@ struct ContentView: View {
             Label("How to use Fonsters", systemImage: "questionmark.circle")
                 .font(.caption)
         }
+        .fonsterHoverHelp("How to use Fonsters")
         .buttonStyle(.plain)
         .frame(maxWidth: .infinity, alignment: .leading)
         .padding(.horizontal, 12)
@@ -318,6 +329,7 @@ struct ContentView: View {
                     } label: {
                         Label("Share", systemImage: "square.and.arrow.up")
                     }
+                    .fonsterHoverHelp("Share")
                     Button(role: .destructive) {
                         if let index = fonsters.firstIndex(where: { $0.id == fonster.id }) {
                             deleteFonsters(offsets: IndexSet(integer: index))
@@ -325,6 +337,7 @@ struct ContentView: View {
                     } label: {
                         Label("Delete", systemImage: "trash")
                     }
+                    .fonsterHoverHelp("Delete")
                 }
                 #endif
             }
@@ -337,6 +350,7 @@ struct ContentView: View {
                     Label("How to use Fonsters", systemImage: "questionmark.circle")
                         .font(.body)
                 }
+                .fonsterHoverHelp("How to use Fonsters")
                 .buttonStyle(.plain)
             }
             .listRowInsets(
@@ -357,11 +371,13 @@ struct ContentView: View {
                         Button(action: addFonster) {
                             Label("Add Fonster", systemImage: "plus")
                         }
+                        .fonsterHoverHelp("Add Fonster")
                         .popoverTip(AddFonsterTip())
                     } else {
                         Button(action: addFonster) {
                             Label("Add Fonster", systemImage: "plus")
                         }
+                        .fonsterHoverHelp("Add Fonster")
                     }
                 }
                 Button {
@@ -369,15 +385,18 @@ struct ContentView: View {
                 } label: {
                     Label("Show tips again", systemImage: "lightbulb")
                 }
+                .fonsterHoverHelp("Show tips again")
                 #else
                 Button(action: addFonster) {
                     Label("Add Fonster", systemImage: "plus")
                 }
+                .fonsterHoverHelp("Add Fonster")
                 Button {
                     showHelpSheet = true
                 } label: {
                     Label("How to use Fonsters", systemImage: "questionmark.circle")
                 }
+                .fonsterHoverHelp("How to use Fonsters")
                 #endif
             }
             .listRowBackground(
@@ -446,9 +465,10 @@ struct ContentView: View {
             Button(action: addFonster) {
                 Image(systemName: "plus")
             }
+            .fonsterHoverHelp("Add a Fonster")
         }
         ToolbarItem(placement: .navigationBarTrailing) {
-            EditButton()
+            EditButton().fonsterHoverHelp("Select portraits to edit; tap Done to finish")
         }
         #endif
         #if canImport(Tips)
@@ -457,9 +477,11 @@ struct ContentView: View {
             Group {
                 if onboardingCoordinator.shouldShowTip(for: 1) {
                     Button(action: addFonster) { Label("Add Fonster", systemImage: "plus") }
+                    .fonsterHoverHelp("Add Fonster")
                         .popoverTip(AddFonsterTip())
                 } else {
                     Button(action: addFonster) { Label("Add Fonster", systemImage: "plus") }
+                    .fonsterHoverHelp("Add Fonster")
                 }
             }
         }
@@ -469,9 +491,11 @@ struct ContentView: View {
             Group {
                 if onboardingCoordinator.shouldShowTip(for: 2) {
                     Button(action: shareFonsters) { Label("Share", systemImage: "square.and.arrow.up") }
+                    .fonsterHoverHelp("Share")
                         .popoverTip(ShareImportTip())
                 } else {
                     Button(action: shareFonsters) { Label("Share", systemImage: "square.and.arrow.up") }
+                    .fonsterHoverHelp("Share")
                 }
             }
         }
@@ -479,6 +503,7 @@ struct ContentView: View {
             Button(action: { showImportSheet = true }) {
                 Label("Import", systemImage: "square.and.arrow.down")
             }
+            .fonsterHoverHelp("Import")
         }
         #endif
         #else
@@ -487,16 +512,19 @@ struct ContentView: View {
             Button(action: addFonster) {
                 Label("Add Fonster", systemImage: "plus")
             }
+            .fonsterHoverHelp("Add Fonster")
         }
         ToolbarItem {
             Button(action: shareFonsters) {
                 Label("Share", systemImage: "square.and.arrow.up")
             }
+            .fonsterHoverHelp("Share")
         }
         ToolbarItem {
             Button(action: { showImportSheet = true }) {
                 Label("Import", systemImage: "square.and.arrow.down")
             }
+            .fonsterHoverHelp("Import")
         }
         #endif
         #endif
@@ -507,6 +535,7 @@ struct ContentView: View {
             } label: {
                 Label("Show/Hide Sidebar", systemImage: "sidebar.left")
             }
+            .fonsterHoverHelp("Show/Hide Sidebar")
             .keyboardShortcut(KeyEquivalent("`"), modifiers: [.command, .option])
         }
         #endif
@@ -517,6 +546,7 @@ struct ContentView: View {
             } label: {
                 Label("Feature Flags", systemImage: "flag")
             }
+            .fonsterHoverHelp("Feature Flags")
         }
         #endif
         #if os(tvOS)
@@ -525,6 +555,7 @@ struct ContentView: View {
                 Image(systemName: "plus")
                     .padding(12)
             }
+            .fonsterHoverHelp("Add a Fonster")
         }
         #endif
     }
@@ -570,6 +601,7 @@ struct ContentView: View {
             Button("") { selectNextFonster() }
                 .keyboardShortcut(.downArrow, modifiers: [])
             Button("") { addFonster() }
+            .fonsterHoverHelp("Add a Fonster")
                 .keyboardShortcut("n", modifiers: .command)
             Button("") {
                 if let id = selectedId, let fonster = fonsters.first(where: { $0.id == id }) {
@@ -800,6 +832,7 @@ struct ImportSheet: View {
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
                     Button("Cancel") { onDismiss() }
+                    .fonsterHoverHelp("Cancel")
                 }
                 ToolbarItem(placement: .confirmationAction) {
                     Button("Import") {
@@ -808,6 +841,7 @@ struct ImportSheet: View {
                         }
                         onDismiss()
                     }
+                    .fonsterHoverHelp("Import")
                     .disabled(parseSeedsFromShareURL(pastedText.trimmingCharacters(in: .whitespaces)) == nil)
                 }
             }
@@ -828,13 +862,16 @@ struct HelpSheetView: View {
                     Label("Tap a creature in the list to open it and edit its name and source text.", systemImage: "list.bullet")
                     Label("Type in the source text field to change the creature; use Get random for quick ideas.", systemImage: "text.cursor")
                     Label("Tap Play to watch the creature evolve; tap the creature for a short animation.", systemImage: "play.circle.fill")
-                    Label("Export as PNG or GIF to save or share.", systemImage: "square.and.arrow.down")
+                    Label("Export as PNG or GIF to save or share. Cancel the system save or share sheet to return; saved files stay where you chose.", systemImage: "square.and.arrow.down")
+                    Label("Undo restores the previous appearance after a random or source change; Redo brings it back. Playback only previews evolution and Stop returns to the whole portrait.", systemImage: "arrow.uturn.backward")
+                    Label("Deletion asks for confirmation and cannot be undone. Cancel keeps the portrait.", systemImage: "trash")
                 }
             }
             .navigationTitle("How to use Fonsters")
             .toolbar {
                 ToolbarItem(placement: .confirmationAction) {
                     Button("Done") { dismiss() }
+                    .fonsterHoverHelp("Done")
                 }
             }
         }
@@ -1026,6 +1063,7 @@ struct FonsterDetailView: View {
                             playFrameIndex = newSeed.count
                             isPlaying = false
                         }
+                        .fonsterHoverHelp("Use this")
                         .buttonStyle(.bordered)
                         .controlSize(.small)
                     }
@@ -1061,6 +1099,7 @@ struct FonsterDetailView: View {
                     }
                     .frame(maxWidth: .infinity, alignment: .trailing)
                 }
+                .fonsterHoverHelp("Birthday")
                 .buttonStyle(.plain)
                 .padding(.horizontal)
                 .padding(.top, 16)
@@ -1093,6 +1132,7 @@ struct FonsterDetailView: View {
                 }
                 .frame(maxWidth: .infinity, alignment: .trailing)
             }
+            .fonsterHoverHelp("Birthday")
             .buttonStyle(.plain)
             .padding(.horizontal)
             .padding(.vertical, 8)
@@ -1135,6 +1175,7 @@ struct FonsterDetailView: View {
                 } label: {
                     Image(systemName: "textformat")
                 }
+                .fonsterHoverHelp("Choose name font")
             }
             #endif
         }
@@ -1333,6 +1374,7 @@ struct FonsterDetailView: View {
                             } label: {
                                 Image(systemName: "pencil")
                             }
+                            .fonsterHoverHelp("Edit")
                             .buttonStyle(.plain)
                             Text("Name")
                                 .font(.subheadline)
@@ -1383,6 +1425,7 @@ struct FonsterDetailView: View {
                     }
                     .fixedSize(horizontal: true, vertical: false)
                 }
+                .fonsterHoverHelp("🎂")
                 .buttonStyle(.plain)
                 .frame(maxWidth: .infinity, alignment: .leading)
                 .padding(.horizontal, 32)
@@ -1495,6 +1538,7 @@ struct FonsterDetailView: View {
                             Text(fonsterBirthdayMonthDayString(for: fonster))
                         }
                     }
+                    .fonsterHoverHelp("🎂")
                     .buttonStyle(.plain)
                 }
                 Menu {
@@ -1503,16 +1547,19 @@ struct FonsterDetailView: View {
                     } label: {
                         Label("Share link", systemImage: "link")
                     }
+                    .fonsterHoverHelp("Share link")
                     Button {
                         exportPNG()
                     } label: {
                         Label("Share image", systemImage: "photo")
                     }
+                    .fonsterHoverHelp("Share image")
                     Button {
                         Task { await exportGIF() }
                     } label: {
                         Label("Share GIF", systemImage: "photo")
                     }
+                    .fonsterHoverHelp("Share GIF")
                     .disabled(gifLoading || fonster.seed.trimmingCharacters(in: .whitespaces).isEmpty)
                 } label: {
                     Label("Share", systemImage: "square.and.arrow.up")
@@ -1554,6 +1601,7 @@ struct FonsterDetailView: View {
                     } label: {
                         Image(systemName: "textformat")
                     }
+                    .fonsterHoverHelp("Choose name font")
                     NavigationLink {
                         FonsterEditView(
                             fonster: fonster,
@@ -1626,7 +1674,7 @@ struct FonsterDetailView: View {
             }
             #if os(macOS)
             .buttonStyle(.bordered)
-            .help("Edit name")
+            .fonsterHoverHelp("Edit name")
             #else
             .buttonStyle(.plain)
             #endif
@@ -1719,6 +1767,7 @@ struct FonsterDetailView: View {
                     Button(action: trailingEditAction) {
                         Image(systemName: "pencil")
                     }
+                    .fonsterHoverHelp("Edit source text")
                     .buttonStyle(.plain)
                     .accessibilityLabel("Edit source text")
                     Text(label)
@@ -1741,6 +1790,7 @@ struct FonsterDetailView: View {
                     Button { action(source) } label: {
                         Image(systemName: randomSourceSymbol(for: source))
                     }
+                    .fonsterHoverHelp(randomSourceDisplayName(for: source))
                     .padding(16)
                     .buttonStyle(.plain)
                     .controlSize(.small)
@@ -1754,6 +1804,7 @@ struct FonsterDetailView: View {
                     Button { action(source) } label: {
                         Image(systemName: randomSourceSymbol(for: source))
                     }
+                    .fonsterHoverHelp(randomSourceDisplayName(for: source))
                     .buttonStyle(FonsterIconButtonStyle(tint: fonsterRandomSourceTint(for: source), diameter: 38))
                     .disabled(disabled)
                     .accessibilityLabel(randomSourceDisplayName(for: source))
@@ -1853,6 +1904,7 @@ struct FonsterDetailView: View {
             } label: {
                 Image(systemName: "minus.circle.fill")
             }
+            .fonsterHoverHelp("Slow down evolution")
             .buttonStyle(.plain)
             Text("\(Int(animationSpeedMultiplier * 100))%")
                 .font(.caption)
@@ -1865,6 +1917,7 @@ struct FonsterDetailView: View {
             } label: {
                 Image(systemName: "plus.circle.fill")
             }
+            .fonsterHoverHelp("Speed up evolution")
             .buttonStyle(.plain)
             #else
             Slider(value: $animationSpeedMultiplier, in: 0.1...1.0, step: 0.05)
@@ -1892,6 +1945,7 @@ struct FonsterDetailView: View {
                     .font(.title2)
                     .symbolRenderingMode(.hierarchical)
             }
+            .fonsterHoverHelp(isPlaying ? "Pause evolution" : "Play evolution")
             .buttonStyle(.plain)
             .tint(playTint)
             .disabled(trimmedSeed.isEmpty)
@@ -1905,6 +1959,7 @@ struct FonsterDetailView: View {
                     .font(.title2)
                     .symbolRenderingMode(.hierarchical)
             }
+            .fonsterHoverHelp("Stop evolution and show the whole portrait")
             .buttonStyle(.plain)
             .tint(stopTint)
             .disabled(trimmedSeed.isEmpty)
@@ -1939,6 +1994,7 @@ struct FonsterDetailView: View {
                         .font(.title)
                         .symbolRenderingMode(.hierarchical)
                 }
+                .fonsterHoverHelp(isPlaying ? "Pause evolution" : "Play evolution")
                 .buttonStyle(.plain)
                 .tint(Color(hue: 1/3, saturation: 0.2, brightness: 0.9))
                 .disabled(trimmedSeed.isEmpty)
@@ -1957,6 +2013,7 @@ struct FonsterDetailView: View {
                         .font(.title)
                         .symbolRenderingMode(.hierarchical)
                 }
+                .fonsterHoverHelp("Stop evolution and show the whole portrait")
                 .buttonStyle(.plain)
                 .tint(Color(hue: 0, saturation: 0.2, brightness: 0.9))
                 .disabled(trimmedSeed.isEmpty)
@@ -1972,6 +2029,7 @@ struct FonsterDetailView: View {
                     .font(.title)
                     .symbolRenderingMode(.hierarchical)
             }
+            .fonsterHoverHelp("Stop evolution and show the whole portrait")
             .buttonStyle(.plain)
             .tint(Color(hue: 0, saturation: 0.2, brightness: 0.9))
             .disabled(trimmedSeed.isEmpty || (!isPlaying && playFrameIndex >= trimmedSeed.count))
@@ -1995,120 +2053,26 @@ struct FonsterDetailView: View {
 
     @ViewBuilder
     private var actionButtons: some View {
-        HStack(spacing: 0) {
+        FonsterControlGroup(title: "Portrait actions", tone: .world) {
             #if !os(tvOS)
-            Button {
-                exportPNG()
-            } label: {
-                Label("PNG", systemImage: "square.and.arrow.down")
-            }
-            .buttonStyle(FonsterSoftButtonStyle(tint: Theme.blue))
-
-            Spacer(minLength: 8)
-
-            Button {
-                Task { await exportGIF() }
-            } label: {
-                if gifLoading {
-                    ProgressView()
-                        .scaleEffect(0.8)
-                } else {
-                    Label("GIF", systemImage: "photo")
+            FonsterControlPanel(title: "Portrait exports", symbol: "square.and.arrow.down", tone: .world) {
+                FonsterControlGroup(title: "Export formats", tone: .world) {
+                    FonsterIconButton(title: "Save PNG", symbol: "photo", detail: "Save the original portrait. Cancel the save/share sheet to return; a completed file stays where you saved it.") { exportPNG() }
+                    FonsterIconButton(title: "Save GIF", symbol: "photo.stack", detail: "Save the evolution animation. Cancel to return; a completed file stays where you saved it.") { Task { await exportGIF() } }
+                        .disabled(gifLoading || fonster.seed.trimmingCharacters(in: .whitespaces).isEmpty)
+                    #if os(macOS)
+                    FonsterIconButton(title: "Save JPEG", symbol: "photo.on.rectangle.angled", detail: "Save the original portrait as JPEG. Cancel to return; a completed file stays where you saved it.") { exportJPEG() }
+                    #endif
                 }
             }
-            .buttonStyle(FonsterSoftButtonStyle(tint: Theme.teal))
-            .disabled(gifLoading || fonster.seed.trimmingCharacters(in: .whitespaces).isEmpty)
-
-            Spacer(minLength: 8)
-
-            #if os(macOS)
-            Button {
-                exportJPEG()
-            } label: {
-                Label("JPEG", systemImage: "photo")
-            }
-            .buttonStyle(FonsterSoftButtonStyle(tint: Theme.amber))
-
-            Spacer(minLength: 8)
             #endif
-            #endif
-
             if fonster.randomSource != nil {
-                #if !os(tvOS)
-                Spacer(minLength: 8)
-                #endif
-
-                Button {
-                    Task { await refreshRandom() }
-                } label: {
-                    #if os(tvOS)
-                    if randomLoading != nil {
-                        ProgressView()
-                            .scaleEffect(0.8)
-                    } else {
-                        Image(systemName: "arrow.clockwise")
-                            .foregroundStyle(Color.indigo.opacity(0.85))
-                    }
-                    #else
-                    if randomLoading != nil {
-                        ProgressView()
-                            .scaleEffect(0.8)
-                    } else {
-                        Label("Refresh", systemImage: "arrow.clockwise")
-                    }
-                    #endif
-                }
-                #if os(tvOS)
-                .buttonStyle(.plain)
-                .frame(maxWidth: .infinity)
-                #else
-                .buttonStyle(FonsterSoftButtonStyle(tint: Theme.accent))
-                #endif
-                .disabled(randomLoading != nil)
-
-                #if !os(tvOS)
-                Spacer(minLength: 8)
-                #endif
-
-                Button {
-                    _ = fonster.undo()
-                } label: {
-                    #if os(tvOS)
-                    Image(systemName: "arrow.uturn.backward")
-                        .foregroundStyle(Color.orange.opacity(0.8))
-                    #else
-                    Label("Undo", systemImage: "arrow.uturn.backward")
-                    #endif
-                }
-                #if os(tvOS)
-                .buttonStyle(.plain)
-                .frame(maxWidth: .infinity)
-                #else
-                .buttonStyle(FonsterSoftButtonStyle(tint: Theme.violet))
-                #endif
-                .disabled(fonster.history.isEmpty)
-
-                #if !os(tvOS)
-                Spacer(minLength: 8)
-                #endif
-
-                Button {
-                    _ = fonster.redo()
-                } label: {
-                    #if os(tvOS)
-                    Image(systemName: "arrow.uturn.forward")
-                        .foregroundStyle(Color.purple.opacity(0.85))
-                    #else
-                    Label("Redo", systemImage: "arrow.uturn.forward")
-                    #endif
-                }
-                #if os(tvOS)
-                .buttonStyle(.plain)
-                .frame(maxWidth: .infinity)
-                #else
-                .buttonStyle(FonsterSoftButtonStyle(tint: Theme.violet))
-                #endif
-                .disabled(fonster.future.isEmpty)
+                FonsterIconButton(title: "Refresh appearance", symbol: "arrow.clockwise", detail: "Fetch a new appearance from the chosen source. Undo restores the preceding appearance.") { Task { await refreshRandom() } }
+                    .disabled(randomLoading != nil)
+                FonsterIconButton(title: "Undo appearance", symbol: "arrow.uturn.backward", detail: "Restore the preceding source and portrait. Redo brings the change back.") { _ = fonster.undo() }
+                    .disabled(fonster.history.isEmpty)
+                FonsterIconButton(title: "Redo appearance", symbol: "arrow.uturn.forward", detail: "Restore the appearance you undid. Undo returns to the previous portrait.") { _ = fonster.redo() }
+                    .disabled(fonster.future.isEmpty)
             }
         }
     }
@@ -2306,6 +2270,7 @@ struct FonsterEditView: View {
                             } label: {
                                 Image(systemName: randomSourceSymbol(for: source))
                             }
+                            .fonsterHoverHelp(randomSourceAccessibilityLabel(for: source))
                             .buttonStyle(FonsterIconButtonStyle(tint: fonsterRandomSourceTint(for: source), diameter: 40))
                             .disabled(randomLoading != nil)
                             .accessibilityLabel(randomSourceAccessibilityLabel(for: source))
@@ -2339,16 +2304,19 @@ struct FonsterEditView: View {
                         } label: {
                             Label("Share link", systemImage: "link")
                         }
+                        .fonsterHoverHelp("Share link")
                         Button {
                             onShareImage?()
                         } label: {
                             Label("Share image", systemImage: "photo")
                         }
+                        .fonsterHoverHelp("Share image")
                         Button {
                             Task { await onShareGIF?() }
                         } label: {
                             Label("Share GIF", systemImage: "photo")
                         }
+                        .fonsterHoverHelp("Share")
                         .disabled(fonster.seed.trimmingCharacters(in: .whitespaces).isEmpty)
                     } label: {
                         Image(systemName: "square.and.arrow.up")
@@ -2360,6 +2328,7 @@ struct FonsterEditView: View {
                     } label: {
                         Image(systemName: "square.and.arrow.up")
                     }
+                    .fonsterHoverHelp("Share")
                     .accessibilityLabel("Share")
                 }
             }
@@ -2430,6 +2399,7 @@ struct EditFonsterNameSheet: View {
                 Button("Done") {
                     dismiss()
                 }
+                .fonsterHoverHelp("Done")
                 #if os(macOS)
                 .keyboardShortcut(.defaultAction)
                 #endif
@@ -2466,6 +2436,7 @@ struct EditFonsterSeedSheet: View {
                 Button("Done") {
                     dismiss()
                 }
+                .fonsterHoverHelp("Done")
                 .buttonStyle(.plain)
             }
         }

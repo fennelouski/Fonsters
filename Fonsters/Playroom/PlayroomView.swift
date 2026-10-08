@@ -17,6 +17,7 @@ struct PlayroomView: View {
     @State private var showsCommand = false
     @State private var interpreter = TypedActionInterpreter()
     @State private var typingRequest = false
+    @State private var controlHistory = FonsterControlHistory<PlayroomController.ControlState>()
     private let ink = Color(red: 0.19, green: 0.15, blue: 0.27)
     private let accent = Color(red: 0.45, green: 0.32, blue: 0.62)
     private var selected: PlayroomCompanion { companions[selection] }
@@ -66,6 +67,7 @@ struct PlayroomView: View {
             controller.lowPower = ProcessInfo.processInfo.isLowPowerModeEnabled
         }
         .onChange(of: controller.orbit) { controller.refreshStillPose() }
+        .onChange(of: controller.controls(selection: selection)) { old, new in controlHistory.record(old: old, new: new) }
         .onDisappear { inputs.stopAll(); interpreter.cancel(); controller.silence(); controller.toyBall = nil; controller.touchCamera = nil; controller.rig = nil; controller.rendererReady = false }
     }
 
@@ -188,47 +190,57 @@ struct PlayroomView: View {
 
     private var controls: some View {
         VStack(spacing: 10) {
-            HStack(spacing: 12) {
-                FonsterControlGroup(title: "Touch and company", tone: .company) {
+            HStack(spacing: 8) {
+                FonsterControlGroup(title: "Reactions", tone: .company) {
                     reactionButton("Say hello", "hand.wave", .greet, "h", .company)
-                    littleReaction("Gentle rub", "heart", .rub, .company)
-                    littleReaction("High five", "hand.raised", .highFive, .company)
-                }
-                FonsterControlGroup(title: "Play", tone: .play) {
                     reactionButton("Play", "sparkles", .play, "p", .play)
-                    littleReaction("Toss ball", "tennisball", .fetch, .play)
-                    littleReaction("Hop", "hare", .hop, .play)
-                    littleReaction("Twirl", "arrow.trianglehead.2.clockwise.rotate.90", .spin, .play)
-                }
-                FonsterControlGroup(title: "Quiet and curiosity", tone: .world) {
                     reactionButton("Rest", "moon", .rest, "r", .world)
-                    littleReaction("Stretch", "figure.flexibility", .stretch, .world)
-                    reactionButton("Blink", "eye", .blink, "b", .world)
-                    reactionButton("Look", "eyes", .look, "l", .world)
+                    FonsterIconButton(title: "Stop activity", symbol: "stop.fill") { controller.stopActivity() }
                 }
-                Spacer(minLength: 0)
-                FonsterIconButton(title: "Type a request", symbol: "text.bubble", tone: .world, selected: showsCommand) { showsCommand.toggle() }
-            }
-            HStack(spacing: 10) {
-                Image(systemName: "rotate.3d").foregroundStyle(accent).accessibilityHidden(true)
-                Slider(value: $controller.orbit, in: -180...180).tint(accent).frame(maxWidth: 150)
-                    .accessibilityLabel("Turn \(selected.name) in three dimensions")
-                FonsterIconButton(title: "Follow the pointer", symbol: "cursorarrow.rays", selected: controller.followingPointer) { controller.followPointer() }
-                FonsterControlGroup(title: "Environments", tone: .world) {
-                    ForEach(CompanionEnvironment.allCases) { environment in
-                        FonsterIconButton(title: environment.title, symbol: environment.symbol, tone: .world, selected: controller.environment == environment) {
-                            controller.cancelTouch(); controller.rendererReady = false; controller.environment = environment
+                FonsterControlPanel(title: "More reactions", symbol: "ellipsis", tone: .play) {
+                    FonsterControlGroup(title: "Touch and play", tone: .play) {
+                        littleReaction("Gentle rub", "heart", .rub, .company)
+                        littleReaction("High five", "hand.raised", .highFive, .company)
+                        littleReaction("Toss ball", "tennisball", .fetch, .play)
+                        littleReaction("Hop", "hare", .hop, .play)
+                    }
+                    FonsterControlGroup(title: "Curiosity", tone: .world) {
+                        littleReaction("Twirl", "arrow.trianglehead.2.clockwise.rotate.90", .spin, .play)
+                        littleReaction("Stretch", "figure.flexibility", .stretch, .world)
+                        reactionButton("Blink", "eye", .blink, "b", .world)
+                        reactionButton("Look", "eyes", .look, "l", .world)
+                    }
+                }
+                FonsterControlPanel(title: "Environments", symbol: controller.environment.symbol, tone: .world) {
+                    FonsterControlGroup(title: "Environments", tone: .world) {
+                        ForEach(CompanionEnvironment.allCases) { environment in
+                            FonsterIconButton(title: environment.title, symbol: environment.symbol, tone: .world, selected: controller.environment == environment) {
+                                controller.cancelTouch(); controller.rendererReady = false; controller.environment = environment
+                            }
                         }
                     }
                 }
-                Spacer(minLength: 0)
-                inputControls
-                FonsterControlGroup(title: "Motion") {
-                    FonsterIconToggle(title: "Wander", symbol: "figure.walk", isOn: Binding(get: { controller.roaming }, set: { controller.setRoaming($0) }))
-                    FonsterIconToggle(title: "Still mode", symbol: "snowflake", isOn: $controller.staticMode)
-                    FonsterIconButton(title: controller.paused ? "Resume motion" : "Pause motion", symbol: controller.paused ? "play.fill" : "pause.fill", selected: controller.paused) { controller.paused.toggle() }
-                        .keyboardShortcut(typingRequest ? nil : KeyboardShortcut(.space, modifiers: []))
+                FonsterControlPanel(title: "Motion controls", symbol: "slider.horizontal.3") {
+                    FonsterControlGroup(title: "Motion") {
+                        FonsterIconToggle(title: "Wander", symbol: "figure.walk", isOn: Binding(get: { controller.roaming }, set: { controller.setRoaming($0) }))
+                        FonsterIconToggle(title: "Still mode", symbol: "snowflake", isOn: $controller.staticMode)
+                        FonsterIconButton(title: "Follow the pointer", symbol: "cursorarrow.rays", selected: controller.followingPointer) { controller.followPointer() }
+                    }
+                    Slider(value: $controller.orbit, in: -180...180).tint(accent)
+                        .accessibilityLabel("Turn \(selected.name) in three dimensions")
+                        .fonsterHelp("Turn companion", symbol: "rotate.3d")
                 }
+                FonsterControlPanel(title: "Sound and sensors", symbol: "waveform") { inputControls }
+                FonsterIconButton(title: "Type a request", symbol: "text.bubble", tone: .world, selected: showsCommand) { showsCommand.toggle() }
+                Spacer(minLength: 0)
+                FonsterIconButton(title: "Undo last control change", symbol: "arrow.uturn.backward") {
+                    if let state = controlHistory.undo() {
+                        if selection != state.selection { controller.rendererReady = false; controller.rig = nil }
+                        controller.restoreControls(state); selection = state.selection
+                    }
+                }.disabled(!controlHistory.canUndo).keyboardShortcut("z", modifiers: .command).accessibilityIdentifier("undoControls")
+                FonsterIconButton(title: controller.paused ? "Resume motion" : "Pause motion", symbol: controller.paused ? "play.fill" : "pause.fill", selected: controller.paused) { controller.paused.toggle() }
+                    .keyboardShortcut(typingRequest ? nil : KeyboardShortcut(.space, modifiers: []))
             }
             if showsCommand {
                 CreatureCommandBar(interpreter: interpreter, selected: selected.name, names: [selected.name], revision: controller.userRevision,

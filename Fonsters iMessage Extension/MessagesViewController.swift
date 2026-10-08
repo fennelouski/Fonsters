@@ -43,6 +43,25 @@ final class MessagesViewController: MSMessagesAppViewController {
         addChild(browserViewController)
         view.addSubview(browserViewController.view)
         browserViewController.didMove(toParent: self)
+        let helpButton = UIButton(type: .system)
+        helpButton.setImage(UIImage(systemName: "questionmark.circle"), for: .normal)
+        helpButton.toolTip = "How to use Fonster stickers"
+        helpButton.accessibilityLabel = "Sticker help"
+        helpButton.accessibilityHint = "Explain adding a sticker and removing an unsent sticker"
+        helpButton.backgroundColor = .secondarySystemBackground
+        helpButton.layer.cornerRadius = 22
+        helpButton.translatesAutoresizingMaskIntoConstraints = false
+        helpButton.addAction(UIAction { [weak self] _ in
+            let alert = UIAlertController(title: "Fonster stickers", message: "Tap a portrait to add it to your message, or press and drag it onto a message. Remove an unsent sticker in Messages before sending. Sending and any available undo are controlled by Messages.", preferredStyle: .alert)
+            alert.addAction(UIAlertAction(title: "Done", style: .cancel))
+            self?.present(alert, animated: true)
+        }, for: .primaryActionTriggered)
+        view.addSubview(helpButton)
+        NSLayoutConstraint.activate([
+            helpButton.trailingAnchor.constraint(equalTo: view.safeAreaLayoutGuide.trailingAnchor, constant: -8),
+            helpButton.topAnchor.constraint(equalTo: view.safeAreaLayoutGuide.topAnchor, constant: 8),
+            helpButton.widthAnchor.constraint(equalToConstant: 44), helpButton.heightAnchor.constraint(equalToConstant: 44)
+        ])
         loadStickers()
     }
 
