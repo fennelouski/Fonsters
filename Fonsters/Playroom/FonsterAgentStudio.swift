@@ -92,7 +92,7 @@ struct FonsterAgentStudio: View {
                         }.font(.system(size: 12, weight: .medium))
                         FonsterIconButton(title: "Revoke agent control and all reflection choices", symbol: "hand.raised.slash", tone: .company) { agent.revoke(lobby: lobby) }
                     }.padding(18)
-                }.frame(width: 250, height: 350).background(.white.opacity(0.8), in: RoundedRectangle(cornerRadius: 24))
+                }.frame(width: 250, height: 350).background(FonsterChrome.surface, in: RoundedRectangle(cornerRadius: 24))
                 VStack(alignment: .leading, spacing: 20) {
                     HStack {
                         FonsterStatus(symbol: agent.source == .simulated ? "desktopcomputer" : "doc.badge.checkmark", detail: agent.source.title + ". No external agent is connected.", tone: .world)
@@ -133,12 +133,12 @@ struct FonsterAgentStudio: View {
                             }
                         }.disabled(agent.program == nil || !lobby.ready || lobby.paused || lobby.selectedMember.isVisitor)
                     }
-                }.frame(maxWidth: .infinity).padding(18).background(.white.opacity(0.8), in: RoundedRectangle(cornerRadius: 24))
+                }.frame(maxWidth: .infinity).padding(18).background(FonsterChrome.surface, in: RoundedRectangle(cornerRadius: 24))
             }
             AgentMomentHistory(lobby: lobby)
             if let error { Text(error).font(.system(size: 11)).foregroundStyle(.red) }
         }.padding(24).frame(width: 850)
-            .background(Color(red: 0.98, green: 0.97, blue: 0.95)).preferredColorScheme(.light)
+            .background(FonsterChrome.background)
             .background(VerificationWindowCapture(label: "agent").frame(width: 0, height: 0))
             .fileImporter(isPresented: $importing, allowedContentTypes: [.json]) { result in
                 attempt { try agent.prepare(FonsterAgentDocument.read(result.get()), source: .localHandoff, lobby: lobby) }

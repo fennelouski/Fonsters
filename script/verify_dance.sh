@@ -9,9 +9,9 @@ swiftc -target arm64-apple-macos15.0 -module-cache-path "$ROOT_DIR/.prototype-bu
  Fonsters/CreatureAvatar/CreatureHash.swift Fonsters/CreatureAvatar/CreatureGenerator.swift Fonsters/CreatureAvatar/CreatureRaster.swift \
  Fonsters/Playroom/ResolvedCreatureTrace.swift Fonsters/Playroom/CreatureAppearanceDescriptor.swift \
  Fonsters/Playroom/FonsterPlatformColor.swift Fonsters/Playroom/CreatureFur.swift Fonsters/Playroom/CreatureTouchDynamics.swift Fonsters/Playroom/CreatureFacialGeometry.swift Fonsters/Playroom/CreatureRig.swift Fonsters/Playroom/CreatureFaceDynamics.swift Fonsters/Playroom/CreatureMirroring.swift Fonsters/Playroom/CreaturePersonality.swift Fonsters/Playroom/FonsterAgentModels.swift Fonsters/Playroom/CreatureSoundBank.swift \
- Fonsters/FonsterBiography.swift Fonsters/Playroom/CreatureSocialModels.swift Fonsters/Playroom/FriendshipMemoryStore.swift \
+ Fonsters/FonsterInterests.swift Fonsters/FonsterBiography.swift Fonsters/Playroom/CreatureSocialModels.swift Fonsters/Playroom/FriendshipMemoryStore.swift \
  Fonsters/Playroom/CreatureCommandIntent.swift Fonsters/Playroom/CompanionEnvironment.swift Fonsters/Playroom/PlayroomController.swift \
  Fonsters/Playroom/LobbyWorld.swift Fonsters/Playroom/LobbyWorldScene.swift Fonsters/Playroom/LocalLobbySimulation.swift Fonsters/Playroom/LobbyPresentation.swift Fonsters/Playroom/LobbyDanceScene.swift Fonsters/Playroom/LocalLobbyController.swift Fonsters/ProtectedPlayPolicy.swift Fonsters/Playroom/FonsterAgentDirector.swift Fonsters/Playroom/FonsterSocialPresence.swift Fonsters/Playroom/FonsterSocialDirector.swift \
- Fonsters/Playroom/FonsterVisualControls.swift Fonsters/Playroom/FonsterVisitDocument.swift \
+ Fonsters/FonsterChrome.swift Fonsters/Playroom/FonsterVisualControls.swift Fonsters/Playroom/FonsterVisitDocument.swift \
  script/verify_dance.swift -o .prototype-build/verification/dance
 .prototype-build/verification/dance "$FIXTURE_DIR" --personality-file "$FIXTURE_DIR/personality.json" "$@"

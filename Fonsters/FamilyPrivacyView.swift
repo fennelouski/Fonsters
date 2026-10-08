@@ -31,7 +31,7 @@ private struct ParentChallengeView: View {
             Text("Ask a grown-up").font(.title2.bold())
             Text(purpose).multilineTextAlignment(.center)
             Text(challenge.question).font(.title3).accessibilityIdentifier("parentQuestion")
-            TextField("Answer", text: $answer).textFieldStyle(.roundedBorder)
+            TextField("Answer", text: $answer, prompt: Text("Answer").foregroundStyle(FonsterChrome.secondary)).textFieldStyle(.roundedBorder)
                 .accessibilityLabel("Parent answer").accessibilityIdentifier("parentAnswer")
                 .onSubmit(submit)
             if incorrect { Text("Try again, or close to keep playing.").foregroundStyle(.secondary).accessibilityIdentifier("parentIncorrect") }
@@ -90,7 +90,7 @@ struct FamilyPrivacyView: View {
                     Label("Typed requests", systemImage: "text.bubble")
                     Text("Known actions work locally. Compatible devices may interpret other short requests with Apple's on-device model. Fonsters does not save or send your typed request to an external AI service. This is an action interpreter, not a chat service.")
                     Label("Sharing with a grown-up", systemImage: "square.and.arrow.up")
-                    Text("Sharing and original portrait exports are behind a grown-up task. A visit file contains a random public identifier and a creature snapshot; feelings and backstory are optional. Email addresses are removed from the visit snapshot. A recipient can keep or reshare a copy. Original portrait links contain recoverable seed text: base64 is not encryption. A grown-up should check the content before sharing.")
+                    Text("Sharing and original portrait exports are behind a grown-up task. A visit file contains a random public identifier and a creature snapshot. Feelings and selected source references are optional; typed favorite drafts and backstory stay private. Visitors see only bundled source records, including when opening older visits. Source identification is not endorsement or child safety approval. A recipient can keep or reshare a copy. Original portrait links contain recoverable seed text: base64 is not encryption. A grown-up should check the content before sharing. Opening a source website also requires a grown-up review; that site has its own privacy practices.")
                     Label("No tracking", systemImage: "eye.slash")
                     Text("No ads, analytics SDKs, third-party random-text requests or remote feature-flag requests run in protected play. There is no external agent control, public social posting, chat, location access or contact access. Apple may process iCloud and diagnostic information under your device settings and Apple's policies.")
                     Label("Your choices", systemImage: "slider.horizontal.3")

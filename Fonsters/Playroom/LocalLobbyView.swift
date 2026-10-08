@@ -23,7 +23,7 @@ struct LocalLobbyView: View {
     @State private var reviewing = false
     @State private var pendingCard: FonsterVisitCard?
     @State private var importError: String?
-    private let ink = Color(red: 0.19, green: 0.15, blue: 0.27)
+    private let ink = FonsterChrome.primary
     private let accent = Color(red: 0.45, green: 0.32, blue: 0.62)
 
     var body: some View {
@@ -107,7 +107,7 @@ struct LocalLobbyView: View {
             }.padding(16).padding(.top, 24)
         }
         .frame(minWidth: 760, maxWidth: .infinity, minHeight: 540, maxHeight: .infinity)
-        .foregroundStyle(ink).preferredColorScheme(.light)
+        .foregroundStyle(ink)
         .focusable().focusEffectDisabled().focused($cameraFocused)
         .onKeyPress(phases: [.down, .repeat]) { press in
             guard !typingRequest, !(agentStudio || socialStudio || sharing || reviewing || importing) else { return .ignored }
@@ -250,7 +250,7 @@ struct LocalLobbyView: View {
                 }
             }
         }.padding(16).frame(width: 260, height: 440)
-            .background(.white.opacity(0.75), in: RoundedRectangle(cornerRadius: 24))
+            .background(FonsterChrome.surface, in: RoundedRectangle(cornerRadius: 24))
     }
     private func roomButton(_ title: String, _ icon: String, _ tone: FonsterTone, action: @escaping () -> Void) -> some View {
         FonsterIconButton(title: title, symbol: icon, tone: tone, action: action).disabled(!lobby.ready)
@@ -271,7 +271,7 @@ private struct LobbyWorldToolbar: View {
                     FonsterIconButton(title: unlocked ? "Explore \(area.title) with your chosen friend" : "\(area.title) opens at \(area.population) Fonsters", symbol: area.symbol, tone: .world, selected: lobby.focusArea == area && unlocked,
                                       detail: unlocked ? "Walk into this area and look around. Undo restores the preceding camera view; Stop activity ends the walk." : "Add local companions to grow this world and open the area.") { lobby.explore(area) }
                         .overlay(alignment: .bottomTrailing) {
-                            if !unlocked { Label("\(area.population)", systemImage: "lock.fill").font(.system(size: 9, weight: .bold)).padding(4).background(.white, in: Capsule()).allowsHitTesting(false) }
+                            if !unlocked { Label("\(area.population)", systemImage: "lock.fill").font(.system(size: 9, weight: .bold)).foregroundStyle(FonsterChrome.primary).padding(4).background(FonsterChrome.surface, in: Capsule()).allowsHitTesting(false) }
                         }
                         .disabled(!unlocked || !lobby.ready || lobby.paused || lobby.backgrounded || lobby.lowPower)
                 }

@@ -50,3 +50,7 @@ __pycache__/
 .prototype-build/
 evidence/
 script/__pycache__/
+
+# Local interest preview secrets (never checked in)
+.env.interests
+.env.interests.*

@@ -96,9 +96,9 @@ struct VisitReviewSheet: View {
                 ResolvedPortrait(appearance: card.appearance).frame(width: 90, height: 90)
                 Image(systemName: "arrow.right").font(.system(size: 22)).foregroundStyle(FonsterTone.world.ink)
                 Image(systemName: "person.3").font(.system(size: 38)).foregroundStyle(FonsterTone.company.ink)
-            }.accessibilityElement(children: .ignore).accessibilityLabel("Invite \(card.name)'s snapshot into this local world")
+            }.accessibilityElement(children: .ignore).accessibilityLabel("Invite this Fonster snapshot into this local world")
             HStack {
-                Text(card.name).font(.system(size: 26, weight: .bold, design: .rounded))
+                Text("Visiting Fonster").font(.system(size: 26, weight: .bold, design: .rounded))
                 if let feeling = card.feeling { FonsterStatus(symbol: feeling.symbol, detail: "Shared chosen feeling: \(feeling.title)", tone: .company) }
                 Spacer()
             }

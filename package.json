@@ -3,10 +3,12 @@
   "private": true,
   "scripts": {
     "test:aws": "node Scripts/aws-preview.test.mjs && python3 Scripts/deploy-parallel.test.py && node aws/flags.test.mjs",
-    "lint": "node --check aws/flags.mjs && node --check api/flags.js",
+    "lint": "node --check aws/flags.mjs && node --check api/flags.js && node --check api/interests.js && node --check server/interests/cache.js && node --check server/interests/providers.js && node --check server/interests/service.js && node --check server/interests/dev.js",
     "deploy:aws": "sst deploy --stage parallel",
     "deploy:parallel": "python3 Scripts/deploy-parallel.py",
-    "deploy:aws-only": "python3 Scripts/deploy-parallel.py --aws-only"
+    "deploy:aws-only": "python3 Scripts/deploy-parallel.py --aws-only",
+    "dev:interests": "node server/interests/dev.js",
+    "test:interests": "node --test server/interests/*.test.mjs"
   },
   "devDependencies": {
     "sst": "4.17.1"

@@ -10,9 +10,9 @@ swiftc -target arm64-apple-macos15.0 -module-cache-path "$ROOT_DIR/.prototype-bu
  Fonsters/Playroom/ResolvedCreatureTrace.swift Fonsters/Playroom/CreatureAppearanceDescriptor.swift \
  Fonsters/Playroom/FonsterPlatformColor.swift Fonsters/Playroom/CreatureFur.swift Fonsters/Playroom/CreatureTouchDynamics.swift Fonsters/Playroom/CreatureFacialGeometry.swift Fonsters/Playroom/CreatureRig.swift Fonsters/Playroom/CreatureFaceDynamics.swift Fonsters/Playroom/CreatureMirroring.swift Fonsters/Playroom/CreaturePersonality.swift Fonsters/Playroom/CreatureSoundBank.swift \
  Fonsters/Playroom/FonsterAgentModels.swift Fonsters/ProtectedPlayPolicy.swift Fonsters/Playroom/FonsterAgentDirector.swift Fonsters/Playroom/FonsterSocialPresence.swift Fonsters/Playroom/FonsterSocialDirector.swift \
- Fonsters/FonsterBiography.swift Fonsters/Playroom/CreatureSocialModels.swift Fonsters/Playroom/FriendshipMemoryStore.swift Fonsters/Playroom/CreatureCommandIntent.swift \
+ Fonsters/FonsterInterests.swift Fonsters/FonsterBiography.swift Fonsters/Playroom/CreatureSocialModels.swift Fonsters/Playroom/FriendshipMemoryStore.swift Fonsters/Playroom/CreatureCommandIntent.swift \
  Fonsters/Playroom/CompanionEnvironment.swift Fonsters/Playroom/PlayroomController.swift Fonsters/Playroom/LobbyWorld.swift Fonsters/Playroom/LobbyWorldScene.swift \
- Fonsters/Playroom/LocalLobbySimulation.swift Fonsters/Playroom/LobbyPresentation.swift Fonsters/Playroom/LobbyDanceScene.swift Fonsters/Playroom/LocalLobbyController.swift Fonsters/Playroom/FonsterVisualControls.swift Fonsters/Playroom/FonsterVisitDocument.swift \
+ Fonsters/Playroom/LocalLobbySimulation.swift Fonsters/Playroom/LobbyPresentation.swift Fonsters/Playroom/LobbyDanceScene.swift Fonsters/Playroom/LocalLobbyController.swift Fonsters/FonsterChrome.swift Fonsters/Playroom/FonsterVisualControls.swift Fonsters/Playroom/FonsterVisitDocument.swift \
  Fonsters/Playroom/CompanionEnvironmentScene.swift Fonsters/Playroom/CreatureStageView.swift Fonsters/Playroom/TouchGestureVerification.swift Fonsters/Playroom/CreatureSceneLighting.swift Fonsters/Playroom/NativeSceneExport.swift \
  Fonsters/Playroom/FonsterSocialStudio.swift Fonsters/Playroom/VerificationWindowCapture.swift \
  script/verify_presence.swift -o .prototype-build/verification/presence

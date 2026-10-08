@@ -1,7 +1,7 @@
 import Foundation
 
 /// User-authored character details, separate from appearance and learned care.
-/// Stored privately with the Fonster; public visits include these only by choice.
+/// Stored privately with the Fonster; new visits include only chosen source IDs.
 nonisolated struct FonsterBiography: Codable, Equatable, Sendable {
     var background = ""
     var likes: [String] = []
@@ -10,8 +10,12 @@ nonisolated struct FonsterBiography: Codable, Equatable, Sendable {
     var shows: [String] = []
     var creators: [String] = []
     var celebrities: [String] = []
-    var isEmpty: Bool { background.isEmpty && lists.allSatisfy(\.isEmpty) }
-    private var lists: [[String]] { [likes, dislikes, movies, shows, creators, celebrities] }
+    // Optional JSON field preserves biographies written before interest chips.
+    var interests: [FonsterInterestSelection]? = nil
+    var music: [String]? = nil
+    var places: [String]? = nil
+    var isEmpty: Bool { background.isEmpty && lists.allSatisfy(\.isEmpty) && (interests ?? []).isEmpty }
+    private var lists: [[String]] { [likes, dislikes, movies, shows, creators, celebrities, music ?? [], places ?? []] }
 
     static func list(from text: String) -> [String] {
         var seen = Set<String>()
@@ -29,9 +33,21 @@ nonisolated struct FonsterBiography: Codable, Equatable, Sendable {
         result.shows = Self.list(from: shows.joined(separator: ","))
         result.creators = Self.list(from: creators.joined(separator: ","))
         result.celebrities = Self.list(from: celebrities.joined(separator: ","))
+        result.music = music.map { Self.list(from: $0.joined(separator: ",")) }
+        result.places = places.map { Self.list(from: $0.joined(separator: ",")) }
+        let checked = FonsterInterestCatalog.validated(interests ?? [])
+        result.interests = checked.isEmpty ? nil : checked
         return result
     }
-    /// Email-like strings never enter new public snapshots, even in free text.
+    /// A recipient can resolve only bundled checked entity IDs. All free text
+    /// remains on the owner's device, including imported legacy biographies.
+    var recipientSnapshot: Self {
+        var result = Self()
+        let checked = FonsterInterestCatalog.validated(interests ?? [])
+        result.interests = checked.isEmpty ? nil : checked
+        return result
+    }
+    /// Retained to validate/decode old version 2 visits. New visits use only IDs.
     var publicSnapshot: Self {
         var result = normalized
         result.background = result.background.replacingOccurrences(of: "[^\\s<>]+@[^\\s<>]+", with: "…", options: .regularExpression)

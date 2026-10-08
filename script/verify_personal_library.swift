@@ -41,17 +41,25 @@ import SwiftData
         precondition(!String(decoding: v1, as: UTF8.self).contains("biography"))
         var biography = duplicate.biography
         biography.background += " Contact human@example.com @home."; biography.creators.append("private@example.com")
+        biography.interests = [.init(category: .shows, catalogID: "bluey-official"), .init(category: .shows, catalogID: "bluey-wikipedia")]
         let card = FonsterVisitCard(publicID: publicID, name: "Luma", appearance: appearance, warmth: 0.5, energy: 0.5, biography: biography)
         let data = try card.encoded(), string = String(decoding: data, as: UTF8.self)
-        let v2Decoded = try FonsterVisitCard.decode(data)
-        precondition(card.version == 2 && v2Decoded == card)
+        let decodedCard = try FonsterVisitCard.decode(data)
+        precondition(card.version == 3 && decodedCard == card)
         precondition(!string.contains("@") && !string.contains(duplicate.seed) && !string.contains(privateID.uuidString) && !string.contains(duplicate.starterKey!))
-        precondition(card.biography?.likes == ["Comets", "Picnics"] && card.biography?.celebrities == ["LeVar Burton"])
+        precondition(card.biography == nil && card.interests?.count == 2 && !string.contains("Comets") && !string.contains("paper moon"))
+        // Actual old v2 shape still decodes, but its recipient projection is empty.
+        var oldCard = try JSONSerialization.jsonObject(with: v1) as! [String: Any]
+        oldCard["version"] = 2
+        oldCard["biography"] = try JSONSerialization.jsonObject(with: JSONEncoder().encode(duplicate.biography.publicSnapshot))
+        let oldVisit = try FonsterVisitCard.decode(JSONSerialization.data(withJSONObject: oldCard))
+        precondition(oldVisit.version == 2 && oldVisit.biography?.recipientSnapshot.isEmpty == true)
         var hostile = try JSONSerialization.jsonObject(with: data) as! [String: Any]
-        var hidden = hostile["biography"] as! [String: Any]; hidden["account"] = "synthetic-account-alpha"; hostile["biography"] = hidden
-        do { _ = try FonsterVisitCard.decode(JSONSerialization.data(withJSONObject: hostile)); preconditionFailure("Hidden metadata accepted") } catch {}
-        precondition(FonsterBiography.list(from: "Comets, Comets, Picnics\nStars") == ["Comets", "Picnics", "Stars"])
-        print("PASS: original v1 visits, opt-in v2 profile round trip, field bounds, no email/seed/private IDs in public data, unknown metadata rejection")
+        hostile["interests"] = [["category": "shows", "catalogID": "bluey-official", "title": "private attacker text"]]
+        do { _ = try FonsterVisitCard.decode(JSONSerialization.data(withJSONObject: hostile)); preconditionFailure("forged display text accepted") } catch is VisitCardError {}
+        hostile["interests"] = [["category": "shows", "catalogID": "unknown-unverified-source"]]
+        do { _ = try FonsterVisitCard.decode(JSONSerialization.data(withJSONObject: hostile)); preconditionFailure("unknown source accepted") } catch is VisitCardError {}
+        print("PASS: v1/v2 imports, v3 source references, private draft omission and forged metadata rejection")
 
         // This file was written by a separate executable using the exact old model.
         let migrated = try ModelContainer(for: schema, configurations: [ModelConfiguration("LegacyMigration", schema: schema, url: root.appendingPathComponent("legacy.sqlite"), cloudKitDatabase: .none)])

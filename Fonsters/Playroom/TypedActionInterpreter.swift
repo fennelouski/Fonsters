@@ -123,7 +123,8 @@ struct CreatureCommandBar: View {
         VStack(alignment: .leading, spacing: 5) {
             HStack(spacing: 10) {
                 Image(systemName: "text.bubble").foregroundStyle(.secondary)
-                TextField("Ask \(selected) to try something…", text: $text)
+                TextField("Ask \(selected) to try something…", text: $text,
+                          prompt: Text("Ask \(selected) to try something…").foregroundStyle(FonsterChrome.secondary))
                     .textFieldStyle(.plain).focused($requestFocused).onSubmit(submit)
                     .accessibilityLabel("Tell \(selected) what to try")
                 if interpreter.isBusy {
@@ -131,7 +132,8 @@ struct CreatureCommandBar: View {
                     FonsterIconButton(title: "Cancel request", symbol: "xmark") { interpreter.cancel() }
                 } else { FonsterIconButton(title: "Try this request", symbol: "arrow.up", tone: .world, action: submit).disabled(text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || !enabled) }
             }.padding(.horizontal, 12).padding(.vertical, 9)
-                .background(.white.opacity(0.8), in: RoundedRectangle(cornerRadius: 12))
+                .foregroundStyle(FonsterChrome.primary)
+                .background(FonsterChrome.surface, in: RoundedRectangle(cornerRadius: 12))
             HStack {
                 FonsterInfo(title: interpreter.status, detail: interpreter.status + "\n" + interpreter.capability)
                 Spacer()

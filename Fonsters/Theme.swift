@@ -17,24 +17,24 @@ import SwiftUI
 // MARK: - Tokens
 
 enum Theme {
-    /// Hot pink from the icon's creature pixels — the primary interactive accent (#F0416E).
-    static let accent = Color(red: 0.941, green: 0.255, blue: 0.431)
+    /// Adaptive pink from the icon's creature pixels, with legible light/dark ink.
+    static let accent = Color("BrandAccent")
     /// Brighter pink for gradients / dark-mode emphasis (#FF5C88).
     static let accentBright = Color(red: 1.0, green: 0.361, blue: 0.533)
     /// Deeper pink for gradient shadow side (#DB216B).
     static let accentDeep = Color(red: 0.859, green: 0.129, blue: 0.420)
-    /// Deep plum/aubergine from the icon letterform (#281038).
-    static let plum = Color(red: 0.157, green: 0.063, blue: 0.220)
+    /// Adaptive text ink inspired by the icon's deep plum letterform.
+    static let plum = FonsterChrome.primary
     /// Muted blue from the icon's eyes — a supporting accent (#28436F).
-    static let blue = Color(red: 0.204, green: 0.322, blue: 0.518)
+    static let blue = Color("BrandBlue")
     /// Warm cream from the icon background (#F7F2E7).
     static let cream = Color(red: 0.969, green: 0.949, blue: 0.906)
 
     // Supporting hues, harmonized with the brand. Used to tell related actions
     // apart (export vs. undo/redo) without returning to a primary-color rainbow.
-    static let violet = Color(red: 0.451, green: 0.353, blue: 0.722)
-    static let teal = Color(red: 0.157, green: 0.529, blue: 0.529)
-    static let amber = Color(red: 0.780, green: 0.502, blue: 0.180)
+    static let violet = Color("BrandViolet")
+    static let teal = Color("BrandTeal")
+    static let amber = Color("BrandAmber")
 
     // Corner radii
     static let cornerCard: CGFloat = 22
@@ -46,9 +46,9 @@ enum Theme {
     static let spaceM: CGFloat = 16
     static let spaceL: CGFloat = 24
 
-    /// Prominent-button gradient (bright → deep pink).
+    /// Deep pink gradient keeps white prominent-button labels legible.
     static var accentGradient: LinearGradient {
-        LinearGradient(colors: [accentBright, accentDeep],
+        LinearGradient(colors: [Color(red: 0.68, green: 0.10, blue: 0.29), Color(red: 0.52, green: 0.07, blue: 0.20)],
                        startPoint: .topLeading, endPoint: .bottomTrailing)
     }
 }

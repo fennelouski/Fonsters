@@ -124,8 +124,8 @@ struct MobilePlayroomView: View {
             }.padding(.horizontal, 16)
         }.frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
             .padding(.top, 8).padding(.bottom, 8)
-            .background(Color(red: 0.98, green: 0.97, blue: 0.95))
-            .foregroundStyle(Color(red: 0.19, green: 0.15, blue: 0.27)).preferredColorScheme(.light)
+            .background(FonsterChrome.background)
+            .foregroundStyle(FonsterChrome.primary)
             .task { controller.enablePersonalityLearning(PersonalityMemoryStore.localPreview()) }
             .task(id: controller.shouldAnimate) {
                 if controller.shouldAnimate { await controller.animate() } else { controller.refreshStillPose() }
@@ -270,7 +270,7 @@ struct MobileLobbyView: View {
             .focusable().focusEffectDisabled().focused($cameraFocused)
             .onKeyPress(phases: [.down, .repeat]) { press in lobby.cameraKey(press.key, modifiers: press.modifiers) ? .handled : .ignored }
             .onAppear { cameraFocused = true }
-            .foregroundStyle(Color(red: 0.19, green: 0.15, blue: 0.27)).preferredColorScheme(.light)
+            .foregroundStyle(FonsterChrome.primary)
             .task(id: lobby.shouldAnimate) { if lobby.shouldAnimate { await lobby.animate() } else { lobby.refreshGates() } }
             .onChange(of: reduceMotion, initial: true) { lobby.reduceMotion = reduceMotion || ProcessInfo.processInfo.arguments.contains("--verify-reduce-motion"); lobby.refreshGates() }
             .onChange(of: scenePhase, initial: true) { lobby.backgrounded = scenePhase != .active; lobby.refreshGates() }
