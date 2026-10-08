@@ -55,6 +55,16 @@ final class PlayroomController {
     @ObservationIgnored private var mirror = CreatureMirrorDynamics()
     @ObservationIgnored private var mirrorTime: Double = 0
     @ObservationIgnored private var mirrorHoldUntil: Float = 0
+    @ObservationIgnored private var face = CreatureFaceDynamics()
+    @ObservationIgnored private var attention: CreatureAttention.Target?
+    @ObservationIgnored private var bodyAttentionYaw: Float = 0
+    @ObservationIgnored private var headAttention: SIMD2<Float> = .zero
+    @ObservationIgnored private var eyeAttention: SIMD2<Float> = .zero
+    @ObservationIgnored private var viewerAttentionUntil: Float = 0
+    var prefersViewerAttention: Bool { elapsed < viewerAttentionUntil || mirror.sample.found }
+    var attentionMode: CreatureAttention.Mode { attention?.mode ?? .viewer }
+    var renderedExpression: CreatureFacialExpression { .init(smile: pose.smile, smilingEyes: pose.smilingEyes) }
+    var renderedHeadAngles: SIMD2<Float> { headAttention }
     var listening = false
     var dancingContinuously = false
     var movementPreview: CreatureMovementStyle?
@@ -80,6 +90,7 @@ final class PlayroomController {
     struct Pose {
         var y: Float = 0, yaw: Float = 0, tilt: Float = 0, nod: Float = 0
         var squash: Float = 0, eyes: Float = 0.94, mouth: Float = 1, arms: Float = 0
+        var smile: Float = 0.45, smilingEyes: Float = 0.15
     }
 
     struct ControlState: Equatable {
@@ -131,7 +142,9 @@ final class PlayroomController {
     }
     func setFeeling(_ chosen: CreatureFeeling) {
         feeling = chosen; userRevision += 1
-        refreshStillPose()
+        let expression = expressionBaseline(moving: false)
+        face.reset(to: expression); pose.smile = expression.smile; pose.smilingEyes = expression.smilingEyes
+        refreshStillPose(); apply(pose)
     }
     func auditionSound(_ variant: Int) {
         guard soundEnabled && !paused && !backgrounded && !lowPower else { return }
@@ -147,6 +160,8 @@ final class PlayroomController {
         if let memories { personality = memories.profile(for: name, identity: memoryIdentity); memoryStatus = memories.status }
         reaction = .idle; message = "\(name) is happy to see you."
         rendererReady = true
+        bodyAttentionYaw = 0; headAttention = .zero; eyeAttention = .zero; attention = nil
+        face.reset(to: expressionBaseline(moving: false)); pose = targetPose()
         apply(pose)
         writeVerificationProbe()
     }
@@ -154,7 +169,7 @@ final class PlayroomController {
         cancelTouch(); touchRecovery = 0
         mirror.reset(); dancingContinuously = false
         reaction = action; actionTime = 0; actionCount += 1
-        if learn { mirrorHoldUntil = elapsed + duration }
+        if learn { mirrorHoldUntil = elapsed + duration; viewerAttentionUntil = elapsed + duration + 1 }
         if learn { userRevision += 1; wanderGoal = groundPosition; nextCuriosity = elapsed + 6 }
         let ritual: String
         switch action {
@@ -195,7 +210,12 @@ final class PlayroomController {
         if waving { perform(.greet, name: companionName, learn: false, audible: false) }
         else { gaze = mirror.sample.gaze }
     }
-    func clearMirror() { mirror.reset(); gaze = .zero }
+    func clearMirror() { mirror.reset(); face.reset(to: expressionBaseline(moving: shouldAnimate)); gaze = .zero }
+    func setAttention(_ target: CreatureAttention.Target) {
+        guard target.point.x.isFinite, target.point.y.isFinite, target.point.z.isFinite else { return }
+        attention = target
+        if !shouldAnimate && !paused && !backgrounded && !lowPower { apply(pose) }
+    }
     func keepMovementStyle(_ style: CreatureMovementStyle?) {
         guard let memories, let updated = memories.keepMoves(style, identity: memoryIdentity ?? companionName) else { return }
         personality = updated; movementPreview = nil; memoryStatus = memories.status
@@ -267,6 +287,10 @@ final class PlayroomController {
             // Explicit still-mode contact changes only the expression, never body motion.
             pose.eyes = touch.active ? touch.response.eyes : targetPose().eyes
             pose.mouth = touch.active ? touch.response.smile : targetPose().mouth
+            let base = targetPose()
+            pose.smile = touch.active ? min(1, max(0.06, (touch.response.smile - 0.55) * 1.1)) : base.smile
+            pose.smilingEyes = touch.active ? max(0, pose.smile) * 0.6 : base.smilingEyes
+            if feeling == .low { pose.smile = min(-0.15, base.smile); pose.smilingEyes = 0 }
             apply(pose)
         }
     }
@@ -353,13 +377,14 @@ final class PlayroomController {
         let step = min(distance, dt * (reaction == .fetch ? 0.48 : 0.24))
         if distance > 0.0001 { groundPosition += delta / distance * step }
         locomotion = dt > 0 ? step / dt : 0
-        var target = targetPose()
         mirror.expire(time: mirrorTime + Double(dt)); mirrorTime += Double(dt)
+        face.advance(dt: dt, baseline: expressionBaseline(moving: true), sample: mirror.sample, low: feeling == .low)
+        var target = targetPose()
         if mirror.sample.found && !touch.active {
             target.tilt += mirror.sample.tilt
             target.arms += mirror.sample.raisedHand * 0.35
             if let eyes = mirror.sample.eyeOpenness { target.eyes = min(1, max(0.06, eyes)) }
-            if mirror.sleeping { target.eyes = 0.06; target.nod = 0.18; target.y = -0.08; target.arms = -0.09 }
+            if mirror.sleeping { target.eyes = 0.06; target.nod = 0.18; target.y = -0.08; target.arms = -0.09; target.smile = 0; target.smilingEyes = 0 }
             else { target.y += sin(elapsed * 5) * mirror.sample.motion * 0.05; target.squash += mirror.sample.motion * 0.03 }
         }
         let contact = touch.response
@@ -367,16 +392,19 @@ final class PlayroomController {
         target.y += contact.lift; target.arms += contact.arms
         if touch.active || contact.energy > 0.005 || abs(contact.eyes - 0.94) > 0.005 {
             target.eyes = contact.eyes; target.mouth = contact.smile
+            target.smile = min(1, max(0.06, (contact.smile - 0.55) * 0.9)); target.smilingEyes = max(0, target.smile) * 0.6
             if contact.manner == .tickle && touch.active { target.tilt += sin(elapsed * 18) * 0.025 * contact.energy }
         }
+        if feeling == .low { target.smile = min(-0.15, target.smile); target.smilingEyes = 0 }
         let blend = 1 - exp(-dt * (touch.active ? 18 : 11))
         pose.y += (target.y - pose.y) * blend; pose.yaw += (target.yaw - pose.yaw) * blend
         pose.tilt += (target.tilt - pose.tilt) * blend; pose.nod += (target.nod - pose.nod) * blend
         pose.squash += (target.squash - pose.squash) * blend
         pose.eyes += (target.eyes - pose.eyes) * min(1, blend * 2.3)
         pose.mouth += (target.mouth - pose.mouth) * blend; pose.arms += (target.arms - pose.arms) * blend
+        pose.smile += (target.smile - pose.smile) * blend; pose.smilingEyes += (target.smilingEyes - pose.smilingEyes) * blend
         actualGaze += (gaze - actualGaze) * blend
-        apply(pose)
+        apply(pose, dt: dt)
         if frameCount % 15 == 0 { writeVerificationProbe() }
     }
     // Opt-in local test evidence. The probe contains no identity or input data.
@@ -403,6 +431,19 @@ final class PlayroomController {
         case .hop: 2.2; case .spin: 3; case .stretch: 3.4; case .highFive: 2; case .rub: 3.2; case .fetch: 5
         default: 1000
         }
+    }
+    private func expressionBaseline(moving: Bool) -> CreatureFacialExpression {
+        let t = moving ? elapsed : 0, phase = rig?.expressionPhase ?? 0
+        var expression = CreatureFacialExpression.casual(time: t, phase: phase, low: feeling == .low, quiet: feeling.prefersQuietCompany)
+        if feeling == .low { return expression }
+        if reaction == .rest { return .init(smile: 0, smilingEyes: 0) }
+        if [.greet, .play, .hop, .highFive].contains(reaction) {
+            let a = moving ? actionTime : 0.6
+            let burst = dancingContinuously ? 0.55 + 0.25 * sin(t * 0.8 + phase) : max(0, 1 - max(0, a - 0.65) / 2)
+            expression.smile = max(expression.smile, burst * (reaction == .play ? 0.92 : 0.82))
+            expression.smilingEyes = expression.smile * expression.smile * 0.8
+        }
+        return expression
     }
     private func targetPose() -> Pose {
         let moving = shouldAnimate
@@ -459,21 +500,59 @@ final class PlayroomController {
             result.yaw = actionTime < 2.8 ? -0.35 : 0.30; result.arms = 0.15; result.eyes = 1.1
         case .idle: break
         }
+        let expression = moving ? face.expression : expressionBaseline(moving: false)
+        result.smile = feeling == .low ? min(-0.15, expression.smile) : expression.smile
+        result.smilingEyes = feeling == .low ? 0 : expression.smilingEyes
         result.eyes = min(1.12, result.eyes)
         return result
     }
-    private func apply(_ pose: Pose) {
+    private func updateAttention(rig: CreatureRig, pose: Pose, dt: Float) {
+        guard !paused && !backgrounded && !lowPower && !touch.active && !followingPointer else { return }
+        let origin = rig.head.position(relativeTo: nil)
+        let target = attention ?? .init(mode: .viewer, point: touchCamera?.position(relativeTo: nil) ?? origin + SIMD3<Float>(0, 0.5, 4))
+        var direction = target.point - origin
+        if target.mode == .viewer {
+            let degrees: Float = 9 + (shouldAnimate ? sin(elapsed * 0.33 + rig.expressionPhase) * 6 : 0)
+            direction = CreatureAttention.viewerDirection(from: origin, camera: target.point, up: target.cameraUp, degrees: degrees)
+        }
+        guard simd_length_squared(direction) > 0.0001 else { return }
+        let blend: Float = dt > 0 ? 1 - exp(-dt * 6) : 1
+        if target.mode != .travel && reaction != .spin {
+            let parentDirection = rig.root.parent?.convert(direction: direction, from: nil) ?? direction
+            let desired = atan2(parentDirection.x, parentDirection.z) - Float(orbit) * .pi / 180 - pose.yaw
+            let turn = atan2(sin(desired), cos(desired))
+            let bodyTarget = abs(turn) > 0.55 ? turn - (turn > 0 ? 0.25 : -0.25) : 0
+            let difference = atan2(sin(bodyTarget - bodyAttentionYaw), cos(bodyTarget - bodyAttentionYaw))
+            bodyAttentionYaw += difference * blend * 0.55
+        } else { bodyAttentionYaw *= 1 - blend }
+        rig.root.orientation = simd_quatf(angle: Float(orbit) * .pi / 180 + pose.yaw + bodyAttentionYaw, axis: [0, 1, 0]) *
+            simd_quatf(angle: pose.tilt, axis: [0, 0, 1])
+        let local = rig.root.convert(direction: direction, from: nil)
+        let angles = CreatureAttention.angles(local)
+        let headTarget = SIMD2<Float>(min(1.2, max(-1.2, angles.x)) * 0.82, min(1.15, max(-0.7, angles.y)) * 0.8)
+        headAttention += (headTarget - headAttention) * blend
+        eyeAttention = simd_clamp(angles - headAttention, SIMD2(repeating: -0.35), SIMD2(repeating: 0.35))
+    }
+    private func apply(_ pose: Pose, dt: Float = 0) {
         guard let rig else { return }
         rig.root.position = [groundPosition.x, rig.groundOffset + pose.y, groundPosition.y]
-        rig.root.orientation = simd_quatf(angle: Float(orbit) * .pi / 180 + pose.yaw, axis: [0, 1, 0]) *
+        rig.root.orientation = simd_quatf(angle: Float(orbit) * .pi / 180 + pose.yaw + bodyAttentionYaw, axis: [0, 1, 0]) *
             simd_quatf(angle: pose.tilt, axis: [0, 0, 1])
         rig.root.scale = [1 - pose.squash * 0.5, 1 + pose.squash, 1 - pose.squash * 0.5]
-        rig.head.orientation = simd_quatf(angle: pose.nod, axis: [1, 0, 0]) *
-            simd_quatf(angle: actualGaze.x * 0.14, axis: [0, 1, 0]) *
+        updateAttention(rig: rig, pose: pose, dt: dt)
+        let contact = touch.active || followingPointer
+        rig.head.orientation = simd_quatf(angle: contact ? actualGaze.x * 0.14 : headAttention.x, axis: [0, 1, 0]) *
+            simd_quatf(angle: pose.nod - (contact ? 0 : headAttention.y), axis: [1, 0, 0]) *
             simd_quatf(angle: pose.tilt * 0.45, axis: [0, 0, 1])
-        for eye in rig.eyes { eye.scale.y = max(0.055, pose.eyes) }
-        for pupil in rig.pupils { pupil.position.x = actualGaze.x * 0.045; pupil.position.y = actualGaze.y * 0.03 }
-        rig.mouth?.scale = [1, pose.mouth, 1]
+        for eye in rig.eyes { eye.scale.y = max(0.055, pose.eyes * (1 - pose.smilingEyes * 0.16)) }
+        for (index, pupil) in rig.pupils.enumerated() {
+            let yaw = contact ? actualGaze.x * 0.25 : eyeAttention.x
+            let pitch = contact ? actualGaze.y * 0.2 : eyeAttention.y
+            let travel = rig.pupilTravel[index]
+            pupil.position = [sin(yaw) / sin(0.35) * travel.x, sin(pitch) / sin(0.35) * travel.y, 0.105 - (1 - cos(yaw) * cos(pitch)) * 0.04]
+            pupil.orientation = simd_quatf(angle: yaw, axis: [0, 1, 0]) * simd_quatf(angle: -pitch, axis: [1, 0, 0])
+        }
+        rig.express(smile: pose.smile, smilingEyes: pose.smilingEyes * min(1, pose.eyes * 2), opening: pose.mouth)
         for (i, brow) in rig.brows.enumerated() {
             brow.orientation = simd_quatf(angle: (i == 0 ? 1 : -1) * pose.tilt * 0.8, axis: [0, 0, 1])
         }

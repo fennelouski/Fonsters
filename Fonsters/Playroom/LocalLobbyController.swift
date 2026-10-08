@@ -34,6 +34,8 @@ final class LocalLobbyController {
     @ObservationIgnored var viewportHeight: Float = 1
     var visibleStageFraction: Float = 1
     @ObservationIgnored var camera: PerspectiveCamera?
+    @ObservationIgnored private var socialAttention: [Int: (peer: Int, until: Double)] = [:]
+    @ObservationIgnored private var gazePeers: [Int: Int] = [:]
     @ObservationIgnored var sceneCameraDetails: [String] = []
     @ObservationIgnored var fountainDrops: [Entity] = []
     @ObservationIgnored var dragOrbit: Float?
@@ -233,6 +235,7 @@ final class LocalLobbyController {
             }
         }
         selected = 0; buddy = members.count > 1 ? 1 : 0
+        socialAttention.removeAll(); gazePeers.removeAll()
         simulation = .init(names: names); presentation = .init(); browsingCamera = nil; careReturnCamera = nil; careFocus = nil; searchQuery = ""; searchMatches = Array(members.indices)
         for (i, member) in members.enumerated() { simulation.setFeeling(member.controller.feeling, actor: i) }
         if returningToCare, let selectedRecord, let publicID = savedIdentities[selectedRecord], let index = members.firstIndex(where: { $0.id == publicID }) {
@@ -333,6 +336,7 @@ final class LocalLobbyController {
         rebuildSimulation(); message = "The visit ended. Shared memories stay on this Mac."
     }
     private func invalidateRoom() {
+        socialAttention.removeAll(); gazePeers.removeAll()
         ready = false; roomRevision += 1; ownerActed()
         containers = []; ball = nil; camera = nil; fountainDrops = []; error = nil
         for member in members { member.controller.silence(); member.controller.rig = nil; member.controller.rendererReady = false }
@@ -439,6 +443,7 @@ final class LocalLobbyController {
     }
     func updateCamera() {
         guard let camera else { return }
+        defer { updateAttention() }
         if continuousGallery && (inCare || !searchQuery.isEmpty) {
             var target: SIMD3<Float> = [0, inCare ? 1.15 : 0.8, 2.7] + cameraPan
             let fit = max(1, 0.62 / max(0.25, viewportAspect))
@@ -602,6 +607,8 @@ final class LocalLobbyController {
         for (offset, event) in events.enumerated() {
             guard let action = PlayroomController.Reaction(rawValue: event.action) else { continue }
             let member = members[event.actor]
+            if let peer = event.peer { socialAttention[event.actor] = (peer, activeSeconds + (simulation.pairGame == nil ? 4 : 9)) }
+            else { socialAttention[event.actor] = nil }
             member.controller.perform(action, name: member.name, learn: deliberate && !member.isVisitor, audible: (deliberate || agentDriven) && offset == 0)
         }
         if let first = events.first, let peer = first.peer, members.indices.contains(peer), !paused && !backgrounded && !lowPower {
@@ -709,6 +716,37 @@ final class LocalLobbyController {
         ball?.isEnabled = !inCare
         ball?.position = simulation.ballPosition
         updateCamera()
+    }
+    private func updateAttention() {
+        guard let camera, containers.count == members.count else { return }
+        let positions = members.enumerated().map { i, member in member.controller.rig?.head.position(relativeTo: nil) ?? containers[i].position(relativeTo: nil) }
+        let cameraMatrix = camera.transformMatrix(relativeTo: nil)
+        let visible = positions.enumerated().map { i, point in
+            (!inCare || i == selected) && CreatureAttention.visible(point, camera: cameraMatrix, aspect: viewportAspect)
+        }
+        let up = camera.orientation(relativeTo: nil).act(SIMD3<Float>(0, 1, 0))
+        for (i, member) in members.enumerated() {
+            guard simulation.agents.indices.contains(i) else { continue }
+            let agent = simulation.agents[i]
+            let walking = continuousGallery && presentation.borrowingStage ? member.controller.worldWalking : agent.walking
+            let explicitPeer = socialAttention[i].flatMap { $0.until > activeSeconds ? $0.peer : nil }
+            let force = inCare || !searchQuery.isEmpty || danceMode != .daylight || (member.controller.prefersViewerAttention && explicitPeer == nil)
+            let cached = gazePeers[i].flatMap { peer -> Int? in
+                guard positions.indices.contains(peer), visible[peer] else { return nil }
+                let others = positions.indices.filter { $0 != i && visible[$0] }
+                let closest = others.map { simd_distance_squared(positions[$0], positions[i]) }.min() ?? 0
+                return simd_distance_squared(positions[peer], positions[i]) <= closest * 1.15 ? peer : nil
+            }
+            let (mode, peer) = CreatureAttention.choose(actor: i, positions: positions, visible: visible, walking: walking, forceViewer: force, socialPeer: explicitPeer ?? cached)
+            gazePeers[i] = peer
+            let target: SIMD3<Float>
+            if let peer { target = positions[peer] }
+            else if mode == .travel {
+                let heading = continuousGallery && presentation.transitioning && presentation.poses.indices.contains(i) ? presentation.poses[i].heading : agent.heading
+                target = positions[i] + SIMD3<Float>(sin(heading), 0, cos(heading)) * 4
+            } else { target = camera.position(relativeTo: nil) }
+            member.controller.setAttention(.init(mode: mode, point: target, cameraUp: up))
+        }
     }
     private func writeProbe() {
         let args = ProcessInfo.processInfo.arguments

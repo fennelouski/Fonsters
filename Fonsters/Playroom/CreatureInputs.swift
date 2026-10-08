@@ -185,7 +185,7 @@ final class CreatureInputs {
             Task { @MainActor [weak self] in
                 guard let self, self.cameraGeneration == generation, self.cameraEnabled, !self.suspended else { return }
                 self.onFace?(sample.gaze); self.onMirror?(sample)
-                self.status = sample.found ? "Camera on · mirroring eyes, head and raised hands." : "Camera on · step into view."
+                self.status = sample.found ? "Camera on · mirroring facial movements, head and raised hands." : "Camera on · step into view."
             }
         }, onFailure: { [weak self] in
             Task { @MainActor [weak self] in
@@ -258,6 +258,24 @@ nonisolated final class FaceCaptureWorker: NSObject, AVCaptureVideoDataOutputSam
                 let value = (ratio(left) + ratio(right)) * 0.5
                 openEyeBaseline = max(openEyeBaseline * 0.998, min(0.4, value))
                 sample.eyeOpenness = min(1, max(0.06, value / max(0.17, openEyeBaseline)))
+            }
+            let yaw = face.yaw?.floatValue ?? .pi
+            if let lips = face.landmarks?.outerLips {
+                let points = lips.normalizedPoints.map { SIMD2<Float>(Float($0.x) * Float(box.width), Float($0.y) * Float(box.height)) }
+                sample.facialSmile = CreatureFaceLandmarkCues.smile(lips: points, yaw: yaw, roll: face.roll?.floatValue ?? 0)
+            }
+            var pupilOffsets: [Float] = []
+            for (eye, pupil) in [(face.landmarks?.leftEye, face.landmarks?.leftPupil), (face.landmarks?.rightEye, face.landmarks?.rightPupil)] {
+                if let eye, let pupil, let point = pupil.normalizedPoints.first {
+                    let xs = eye.normalizedPoints.map { Float($0.x) }
+                    if let lo = xs.min(), let hi = xs.max(), hi - lo > 0.001 {
+                        pupilOffsets.append((Float(point.x) - (lo + hi) * 0.5) / (hi - lo))
+                    }
+                }
+            }
+            sample.viewerAttention = CreatureFaceLandmarkCues.attention(yaw: yaw, eyes: sample.eyeOpenness, pupilOffsets: pupilOffsets)
+            if let smile = sample.facialSmile, let eyes = sample.eyeOpenness {
+                sample.smilingEyes = min(1, max(0, (1 - eyes) * 1.6)) * max(0, smile)
             }
             if let body = bodyRequest.results?.first, let points = try? body.recognizedPoints(.all) {
                 if let neck = points[.neck], neck.confidence > 0.3, abs(Float(neck.location.x) - center.x) < max(0.15, Float(box.width)) {

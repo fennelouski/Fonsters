@@ -18,7 +18,11 @@ final class CreatureRig {
     let descriptor: CreatureAppearanceDescriptor
     var eyes: [Entity] = []
     var pupils: [Entity] = []
+    var pupilTravel: [SIMD2<Float>] = []
     var mouth: Entity?
+    private(set) var facialGeometry: CreatureFacialGeometry?
+    private var smilingLids: [(Entity, Float)] = []
+    var expressionPhase: Float { Float(furSeed % 997) / 997 * 2 * .pi }
     var limbs: [(joint: Entity, bend: Entity, angle: Float)] = []
     let pixel: Float = 0.0625
     let depth: Float = 0.64
@@ -277,7 +281,9 @@ final class CreatureRig {
         _ = ball(color(Int(part.paletteIndices.first ?? 2)), scale: [w * 0.44, h * 0.44, 0.062], at: .zero, parent: pupil)
         _ = ball(FonsterPlatformColor(srgbRed: 0.05, green: 0.035, blue: 0.07, alpha: 1), scale: [w * 0.21, h * 0.31, 0.045], at: [0, 0, 0.046], parent: pupil)
         _ = ball(.white, scale: [0.028, 0.028, 0.015], at: [-0.025, 0.034, 0.09], parent: pupil)
-        eye.addChild(pupil); head.addChild(eye); eyes.append(eye); pupils.append(pupil)
+        eye.addChild(pupil); head.addChild(eye); eyes.append(eye); pupils.append(pupil); pupilTravel.append([w * 0.22, h * 0.20])
+        let lid = ball(color(skinIndex), scale: [w * 0.76, h * 0.32, 0.095], at: [0, -h * 0.78, 0.12], parent: eye)
+        lid.name = "smiling-lower-lid"; lid.isEnabled = false; smilingLids.append((lid, h))
         touchSurfaces.append(.init(entity: eye, center: [0, 0, 0.035], radii: [w * 0.74, h * 0.74, 0.18], zone: .eye))
     }
     struct SmileLayout {
@@ -316,63 +322,23 @@ final class CreatureRig {
                      paletteIndex: 3, hasLegacyMouth: false)
     }
     func addMouth() throws {
-        let layout = Self.smileLayout(for: descriptor), outline = layout.outline
-        let group = Entity(); group.name = "happy-smile"
+        let layout = Self.smileLayout(for: descriptor)
+        let group = Entity(); group.name = "expressive-mouth"
         group.position = point(layout.centerX, layout.centerY, z: faceDepth(layout.centerX, layout.centerY) + 0.025) - baseHead
-        let count = outline.count
-        var positions: [SIMD3<Float>] = [], normals: [SIMD3<Float>] = [], indices: [UInt32] = []
-        // This point sees the complete crescent without crossing its curved boundary.
-        let center = SIMD2<Float>(0, -layout.height * 0.26)
-        for (z, normal) in [(Float(0.052), SIMD3<Float>(0, 0, 1)), (Float(0.016), SIMD3<Float>(0, 0, -1))] {
-            positions.append([center.x, center.y, z]); normals.append(normal)
-            for p in outline { positions.append([p.x, p.y, z]); normals.append(normal) }
-        }
-        for i in 0..<count {
-            let next = (i + 1) % count
-            indices += [0, UInt32(next + 1), UInt32(i + 1),
-                        UInt32(count + 1), UInt32(count + 2 + i), UInt32(count + 2 + next)]
-            let delta = outline[next] - outline[i]
-            let normal = simd_normalize(SIMD3<Float>(-delta.y, delta.x, 0))
-            let start = UInt32(positions.count)
-            positions += [[outline[i].x, outline[i].y, 0.052], [outline[next].x, outline[next].y, 0.052],
-                          [outline[i].x, outline[i].y, 0.016], [outline[next].x, outline[next].y, 0.016]]
-            normals += Array(repeating: normal, count: 4)
-            indices += [start, start + 1, start + 2, start + 1, start + 3, start + 2]
-        }
-        func mesh(_ name: String) throws -> MeshResource {
-            var descriptor = MeshDescriptor(name: name)
-            descriptor.positions = MeshBuffers.Positions(positions); descriptor.normals = MeshBuffers.Normals(normals)
-            descriptor.primitives = .triangles(indices)
-            return try MeshResource.generate(from: [descriptor])
-        }
         var cavityMaterial = material(FonsterPlatformColor(srgbRed: 0.085, green: 0.045, blue: 0.075, alpha: 1), roughness: 0.85)
         cavityMaterial.clearcoat = .init(floatLiteral: 0)
-        let cavity = ModelEntity(mesh: try mesh("rounded-smile-cavity"), materials: [cavityMaterial])
-        cavity.name = "smile-cavity"; group.addChild(cavity)
-        positions = []; normals = []; indices = []
-        let sides = 8, radius = min(0.023, layout.width * 0.032)
-        for i in 0..<count {
-            let tangent = simd_normalize(outline[(i + 1) % count] - outline[(i + count - 1) % count])
-            let outward = SIMD3<Float>(-tangent.y, tangent.x, 0)
-            for side in 0..<sides {
-                let angle = Float(side) / Float(sides) * 2 * .pi
-                let normal = outward * cos(angle) + SIMD3<Float>(0, 0, sin(angle))
-                positions.append(SIMD3<Float>(outline[i].x, outline[i].y, 0.057) + normal * radius)
-                normals.append(normal)
-            }
+        let geometry = try CreatureFacialGeometry(width: layout.width, height: layout.height,
+            cavityMaterial: cavityMaterial, rimMaterial: material(color(layout.paletteIndex), roughness: 0.96))
+        group.addChild(geometry.cavity); group.addChild(geometry.rim)
+        facialGeometry = geometry; head.addChild(group); mouth = group
+    }
+    func express(smile: Float, smilingEyes: Float, opening: Float) {
+        facialGeometry?.update(smile: smile, opening: opening)
+        let lift = min(1, max(0, smilingEyes))
+        for (lid, height) in smilingLids {
+            lid.isEnabled = lift > 0.03
+            lid.position.y = -height * 0.78 + height * 0.48 * lift
         }
-        for i in 0..<count {
-            for side in 0..<sides {
-                let a = UInt32(i * sides + side), b = UInt32(i * sides + (side + 1) % sides)
-                let c = UInt32(((i + 1) % count) * sides + side), d = UInt32(((i + 1) % count) * sides + (side + 1) % sides)
-                indices += [a, b, c, b, d, c]
-            }
-        }
-        let rim = ModelEntity(mesh: try mesh("soft-smile-rim"), materials: [material(color(layout.paletteIndex), roughness: 0.96)])
-        rim.name = "smile-rim"; group.addChild(rim)
-        _ = ball(color(layout.paletteIndex), scale: [layout.width * 0.18, layout.height * 0.047, 0.012],
-                 at: [0, -layout.height * 0.38, 0.061], parent: group)
-        head.addChild(group); mouth = group
     }
     func addBrow(_ part: CreatureAppearanceDescriptor.Part) {
         let (w, h) = extent(part)
