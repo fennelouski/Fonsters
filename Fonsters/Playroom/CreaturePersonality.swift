@@ -12,6 +12,7 @@ struct CreaturePersonality: Codable, Equatable {
     var discoveries = 0
     var soundLikes = [0, 0, 0]
     var lastLikedSound: Int?
+    var learnedMoves: CreatureMovementStyle?
 
     init(name: String) {
         publicID = UUID()
@@ -68,6 +69,7 @@ final class PersonalityMemoryStore {
                     [$0.hellos, $0.games, $0.rests, $0.discoveries].allSatisfy { $0 >= 0 && $0 < 100_000 } &&
                     $0.baseWarmth.isFinite && (0...1).contains($0.baseWarmth) &&
                     $0.baseEnergy.isFinite && (0...1).contains($0.baseEnergy)
+                    && ($0.learnedMoves?.valid ?? true)
                 }) else { throw CocoaError(.fileReadCorruptFile) }
                 archive = saved
             } catch { mayWrite = false; status = "These memories are temporary; saved memories couldn’t be opened." }
@@ -115,6 +117,11 @@ final class PersonalityMemoryStore {
         memory.soundLikes[variant] = min(99_999, memory.soundLikes[variant] + 1)
         memory.lastLikedSound = variant
         archive.profiles[name] = memory; save(); return memory
+    }
+    func keepMoves(_ style: CreatureMovementStyle?, identity: String) -> CreaturePersonality? {
+        guard style?.valid ?? true else { return nil }
+        var memory = profile(for: identity); memory.learnedMoves = style
+        archive.profiles[identity] = memory; save(); return memory
     }
     private func save() {
         guard mayWrite else { return }

@@ -189,8 +189,12 @@ struct LobbyStageView: View {
         let fill = PointLight(); fill.light.intensity = 11000; fill.light.attenuationRadius = 20
         fill.light.color = FonsterPlatformColor(srgbRed: 0.88, green: 0.91, blue: 1, alpha: 1)
         fill.position = [0, 2, 4]; roots.append(fill)
-        roots.append(try await CreatureSceneLighting.studio(for: roots))
+        let dance = try LobbyDanceScene(); dance.key = key; dance.fill = fill
+        roots.append(dance.root)
+        let ambient = try await CreatureSceneLighting.studio(for: roots)
+        roots.append(ambient); dance.ambient = ambient
         guard !Task.isCancelled, lobby.roomRevision == revision else { throw CancellationError() }
+        lobby.danceScene = dance; lobby.updateDance()
         lobby.applyLayout()
         return roots
     }
@@ -250,6 +254,9 @@ private struct NativeLobbyStage: UIViewRepresentable {
         return view
     }
     func updateUIView(_ view: ARView, context: Context) {
+        view.environment.background = lobby.danceMode == .daylight
+            ? .color(.init(srgbRed: 0.91, green: 0.94, blue: 0.87, alpha: 1))
+            : .color(.init(srgbRed: 0.075, green: 0.07, blue: 0.14, alpha: 1))
         lobby.viewportAspect = Float(size.width / max(1, size.height)); lobby.updateCamera()
         view.setNeedsDisplay()
         if ProcessInfo.processInfo.arguments.contains("--world-camera-diagnostics") {

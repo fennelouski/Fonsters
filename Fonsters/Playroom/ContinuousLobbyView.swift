@@ -23,6 +23,12 @@ struct ContinuousLobbyView: View {
     @Query(sort: \Fonster.createdAt, order: .reverse) private var saved: [Fonster]
     @State private var lobby = LocalLobbyController()
     @State private var interpreter = TypedActionInterpreter()
+    @State private var inputs = CreatureInputs()
+    @State private var lesson: CreatureImitationLesson?
+    @State private var learnedUndo: CreatureMovementStyle?
+    @State private var canUndoLearning = false
+    @State private var fixtureTask: Task<Void, Never>?
+    @State private var didPreviewDance = false
     @State private var searching = false
     @State private var query = ""
     @State private var gallery = false
@@ -40,11 +46,14 @@ struct ContinuousLobbyView: View {
     @FocusState private var stageFocused: Bool
     private var library: [Fonster] { PersonalFonsterLibrary.canonical(saved) }
     private var roster: [LocalLobbyController.SavedAppearance] { library.map { .init(id: $0.id, name: $0.name, seed: $0.seed, biography: $0.biography) } }
-    private var blocked: Bool { !lobby.ready || lobby.paused || lobby.backgrounded || lobby.lowPower }
+    private var blocked: Bool { !lobby.ready || lobby.paused || lobby.backgrounded || lobby.lowPower || lobby.reviewingControls }
+    private var reviewing: Bool { gallery || sharing || agents || profiles || editor != nil }
+    private var inputsSuspended: Bool { blocked || !lobby.inCare || typing || searchFocused }
 
-    var body: some View {
+    var body: some View { presentations }
+    private var stageAndKeyboard: some View {
         ZStack {
-            Color(red: 0.91, green: 0.94, blue: 0.87).ignoresSafeArea()
+            (lobby.danceMode == .daylight ? Color(red: 0.91, green: 0.94, blue: 0.87) : Color(red: 0.075, green: 0.07, blue: 0.14)).ignoresSafeArea()
             LobbyStageView(lobby: lobby).id(lobby.roomRevision).ignoresSafeArea()
                 .accessibilityIdentifier("continuousStage")
             hud
@@ -62,9 +71,19 @@ struct ContinuousLobbyView: View {
             if press.key == .tab { return .ignored }
             return lobby.cameraKey(press.key, modifiers: press.modifiers) ? .handled : .ignored
         }
+    }
+    private var lifecycle: some View {
+        stageAndKeyboard
         .onChange(of: roster, initial: true) { lobby.continuousGallery = true; lobby.showSaved(roster); lobby.search(query) }
         .task { await openPersonalLibrary() }
         .task(id: lobby.ready) {
+            let arguments = ProcessInfo.processInfo.arguments
+            if lobby.ready, !didPreviewDance, let index = arguments.firstIndex(of: "--dance-preview"), index + 1 < arguments.count,
+               let mode = FonsterDanceMode(rawValue: arguments[index + 1]) {
+                didPreviewDance = true
+                if arguments.contains("--dance-preview-care") { lobby.openCare(0) }
+                lobby.setDanceMode(mode)
+            }
             if lobby.ready, let id = focusAfterSave,
                let record = roster.firstIndex(where: { $0.id == id }) {
                 focusAfterSave = nil; lobby.openCare(record)
@@ -76,10 +95,24 @@ struct ContinuousLobbyView: View {
         .onReceive(NotificationCenter.default.publisher(for: .NSProcessInfoPowerStateDidChange)) { _ in lobby.lowPower = ProcessInfo.processInfo.isLowPowerModeEnabled; lobby.refreshGates() }
         .onChange(of: lobby.controls) { old, new in history.record(old: old, new: new); lobby.refreshGates() }
         .onChange(of: query) { lobby.search(query) }
-        .onChange(of: lobby.inCare) { _, care in if care { searchFocused = false }; command = false; interpreter.cancel() }
+    }
+    private var inputLifecycle: some View {
+        lifecycle
+        .onChange(of: lobby.inCare) { _, care in if care { searchFocused = false }; command = false; interpreter.cancel(); stopLiveActivity() }
+        .onChange(of: lobby.selected) { stopLiveActivity(); canUndoLearning = false }
+        .onChange(of: inputsSuspended, initial: true) { inputs.setSuspended(inputsSuspended); if inputsSuspended { cancelLesson(); lobby.selectedMember.controller.clearMirror() } }
+        .onChange(of: inputs.microphoneEnabled) { if inputs.microphoneEnabled { for member in lobby.members { member.controller.silence() } }; lobby.listening = inputs.microphoneEnabled; lobby.refreshGates() }
+        .onChange(of: inputs.cameraEnabled) { if !inputs.cameraEnabled { lobby.selectedMember.controller.clearMirror(); if lesson?.kind != .voice { cancelLesson() } } }
+        .onAppear { connectInputs() }
         .onChange(of: pendingImportURL.url, initial: true) { if pendingImportURL.url != nil { gallery = true } }
-        .onChange(of: gallery) { _, showing in lobby.reviewingControls = showing; lobby.refreshGates() }
-        .onChange(of: editor != nil) { _, showing in lobby.reviewingControls = showing; lobby.cancelContact(); lobby.refreshGates() }
+        .onChange(of: reviewing) { _, showing in
+            lobby.reviewingControls = showing
+            if showing { lobby.takeOwnerControl(); interpreter.cancel() }
+            lobby.refreshGates()
+        }
+    }
+    private var presentations: some View {
+        inputLifecycle
         .sheet(item: $editor) { target in
             FonsterProfileEditor(record: target.record) { id in if target.record == nil { focusAfterSave = id } }
         }
@@ -100,7 +133,7 @@ struct ContinuousLobbyView: View {
         #if os(macOS)
         .task { await verifyCameraKeyboardIfRequested() }
         #endif
-        .onDisappear { lobby.backgrounded = true; lobby.cancelContact(); lobby.refreshGates(); interpreter.cancel() }
+        .onDisappear { stopLiveActivity(); lobby.backgrounded = true; lobby.cancelContact(); lobby.refreshGates(); interpreter.cancel() }
     }
     private func openPersonalLibrary() async {
         do { try await PersonalFonsterLibrary.ensureStarters(in: modelContext); libraryError = nil }
@@ -191,6 +224,7 @@ struct ContinuousLobbyView: View {
             }
             HStack(alignment: .bottom) {
                 FonsterControlPanel(title: "World and camera", symbol: "rotate.3d", tone: .world) { cameraControls }
+                FonsterControlPanel(title: "Dance world", symbol: "music.note", tone: .play) { danceControls }
                 Spacer(minLength: 4)
                 if lobby.inCare {
                     Text(lobby.selectedMember.name).font(.headline).padding(.horizontal, 14).padding(.vertical, 10)
@@ -249,6 +283,7 @@ struct ContinuousLobbyView: View {
             LobbyPortrait(appearance: lobby.selectedMember.descriptor).frame(width: 48, height: 48)
                 .padding(6).background(FonsterTone.company.wash, in: RoundedRectangle(cornerRadius: 14))
                 .accessibilityElement().accessibilityLabel("Original portrait of " + lobby.selectedMember.name)
+            FonsterControlPanel(title: "Mirror and voice", symbol: inputs.cameraEnabled || inputs.microphoneEnabled ? "person.crop.circle.badge.checkmark" : "hand.draw", tone: .company) { liveControls }
             if let id = lobby.selectedSavedID, let record = library.first(where: { $0.id == id }) {
                 FonsterIconButton(title: "Name and backstory", symbol: "book.closed", tone: .company,
                     detail: "Name this Fonster and choose its backstory, likes, dislikes and favorites. Save keeps your changes; X leaves them as they were.") { editor = .init(record: record) }
@@ -314,8 +349,127 @@ struct ContinuousLobbyView: View {
         }.padding(6).background(.regularMaterial, in: RoundedRectangle(cornerRadius: 22))
     }
     private func reaction(_ action: PlayroomController.Reaction, _ symbol: String, _ tone: FonsterTone) -> some View {
-        FonsterIconButton(title: action.rawValue.capitalized, symbol: symbol, tone: tone, detail: "Starts this reaction now. Another reaction replaces it; Stop activity ends it.") { lobby.perform(action) }
+        FonsterIconButton(title: action.rawValue.capitalized, symbol: symbol, tone: tone, detail: "Starts this reaction now. Another reaction replaces it; Stop activity ends it.") { stopLiveActivity(); lobby.perform(action) }
             .disabled(blocked || !lobby.selectedMember.descriptor.supported).accessibilityIdentifier("care_" + action.rawValue)
+    }
+    private func connectInputs() {
+        inputs.onMirror = { sample in
+            guard !inputsSuspended, !lobby.selectedMember.isVisitor else { return }
+            let now = ProcessInfo.processInfo.systemUptime
+            lobby.selectedMember.controller.receiveMirror(sample, time: now)
+            if var rehearsal = lesson {
+                rehearsal.observe(sample, time: now); lesson = rehearsal
+                if rehearsal.ready { lobby.selectedMember.controller.movementPreview = rehearsal.draft }
+            }
+        }
+        inputs.onCommand = { action in
+            guard !inputsSuspended else { return }
+            if var rehearsal = lesson, rehearsal.kind == .voice, action == .dance {
+                rehearsal.observeVoice(time: ProcessInfo.processInfo.systemUptime); lesson = rehearsal
+                if rehearsal.ready { lobby.selectedMember.controller.movementPreview = rehearsal.draft }
+            }
+            lobby.spoken(action)
+        }
+    }
+    private func stopLiveActivity() { fixtureTask?.cancel(); fixtureTask = nil; inputs.stopAll(); cancelLesson(); lobby.selectedMember.controller.clearMirror() }
+    private func cancelLesson() {
+        if lesson != nil { lobby.selectedMember.controller.dancingContinuously = false }
+        lesson = nil; lobby.selectedMember.controller.movementPreview = nil
+    }
+    private func startLesson(_ kind: CreatureImitationLesson.Kind) {
+        guard !blocked, !lobby.selectedMember.isVisitor else { return }
+        lobby.takeOwnerControl(); cancelLesson(); lesson = .init(kind: kind)
+        lobby.selectedMember.controller.perform(kind == .wave ? .greet : .play, name: lobby.selectedMember.name, learn: false, audible: false)
+        if kind != .wave { lobby.selectedMember.controller.dancingContinuously = true }
+    }
+    private var liveControls: some View {
+        VStack(spacing: 16) {
+            FonsterControlGroup(title: "Opt-in senses", tone: .company) {
+                FonsterIconButton(title: inputs.cameraEnabled ? "Turn camera off" : "Enable camera mirror", symbol: inputs.cameraEnabled ? "video.fill" : "video", tone: .company, selected: inputs.cameraEnabled,
+                    detail: "Mirror blinks, head tilts and raised-hand waves. Deliberately close your eyes for a moment to settle. Camera frames stay on this device. Tap again to turn off.") { lobby.takeOwnerControl(); inputs.toggleCamera() }
+                    .disabled(blocked || lobby.selectedMember.isVisitor).accessibilityIdentifier("liveCamera")
+                FonsterIconButton(title: inputs.microphoneEnabled ? "Turn microphone off" : "Enable spoken commands", symbol: inputs.microphoneEnabled ? "mic.fill" : "mic", tone: .company, selected: inputs.microphoneEnabled,
+                    detail: "Say wave, dance, sleep, jump, blink, spin, stretch or stop in English. One short action at a time. Requires local speech support and your permission. No audio or words are saved or uploaded. Tap again to turn off.") { lobby.takeOwnerControl(); inputs.toggleMicrophone() }
+                    .disabled(blocked || lobby.selectedMember.isVisitor).accessibilityIdentifier("liveMicrophone")
+                FonsterIconButton(title: "Stop camera, microphone and practice", symbol: "stop.fill", tone: .quiet) { stopLiveActivity(); lobby.stopActivity() }.accessibilityIdentifier("stopLiveInputs")
+            }
+            if inputs.cameraEnabled || inputs.microphoneEnabled {
+                HStack {
+                    Image(systemName: inputs.cameraEnabled ? "video.fill" : "mic.fill").foregroundStyle(FonsterTone.company.ink)
+                    if inputs.microphoneEnabled { ProgressView(value: Double(inputs.level)).tint(FonsterTone.company.ink) }
+                    if let action = inputs.lastAction { Image(systemName: action.symbol).accessibilityLabel("Heard " + action.rawValue).accessibilityIdentifier("heardAction") }
+                }.accessibilityElement(children: .contain).accessibilityLabel("Active inputs").accessibilityValue(inputs.status)
+            }
+            Text(inputs.status).font(.caption).foregroundStyle(.secondary).frame(maxWidth: 280).accessibilityIdentifier("liveInputStatus")
+            FonsterControlGroup(title: "Learn together", tone: .play) {
+                FonsterIconButton(title: "Practice a wave", symbol: "hand.wave", tone: .play, selected: lesson?.kind == .wave,
+                    detail: "Enable the camera, then hold a hand above your shoulder and wave. The ring fills as your Fonster watches. Checkmark keeps the new wave; X discards it.") { startLesson(.wave) }.disabled(!inputs.cameraEnabled || blocked)
+                    .accessibilityIdentifier("lessonWave")
+                FonsterIconButton(title: "Practice a sway", symbol: "figure.dance", tone: .play, selected: lesson?.kind == .sway,
+                    detail: "Enable the camera, then sway gently. The ring fills while you are in view. Checkmark keeps a bounded bounce and rhythm; X discards it.") { startLesson(.sway) }.disabled(!inputs.cameraEnabled || blocked)
+                    .accessibilityIdentifier("lessonSway")
+                FonsterIconButton(title: "Practice a voice rhythm", symbol: "waveform", tone: .play, selected: lesson?.kind == .voice,
+                    detail: "Enable spoken commands, then say dance three times, with a pause between each. Your Fonster learns that rhythm. Only the timing is kept; no recording or voice imitation.") { startLesson(.voice) }.disabled(!inputs.microphoneEnabled || blocked)
+                    .accessibilityIdentifier("lessonVoice")
+            }
+            if let lesson {
+                HStack(spacing: 20) {
+                    ZStack {
+                        Circle().stroke(FonsterTone.play.wash, lineWidth: 6)
+                        Circle().trim(from: 0, to: lesson.progress).stroke(FonsterTone.play.ink, style: StrokeStyle(lineWidth: 6, lineCap: .round)).rotationEffect(.degrees(-90))
+                        Image(systemName: lesson.kind == .wave ? "hand.wave" : lesson.kind == .sway ? "figure.dance" : "waveform")
+                    }.frame(width: 48, height: 48).accessibilityLabel("Practice progress").accessibilityValue("\(Int(lesson.progress * 100)) percent").accessibilityIdentifier("lessonProgress")
+                    FonsterIconButton(title: "Keep learned movement", symbol: "checkmark", tone: .play) {
+                        learnedUndo = lobby.selectedMember.controller.personality?.learnedMoves; canUndoLearning = true
+                        lobby.selectedMember.controller.keepMovementStyle(lesson.draft); self.lesson = nil
+                    }.disabled(!lesson.ready).accessibilityIdentifier("keepLesson")
+                    FonsterIconButton(title: "Discard practice", symbol: "xmark", tone: .quiet) { cancelLesson() }.accessibilityIdentifier("discardLesson")
+                }
+            }
+            FonsterControlGroup(title: "Movement memory", tone: .quiet) {
+                FonsterIconButton(title: "Undo learned movement", symbol: "arrow.uturn.backward", tone: .quiet) {
+                    lobby.selectedMember.controller.keepMovementStyle(learnedUndo); canUndoLearning = false; cancelLesson()
+                }.disabled(!canUndoLearning).accessibilityIdentifier("undoLesson")
+                FonsterIconButton(title: "Reset learned movement", symbol: "arrow.counterclockwise", tone: .quiet) {
+                    learnedUndo = lobby.selectedMember.controller.personality?.learnedMoves; canUndoLearning = true
+                    lobby.selectedMember.controller.keepMovementStyle(nil); cancelLesson()
+                }.disabled(lobby.selectedMember.controller.personality?.learnedMoves == nil).accessibilityIdentifier("resetLesson")
+            }
+            if ProcessInfo.processInfo.arguments.contains("--verify-live-inputs") { fixtureControls }
+        }
+    }
+    private var fixtureControls: some View {
+        FonsterControlGroup(title: "Synthetic fixtures · no capture") {
+            FonsterIconButton(title: "Fixture sleep", symbol: "moon.zzz") { inputs.verifyCommand("sleep") }.accessibilityIdentifier("fixtureSleep")
+            FonsterIconButton(title: "Fixture dance", symbol: "music.note") { inputs.verifyCommand("dance") }.accessibilityIdentifier("fixtureDance")
+            FonsterIconButton(title: "Fixture open eyes", symbol: "eye") { inputs.verifyMirror(.init(eyeOpenness: 1)) }.accessibilityIdentifier("fixtureEyes")
+            FonsterIconButton(title: "Fixture rehearsal", symbol: "hand.wave") {
+                fixtureTask?.cancel()
+                fixtureTask = Task { @MainActor in
+                    for i in 0..<30 {
+                        guard !Task.isCancelled else { return }
+                        inputs.verifyMirror(.init(eyeOpenness: 1, tilt: 0.15, motion: 0.7, raisedHand: 0.85, handX: Float(i % 2) * 0.15))
+                        do { try await Task.sleep(for: .milliseconds(180)) } catch { return }
+                    }
+                }
+            }.accessibilityIdentifier("fixtureRehearsal")
+        }
+    }
+    private var danceControls: some View {
+        VStack(spacing: 16) {
+            FonsterControlGroup(title: "Set the world", tone: .play) {
+                ForEach(FonsterDanceMode.allCases, id: \.rawValue) { mode in
+                    FonsterIconButton(title: mode.title, symbol: mode.symbol, tone: .play, selected: lobby.danceMode == mode,
+                        detail: "Daylight restores the world. Spotlight starts a solo dance; Disco adds a DJ, speakers, mirror ball and dance floor. Undo restores the previous set. Static and Reduce Motion keep lights steady.") { lobby.setDanceMode(mode) }
+                        .disabled(blocked).accessibilityIdentifier("dance_" + mode.rawValue)
+                }
+            }
+            FonsterControlGroup(title: "Celebrate", tone: .play) {
+                FonsterIconButton(title: "Confetti burst", symbol: "party.popper", tone: .play, detail: "One short confetti burst. Repeated taps replace it. Pause freezes it; leaving dance clears it.") { lobby.celebrate(balloons: false) }.disabled(!lobby.shouldAnimate || lobby.danceMode == .daylight).accessibilityIdentifier("danceConfetti")
+                FonsterIconButton(title: "Balloon drop", symbol: "balloon.2", tone: .play, detail: "One gentle balloon drop. Repeated taps replace it. Static and Reduce Motion suppress falling effects.") { lobby.celebrate(balloons: true) }.disabled(!lobby.shouldAnimate || lobby.danceMode == .daylight).accessibilityIdentifier("danceBalloons")
+                FonsterIconButton(title: "End dance and restore daylight", symbol: "stop.fill", tone: .quiet) { lobby.setDanceMode(.daylight); lobby.stopActivity() }.accessibilityIdentifier("endDance")
+            }
+        }
     }
     private var cameraControls: some View {
         VStack(alignment: .leading, spacing: 14) {

@@ -3,9 +3,11 @@
 <plist version="1.0">
 <dict>
     <key>NSMicrophoneUsageDescription</key>
-    <string>When you choose Listen, Fonsters uses sound levels to react. Audio stays on your Mac and is not recorded.</string>
+    <string>When you enable the microphone, Fonsters recognizes short action commands on this device. Audio is not saved or uploaded.</string>
+    <key>NSSpeechRecognitionUsageDescription</key>
+    <string>Fonsters uses on-device speech to understand commands like wave, dance and sleep. Recognized words are not saved or shared.</string>
     <key>NSCameraUsageDescription</key>
-    <string>When you choose Camera look, Fonsters follows a face on your Mac. Camera frames are not saved or uploaded.</string>
+    <string>When you enable the camera, Fonsters mirrors your eyes, head and raised hands on this device. Camera frames are not saved or uploaded.</string>
     <key>LSApplicationCategoryType</key>
 	<string>public.app-category.entertainment</string>
 	<key>UILaunchScreen</key>
