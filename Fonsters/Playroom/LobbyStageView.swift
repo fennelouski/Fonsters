@@ -42,7 +42,11 @@ struct LobbyStageView: View {
                 ProgressView().accessibilityLabel("Opening the Fonster world").allowsHitTesting(false)
             }
         }
-        .onDisappear { readySubscription?.cancel(); readySubscription = nil }
+        .task(id: lobby.cameraNavigationActive) { if lobby.cameraNavigationActive { await lobby.animateCameraNavigation() } }
+        #if os(macOS)
+        .onReceive(NotificationCenter.default.publisher(for: NSApplication.didResignActiveNotification)) { _ in lobby.clearCameraKeys() }
+        #endif
+        .onDisappear { lobby.clearCameraKeys(); readySubscription?.cancel(); readySubscription = nil }
     }
     @ViewBuilder private func platformStage(size: CGSize, cameraState: LocalLobbyController.ControlState) -> some View {
         #if os(tvOS)
@@ -178,6 +182,19 @@ struct LobbyStageView: View {
             }
             roots.append(container); lobby.containers.append(container)
         }
+        lobby.mirrorGuestsRoot = Entity(); lobby.mirrorGuests = []
+        for i in 0..<3 {
+            let container = Entity(); container.scale = .init(repeating: 0.55)
+            container.position = [Float(i - 1) * 2.3, 0.594, -1.5 - Float(i % 2)]
+            let companion = PlayroomCompanion.fixtures[i + 1]
+            let rig = try CreatureRig(companion.descriptor, furDetail: .world)
+            let guest = PlayroomController(); guest.autonomyEnabled = false; guest.roaming = false; guest.writesProbe = false; guest.soundEnabled = false
+            guest.install(rig, name: "Camera companion"); container.addChild(rig.root)
+            container.isEnabled = false; lobby.mirrorGuestsRoot.addChild(container); lobby.mirrorGuests.append(guest)
+        }
+        roots.append(lobby.mirrorGuestsRoot)
+        let stream = LobbyWorldStream(); lobby.streamedWorld = stream
+        stream.update(center: lobby.cameraPan); roots.append(stream.root)
         let neighborhood = try LobbyWorldScene.make(lobby.world)
         roots.append(neighborhood.root); lobby.fountainDrops = neighborhood.fountainDrops
         let ball = ModelEntity(mesh: .generateSphere(radius: 0.14), materials: [SimpleMaterial(color: FonsterPlatformColor(srgbRed: 0.96, green: 0.62, blue: 0.42, alpha: 1), roughness: 0.4, isMetallic: false)])

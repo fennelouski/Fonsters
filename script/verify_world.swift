@@ -6,6 +6,14 @@ import simd
 @main struct VerifyWorld {
     @MainActor static func main() throws {
         setbuf(stdout, nil)
+        let stream = LobbyWorldStream()
+        stream.update(center: .zero)
+        let homeNames = Set(stream.root.children.map(\.name))
+        precondition(homeNames.count == 9)
+        for step in 0..<100 { stream.update(center: [Float(step) * 97, 0, Float(step) * -51]); precondition(stream.root.children.count == 9) }
+        stream.update(center: .zero)
+        precondition(Set(stream.root.children.map(\.name)) == homeNames)
+        print("PASS: 100 streamed neighborhoods retain nine tiles; Home regenerates the same deterministic terrain")
         if CommandLine.arguments.contains("--camera-only") {
             let lobby = LocalLobbyController(), camera = PerspectiveCamera()
             camera.camera.fieldOfViewInDegrees = 42; lobby.camera = camera

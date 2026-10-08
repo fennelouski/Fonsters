@@ -268,7 +268,7 @@ struct MobileLobbyView: View {
             }.padding(.top, 8).padding(.bottom, 8)
         }.frame(maxWidth: .infinity, maxHeight: .infinity)
             .focusable().focusEffectDisabled().focused($cameraFocused)
-            .onKeyPress(phases: [.down, .repeat]) { press in lobby.cameraKey(press.key, modifiers: press.modifiers) ? .handled : .ignored }
+            .onKeyPress(phases: [.down, .repeat, .up]) { press in lobby.cameraKey(press.key, modifiers: press.modifiers, held: press.phase != .up) ? .handled : .ignored }
             .onAppear { cameraFocused = true }
             .foregroundStyle(FonsterChrome.primary)
             .task(id: lobby.shouldAnimate) { if lobby.shouldAnimate { await lobby.animate() } else { lobby.refreshGates() } }

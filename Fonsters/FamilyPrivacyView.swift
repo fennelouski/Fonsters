@@ -24,27 +24,56 @@ private struct ParentChallengeView: View {
     let cancel: () -> Void
     @State private var answer = ""
     @State private var incorrect = false
+    @State private var visible = false
+    @State private var dismissing = false
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @Environment(\.scenePhase) private var phase
     var body: some View {
-        VStack(spacing: 20) {
-            HStack { Spacer(); FonsterIconButton(title: "Cancel parent action", symbol: "xmark", action: cancel).accessibilityIdentifier("cancelParentAction") }
-            Image(systemName: "person.badge.shield.checkmark").font(.system(size: 48)).foregroundStyle(FonsterTone.company.ink).accessibilityHidden(true)
+        VStack(spacing: 24) {
+            HStack { Spacer(); FonsterIconButton(title: "Cancel parent action", symbol: "xmark", action: close).accessibilityIdentifier("cancelParentAction") }
+            Image(systemName: "person.badge.shield.checkmark").font(.system(size: 40)).foregroundStyle(FonsterTone.company.ink).accessibilityHidden(true)
             Text("Ask a grown-up").font(.title2.bold())
-            Text(purpose).multilineTextAlignment(.center)
-            Text(challenge.question).font(.title3).accessibilityIdentifier("parentQuestion")
-            TextField("Answer", text: $answer, prompt: Text("Answer").foregroundStyle(FonsterChrome.secondary)).textFieldStyle(.roundedBorder)
+            Text(purpose).font(.callout).multilineTextAlignment(.center).fixedSize(horizontal: false, vertical: true)
+            HStack(spacing: 16) {
+            Text("\(challenge.first) × \(challenge.second) =").font(.title2.weight(.semibold)).monospacedDigit()
+                .accessibilityLabel(challenge.question).accessibilityIdentifier("parentQuestion")
+            TextField("Answer", text: $answer, prompt: Text("?").foregroundStyle(FonsterChrome.secondary)).textFieldStyle(.plain)
+                .multilineTextAlignment(.center).font(.title2.weight(.semibold)).monospacedDigit()
+                .padding(.vertical, 14).frame(width: 88).background(FonsterTone.company.wash, in: RoundedRectangle(cornerRadius: 16))
+                #if os(iOS)
+                .keyboardType(.numberPad)
+                #endif
                 .accessibilityLabel("Parent answer").accessibilityIdentifier("parentAnswer")
                 .onSubmit(submit)
-            if incorrect { Text("Try again, or close to keep playing.").foregroundStyle(.secondary).accessibilityIdentifier("parentIncorrect") }
+            }
+            Text(incorrect ? "Try again, or close to keep playing." : "").font(.caption).foregroundStyle(FonsterChrome.secondary).frame(minHeight: 18).accessibilityIdentifier("parentIncorrect")
             FonsterIconButton(title: "Continue parent action", symbol: "checkmark", tone: .company, action: submit)
-                .disabled(answer.isEmpty).accessibilityIdentifier("approveParentAction")
-        }.padding(24).frame(maxWidth: 420)
+                .disabled(answer.isEmpty || dismissing).accessibilityIdentifier("approveParentAction")
+        }.foregroundStyle(FonsterChrome.primary).padding(28).frame(maxWidth: 420)
+        .opacity(visible ? 1 : 0).scaleEffect(reduceMotion || visible ? 1 : 0.94)
+        .offset(y: reduceMotion || visible ? 0 : 12)
+        .onAppear { withAnimation(reduceMotion ? nil : .spring(response: 0.43, dampingFraction: 0.8)) { visible = true } }
         #if os(macOS)
         .frame(minWidth: 360, minHeight: 360)
         #elseif os(iOS)
         .phoneOrientation(.details)
         #endif
     }
-    private func submit() { incorrect = !approve(answer) }
+    private func submit() {
+        guard !dismissing else { return }
+        guard challenge.accepts(answer) else { withAnimation(reduceMotion ? nil : .easeInOut(duration: 0.18)) { incorrect = true }; return }
+        leave { _ = approve(answer) }
+    }
+    private func close() { leave(cancel) }
+    private func leave(_ action: @escaping () -> Void) {
+        guard !dismissing else { return }; dismissing = true
+        withAnimation(reduceMotion ? nil : .easeInOut(duration: 0.18)) { visible = false }
+        Task { @MainActor in
+            if !reduceMotion { try? await Task.sleep(for: .milliseconds(180)) }
+            guard phase == .active else { cancel(); return }
+            action()
+        }
+    }
 }
 
 /// Legacy galleries/windows retain all functionality inside an adult area.

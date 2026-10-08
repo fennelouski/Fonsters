@@ -10,6 +10,12 @@ import simd
 /// fallback or asset installation. Audio, frames and transcripts are transient.
 @MainActor @Observable
 final class CreatureInputs {
+    private(set) var cameraDenied = false
+    private(set) var microphoneDenied = false
+    func refreshPermissions() {
+        cameraDenied = [.denied, .restricted].contains(AVCaptureDevice.authorizationStatus(for: .video))
+        microphoneDenied = [.denied, .restricted].contains(AVCaptureDevice.authorizationStatus(for: .audio)) || [.denied, .restricted].contains(SFSpeechRecognizer.authorizationStatus())
+    }
     private(set) var microphoneEnabled = false
     private(set) var cameraEnabled = false
     private(set) var level: Float = 0
@@ -17,6 +23,7 @@ final class CreatureInputs {
     private(set) var lastAction: CreatureSpokenAction?
     @ObservationIgnored var onVoiceActivity: (() -> Void)?
     @ObservationIgnored var onFace: ((SIMD2<Float>) -> Void)?
+    @ObservationIgnored var onGroup: (([CreatureMirrorSample]) -> Void)?
     @ObservationIgnored var onMirror: ((CreatureMirrorSample) -> Void)?
     @ObservationIgnored var onCommand: ((CreatureSpokenAction) -> Void)?
     @ObservationIgnored private var engine: AVAudioEngine?
@@ -40,6 +47,7 @@ final class CreatureInputs {
     private var synthetic: Bool { ProcessInfo.processInfo.arguments.contains("--verify-live-inputs") }
 
     init() {
+        refreshPermissions()
         #if os(iOS)
         interruption = NotificationCenter.default.addObserver(forName: AVAudioSession.interruptionNotification, object: nil, queue: .main) { [weak self] _ in
             Task { @MainActor [weak self] in self?.stopAll() }
@@ -59,9 +67,11 @@ final class CreatureInputs {
                 SFSpeechRecognizer.requestAuthorization { continuation.resume(returning: $0 == .authorized) }
             }
             guard generation == microphoneConsentGeneration, microphoneEnabled else { return }
+            refreshPermissions()
             guard speech else { microphoneEnabled = false; status = "Speech access wasn’t granted."; return }
             microphoneAllowed = await AVCaptureDevice.requestAccess(for: .audio)
             guard generation == microphoneConsentGeneration, microphoneEnabled else { return }
+            refreshPermissions()
             guard microphoneAllowed else { microphoneEnabled = false; status = "Microphone access wasn’t granted."; return }
             if !suspended { startMicrophone() }
         }
@@ -74,6 +84,7 @@ final class CreatureInputs {
         Task { @MainActor in
             cameraAllowed = await AVCaptureDevice.requestAccess(for: .video)
             guard generation == cameraConsentGeneration, cameraEnabled else { return }
+            refreshPermissions()
             guard cameraAllowed else { cameraEnabled = false; status = "Camera access wasn’t granted."; return }
             if !suspended { startCamera() }
         }
@@ -181,7 +192,12 @@ final class CreatureInputs {
     private func startCamera() {
         guard camera == nil, cameraEnabled, !suspended else { return }
         cameraGeneration += 1; let generation = cameraGeneration
-        let worker = FaceCaptureWorker(onSample: { [weak self] sample in
+        let worker = FaceCaptureWorker(onGroup: { [weak self] samples in
+            Task { @MainActor [weak self] in
+                guard let self, self.cameraGeneration == generation, self.cameraEnabled, !self.suspended else { return }
+                self.onGroup?(samples)
+            }
+        }, onSample: { [weak self] sample in
             Task { @MainActor [weak self] in
                 guard let self, self.cameraGeneration == generation, self.cameraEnabled, !self.suspended else { return }
                 self.onFace?(sample.gaze); self.onMirror?(sample)
@@ -195,7 +211,7 @@ final class CreatureInputs {
         })
         camera = worker; worker.start(); status = "Camera on · step into view."
     }
-    private func stopCamera() { cameraGeneration += 1; camera?.stop(); camera = nil; onFace?(.zero); onMirror?(.init(found: false)) }
+    private func stopCamera() { cameraGeneration += 1; camera?.stop(); camera = nil; onFace?(.zero); onMirror?(.init(found: false)); onGroup?([]) }
 }
 
 /// Safety invariant: all capture and calibration state belongs to this serial
@@ -203,13 +219,15 @@ final class CreatureInputs {
 nonisolated final class FaceCaptureWorker: NSObject, AVCaptureVideoDataOutputSampleBufferDelegate, @unchecked Sendable {
     private let queue = DispatchQueue(label: "Fonsters.LocalMirror", qos: .utility)
     private let session = AVCaptureSession()
+    private let onGroup: @Sendable ([CreatureMirrorSample]) -> Void
     private let onSample: @Sendable (CreatureMirrorSample) -> Void
     private let onFailure: @Sendable () -> Void
     private var lastFrame: TimeInterval = 0
-    private var previousCenter: SIMD2<Float>?
+    private var previousCenters: [Int: SIMD2<Float>] = [:]
+    private var baselines: [Int: Float] = [:]
     private var openEyeBaseline: Float = 0.20
-    init(onSample: @escaping @Sendable (CreatureMirrorSample) -> Void, onFailure: @escaping @Sendable () -> Void) {
-        self.onSample = onSample; self.onFailure = onFailure; super.init()
+    init(onGroup: @escaping @Sendable ([CreatureMirrorSample]) -> Void = { _ in }, onSample: @escaping @Sendable (CreatureMirrorSample) -> Void, onFailure: @escaping @Sendable () -> Void) {
+        self.onGroup = onGroup; self.onSample = onSample; self.onFailure = onFailure; super.init()
     }
     func start() {
         queue.async { [self] in
@@ -241,12 +259,24 @@ nonisolated final class FaceCaptureWorker: NSObject, AVCaptureVideoDataOutputSam
         let faceRequest = VNDetectFaceLandmarksRequest(), bodyRequest = VNDetectHumanBodyPoseRequest()
         do {
             try VNImageRequestHandler(cvPixelBuffer: buffer, orientation: .up).perform([faceRequest, bodyRequest])
-            guard let face = faceRequest.results?.filter({ $0.confidence >= 0.6 }).max(by: { $0.boundingBox.width * $0.boundingBox.height < $1.boundingBox.width * $1.boundingBox.height }) else {
-                previousCenter = nil; onSample(.init(found: false)); return
+            var remaining = Array((faceRequest.results ?? []).filter { $0.confidence >= 0.6 }.sorted { $0.boundingBox.width * $0.boundingBox.height > $1.boundingBox.width * $1.boundingBox.height }.prefix(4))
+            var faces: [VNFaceObservation] = []
+            for slot in 0..<min(4, remaining.count) {
+                let nearest: Int
+                if let prior = previousCenters[slot] {
+                    nearest = remaining.indices.min { a, b in
+                        simd_distance(prior, SIMD2(Float(remaining[a].boundingBox.midX), Float(remaining[a].boundingBox.midY))) < simd_distance(prior, SIMD2(Float(remaining[b].boundingBox.midX), Float(remaining[b].boundingBox.midY)))
+                    } ?? 0
+                } else { nearest = 0 }
+                faces.append(remaining.remove(at: nearest))
             }
+            guard !faces.isEmpty else { previousCenters.removeAll(); baselines.removeAll(); onSample(.init(found: false)); onGroup([]); return }
+            var samples: [CreatureMirrorSample] = []
+            for (slot, face) in faces.enumerated() {
+            openEyeBaseline = baselines[slot] ?? 0.20
             let box = face.boundingBox, center = SIMD2(Float(box.midX), Float(box.midY))
             var sample = CreatureMirrorSample(gaze: [(0.5 - center.x) * 2, (center.y - 0.5) * 2])
-            sample.motion = previousCenter.map { min(1, simd_length(center - $0) * 18) } ?? 0; previousCenter = center
+            sample.motion = previousCenters[slot].map { min(1, simd_length(center - $0) * 18) } ?? 0; previousCenters[slot] = center
             sample.tilt = min(0.22, max(-0.22, -(face.roll?.floatValue ?? 0)))
             if let left = face.landmarks?.leftEye, let right = face.landmarks?.rightEye {
                 func ratio(_ eye: VNFaceLandmarkRegion2D) -> Float {
@@ -277,18 +307,31 @@ nonisolated final class FaceCaptureWorker: NSObject, AVCaptureVideoDataOutputSam
             if let smile = sample.facialSmile, let eyes = sample.eyeOpenness {
                 sample.smilingEyes = min(1, max(0, (1 - eyes) * 1.6)) * max(0, smile)
             }
-            if let body = bodyRequest.results?.first, let points = try? body.recognizedPoints(.all) {
+            if let body = bodyRequest.results?.min(by: { a, b in
+                let ax = (try? a.recognizedPoint(.neck).location.x) ?? -10
+                let bx = (try? b.recognizedPoint(.neck).location.x) ?? -10
+                return abs(ax - Double(center.x)) < abs(bx - Double(center.x))
+            }), let points = try? body.recognizedPoints(.all) {
                 if let neck = points[.neck], neck.confidence > 0.3, abs(Float(neck.location.x) - center.x) < max(0.15, Float(box.width)) {
                     for (wristKey, shoulderKey) in [(VNHumanBodyPoseObservation.JointName.leftWrist, VNHumanBodyPoseObservation.JointName.leftShoulder), (.rightWrist, .rightShoulder)] {
                         if let wrist = points[wristKey], let shoulder = points[shoulderKey], wrist.confidence > 0.4, shoulder.confidence > 0.4 {
                             let height = min(1, max(0, Float(wrist.location.y - shoulder.location.y) * 5 + 0.35))
+                            if wristKey == .leftWrist { sample.leftArm = height } else { sample.rightArm = height }
                             if height > sample.raisedHand { sample.raisedHand = height; sample.handX = Float(wrist.location.x) }
                         }
                     }
                 }
             }
-            onSample(sample)
-        } catch { onSample(.init(found: false)) }
+            if let body = bodyRequest.results?.min(by: { abs(Float((try? $0.recognizedPoint(.neck).location.x) ?? -10) - center.x) < abs(Float((try? $1.recognizedPoint(.neck).location.x) ?? -10) - center.x) }), let points = try? body.recognizedPoints(.all),
+                let neck = points[.neck], let hip = points[.root], neck.confidence > 0.4, hip.confidence > 0.4 {
+                sample.bodyLean = Float(neck.location.x - hip.location.x) * 2
+                sample.crouch = max(0, min(1, 1 - Float(neck.location.y - hip.location.y) * 5))
+            }
+            baselines[slot] = openEyeBaseline
+            samples.append(sample)
+            }
+            onSample(samples[0]); onGroup(samples)
+        } catch { onSample(.init(found: false)); onGroup([]) }
     }
 }
 #endif

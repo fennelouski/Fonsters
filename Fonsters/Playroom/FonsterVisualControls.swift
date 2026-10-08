@@ -1,5 +1,10 @@
 #if os(macOS) || os(iOS) || os(tvOS) || os(visionOS)
 import SwiftUI
+import Observation
+import CryptoKit
+#if os(macOS)
+import AppKit
+#endif
 #if os(iOS) || os(tvOS)
 import UIKit
 #endif
@@ -36,8 +41,28 @@ struct FonsterIcon: View {
     }
 }
 
+/// One discovery badge per launch. Every encountered icon registers itself,
+/// including icons in panels, without saving names, profiles or analytics.
+@MainActor @Observable final class FonsterButtonDiscovery {
+    private(set) var suggestion: String?
+    private var chosen = false
+    private let defaults = UserDefaults.standard
+    private var seen: Set<String>
+    init() { seen = Set(UserDefaults.standard.stringArray(forKey: "Fonsters.triedButtons.v1") ?? []) }
+    func encounter(_ key: String) {
+        guard !chosen, !seen.contains(key), !["xmark", "stop.fill", "questionmark.circle", "checkmark", "arrow.right"].contains(key.components(separatedBy: "|").first ?? "") else { return }
+        suggestion = key; chosen = true
+    }
+    func tried(_ key: String) { seen.insert(key); defaults.set(Array(seen).sorted(), forKey: "Fonsters.triedButtons.v1"); if suggestion == key { suggestion = nil } }
+}
+private struct FonsterDiscoveryKey: EnvironmentKey { static let defaultValue: FonsterButtonDiscovery? = nil }
+extension EnvironmentValues {
+    var fonsterButtonDiscovery: FonsterButtonDiscovery? { get { self[FonsterDiscoveryKey.self] } set { self[FonsterDiscoveryKey.self] = newValue } }
+}
 struct FonsterIconButton: View {
     @Environment(\.isEnabled) private var isEnabled
+    @Environment(\.fonsterButtonDiscovery) private var discovery
+    private var discoveryKey: String { symbol + "|" + SHA256.hash(data: Data(title.utf8)).map { String(format: "%02x", $0) }.joined() }
     let title: String
     let symbol: String
     var tone: FonsterTone = .quiet
@@ -45,7 +70,12 @@ struct FonsterIconButton: View {
     var detail: String? = nil
     let action: () -> Void
     var body: some View {
-        Button(action: action) { FonsterIcon(symbol: symbol, tone: tone, selected: selected) }
+        Button { discovery?.tried(discoveryKey); action() } label: {
+            FonsterIcon(symbol: symbol, tone: tone, selected: selected)
+                .overlay(alignment: .topTrailing) { if discovery?.suggestion == discoveryKey { Circle().fill(FonsterTone.play.ink).frame(width: 8, height: 8).accessibilityHidden(true) } }
+        }
+        .onAppear { if isEnabled { discovery?.encounter(discoveryKey) } }
+        .onChange(of: isEnabled) { if isEnabled { discovery?.encounter(discoveryKey) } }
             #if os(tvOS)
             .buttonStyle(.bordered)
             #else
@@ -57,17 +87,21 @@ struct FonsterIconButton: View {
 }
 
 struct FonsterIconToggle: View {
+    @Environment(\.fonsterButtonDiscovery) private var discovery
+    private var discoveryKey: String { symbol + "|" + SHA256.hash(data: Data(title.utf8)).map { String(format: "%02x", $0) }.joined() }
     let title: String
     let symbol: String
     var tone: FonsterTone = .quiet
     @Binding var isOn: Bool
     var body: some View {
-        Button { isOn.toggle() } label: { FonsterIcon(symbol: symbol, tone: tone, selected: isOn) }
+        Button { discovery?.tried(discoveryKey); isOn.toggle() } label: { FonsterIcon(symbol: symbol, tone: tone, selected: isOn) }
             #if os(tvOS)
             .buttonStyle(.bordered)
             #else
             .buttonStyle(.plain)
             #endif
+            .onAppear { discovery?.encounter(discoveryKey) }
+            .overlay(alignment: .topTrailing) { if discovery?.suggestion == discoveryKey { Circle().fill(FonsterTone.play.ink).frame(width: 8, height: 8).accessibilityHidden(true) } }
             .fonsterHelp("\(title): \(isOn ? "on" : "off")", symbol: symbol)
             .accessibilityRepresentation { Toggle(title, isOn: $isOn) }
     }
@@ -232,7 +266,9 @@ private struct FonsterHoverHelp: ViewModifier {
     @State private var tooltipHeight: CGFloat = 160
     #endif
     func body(content: Content) -> some View {
-        #if os(iOS) || os(tvOS)
+        #if os(macOS)
+        content.background(FonsterMacTooltip(text: text)).accessibilityHint(text)
+        #elseif os(iOS) || os(tvOS)
         content.help(text)
             #if os(tvOS)
             .focused($hovering)
@@ -271,6 +307,92 @@ private struct FonsterHoverHelp: ViewModifier {
         #endif
     }
 }
+
+#if os(macOS)
+/// A nonactivating native tooltip remains above clipped panels and never steals
+/// focus. Tracking and modifier monitors are removed when its anchor detaches.
+private struct FonsterMacTooltip: NSViewRepresentable {
+    let text: String
+    @Environment(\.colorScheme) private var scheme
+    func makeNSView(context: Context) -> Anchor { let anchor = Anchor(); anchor.identifier = .init("FonsterTooltipAnchor"); return anchor }
+    func updateNSView(_ view: Anchor, context: Context) {
+        view.text = text; view.tipAppearance = NSAppearance(named: scheme == .dark ? .darkAqua : .aqua)
+    }
+    static func dismantleNSView(_ view: Anchor, coordinator: ()) { view.detach() }
+    @MainActor final class Anchor: NSView {
+        var text = ""
+        var tipAppearance: NSAppearance?
+        private var hovering = false
+        private var suppressed = false
+        private var pending: DispatchWorkItem?
+        private var monitor: Any?
+        private var observer: NSObjectProtocol?
+        private var panel: TipPanel?
+        override func hitTest(_ point: NSPoint) -> NSView? { nil }
+        override func updateTrackingAreas() {
+            super.updateTrackingAreas()
+            for area in trackingAreas { removeTrackingArea(area) }
+            addTrackingArea(NSTrackingArea(rect: bounds, options: [.mouseEnteredAndExited, .activeInKeyWindow, .inVisibleRect], owner: self))
+        }
+        override func viewDidMoveToWindow() {
+            super.viewDidMoveToWindow(); detach()
+            guard let window else { return }
+            monitor = NSEvent.addLocalMonitorForEvents(matching: [.flagsChanged, .leftMouseDown, .rightMouseDown]) { [weak self] event in
+                let option = event.modifierFlags.contains(.option), flags = event.type == .flagsChanged
+                Task { @MainActor [weak self] in
+                    guard let self else { return }
+                    if flags { if self.hovering && option { self.show() } }
+                    else { self.suppressed = true; self.hide() }
+                }
+                return event
+            }
+            observer = NotificationCenter.default.addObserver(forName: NSWindow.didResignKeyNotification, object: window, queue: .main) { [weak self] _ in
+                Task { @MainActor [weak self] in self?.hovering = false; self?.hide() }
+            }
+        }
+        override func mouseEntered(with event: NSEvent) {
+            hovering = true; suppressed = false
+            if event.modifierFlags.contains(.option) { show(); return }
+            let task = DispatchWorkItem { [weak self] in self?.show() }
+            pending = task; DispatchQueue.main.asyncAfter(deadline: .now() + 0.6, execute: task)
+        }
+        override func mouseExited(with event: NSEvent) { hovering = false; suppressed = false; hide() }
+        private func show() {
+            pending?.cancel(); pending = nil
+            guard hovering, !suppressed, let window, window.isKeyWindow, !text.isEmpty else { return }
+            let width: CGFloat = 292
+            let font = NSFont.systemFont(ofSize: 13)
+            let height = min(240, max(44, NSAttributedString(string: text, attributes: [.font: font]).boundingRect(with: NSSize(width: width - 24, height: 1000), options: [.usesLineFragmentOrigin, .usesFontLeading]).height + 24))
+            let tip = panel ?? TipPanel(contentRect: .zero, styleMask: [.borderless, .nonactivatingPanel], backing: .buffered, defer: false)
+            tip.title = "Fonster tooltip"
+            panel = tip; tip.isOpaque = false; tip.backgroundColor = .clear; tip.hasShadow = true
+            tip.level = .popUpMenu; tip.ignoresMouseEvents = true; tip.appearance = tipAppearance
+            let background = NSVisualEffectView(frame: NSRect(x: 0, y: 0, width: width, height: height))
+            background.material = .popover; background.state = .active; background.wantsLayer = true
+            background.layer?.cornerRadius = 10; background.layer?.masksToBounds = true
+            let label = NSTextField(wrappingLabelWithString: text)
+            label.font = font; label.textColor = .labelColor; label.frame = background.bounds.insetBy(dx: 12, dy: 10)
+            background.addSubview(label); tip.contentView = background
+            let rect = window.convertToScreen(convert(bounds, to: nil))
+            let screen = window.screen?.visibleFrame ?? window.frame
+            let x = min(screen.maxX - width - 8, max(screen.minX + 8, rect.midX - width / 2))
+            let y = rect.minY - height - 8 >= screen.minY ? rect.minY - height - 8 : rect.maxY + 8
+            tip.setFrame(NSRect(x: x, y: min(screen.maxY - height - 8, y), width: width, height: height), display: true)
+            tip.orderFront(nil)
+        }
+        private func hide() { pending?.cancel(); pending = nil; panel?.orderOut(nil) }
+        func detach() {
+            hovering = false; hide()
+            if let monitor { NSEvent.removeMonitor(monitor) }; monitor = nil
+            if let observer { NotificationCenter.default.removeObserver(observer) }; observer = nil
+        }
+    }
+    @MainActor final class TipPanel: NSPanel {
+        override var canBecomeKey: Bool { false }
+        override var canBecomeMain: Bool { false }
+    }
+}
+#endif
 
 extension View {
     /// Native tooltips on Mac/visionOS, explicit pointer tooltips on iPad/iPhone,

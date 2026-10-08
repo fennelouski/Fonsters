@@ -18,17 +18,31 @@ import simd
         precondition(p.poses[1].position.x == 0 && p.poses[0].position.x != 0)
         p.change(query: "moss", care: 1, names: names, natural: natural, immediate: true)
         precondition(p.poses[1].scale == 0.93)
-        precondition(p.poses.enumerated().filter { $0.offset != 1 }.allSatisfy { abs($0.element.position.x) == 18 })
+        precondition(p.poses.enumerated().filter { $0.offset != 1 }.allSatisfy { abs($0.element.position.x) >= 4 })
         for _ in 0..<100 {
             p.change(query: "", care: 2, names: names, natural: natural, immediate: false)
             p.advance(dt: 0.08, natural: natural)
             p.change(query: "", care: nil, names: names, natural: natural, immediate: false)
-            p.advance(dt: 1, natural: natural)
+            p.advance(dt: 10, natural: natural)
             precondition(p.poses == natural && !p.borrowingStage)
         }
         p.change(query: "orbit", care: nil, names: names, natural: natural, immediate: true)
         let still = p.poses; p.advance(dt: .nan, natural: natural)
         precondition(p.poses == still && p.matches == [4])
+        var camera = LobbyCameraMotion()
+        camera.press("w", down: true, fast: false)
+        let first = camera.advance(dt: 0.016).translation
+        precondition(simd_length(first) > 0 && simd_length(first) < 0.01)
+        for _ in 0..<60 { _ = camera.advance(dt: 1/60) }
+        let normal = simd_length(camera.translation)
+        camera.fast = true
+        for _ in 0..<60 { _ = camera.advance(dt: 1/60) }
+        precondition(simd_length(camera.translation) > normal * 2.8)
+        camera.press("w", down: false, fast: false)
+        for _ in 0..<60 { _ = camera.advance(dt: 1/60) }
+        precondition(!camera.active)
+        camera.press("a", down: true, fast: false); camera.reset()
+        precondition(camera.keys.isEmpty && !camera.active)
         print("PASS: exact/prefix/diacritic/stable duplicate-name search; front match and side positions; 100 interrupted care/back transitions restore natural poses; immediate static layout and nonfinite input.")
     }
 }

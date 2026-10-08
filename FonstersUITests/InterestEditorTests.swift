@@ -64,6 +64,7 @@ final class InterestEditorTests: XCTestCase {
         let app = launch()
         let camera = app.buttons["editorCamera"]
         XCTAssertTrue(camera.exists); camera.tap()
+        XCTAssertTrue(app.buttons["senseEducationContinue"].waitForExistence(timeout: 5)); app.buttons["senseEducationContinue"].tap()
         XCTAssertTrue(app.textFields["parentAnswer"].waitForExistence(timeout: 5))
         attach(app, "editor-06-camera-review")
         app.buttons["cancelParentAction"].tap()

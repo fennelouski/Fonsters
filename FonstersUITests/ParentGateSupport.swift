@@ -2,6 +2,8 @@ import XCTest
 
 extension XCTestCase {
     @MainActor func approveParentAction(in app: XCUIApplication) {
+        let education = app.buttons["senseEducationContinue"]
+        if education.waitForExistence(timeout: 1) { education.tap() }
         let question = app.staticTexts["parentQuestion"]
         XCTAssertTrue(question.waitForExistence(timeout: 5))
         let values = question.label.components(separatedBy: CharacterSet.decimalDigits.inverted).compactMap(Int.init)
