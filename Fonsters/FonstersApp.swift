@@ -162,6 +162,12 @@ struct FonstersApp: App {
         ])
         #if os(macOS) || os(iOS) || os(tvOS)
         if isPlayroomPrototype {
+            let args = ProcessInfo.processInfo.arguments
+            if let index = args.firstIndex(of: "--library-store"), index + 1 < args.count {
+                let url = URL(fileURLWithPath: args[index + 1])
+                try? FileManager.default.createDirectory(at: url.deletingLastPathComponent(), withIntermediateDirectories: true)
+                return try! ModelContainer(for: schema, configurations: [ModelConfiguration("PersonalPreview", schema: schema, url: url, cloudKitDatabase: .none)])
+            }
             return try! ModelContainer(for: schema, configurations: [ModelConfiguration(schema: schema, isStoredInMemoryOnly: true, cloudKitDatabase: .none)])
         }
         #endif

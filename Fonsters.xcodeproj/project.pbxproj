@@ -107,6 +107,7 @@
 				CreatureEnvironmentView.swift,
 				FeatureFlag.swift,
 				Fonster.swift,
+				PersonalFonsterLibrary.swift,
 				FonstersApp.swift,
 				Info.plist,
 				InitialCreatureNames.swift,
@@ -127,6 +128,7 @@
 			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
 			membershipExceptions = (
 				Playroom/ContinuousLobbyView.swift,
+                Playroom/FonsterProfileEditor.swift,
 				Playroom/MobilePlayroomView.swift,
 				Playroom/TelevisionPlayroomView.swift,
 				Assets.xcassets,

@@ -4,7 +4,7 @@ import simd
 /// A walkable local world. No network, accounts or appearance seeds.
 struct LocalLobbySimulation {
     struct Agent {
-        let name: String
+        var name: String
         let home: SIMD2<Float>
         var position: SIMD2<Float>
         var goal: SIMD2<Float>
@@ -41,6 +41,10 @@ struct LocalLobbySimulation {
             let home = layout.home(i)
             return .init(name: name, home: home, position: home, goal: home, nextWalk: Float(i) * 1.1 + 2)
         }
+    }
+    mutating func rename(_ names: [String]) {
+        guard names.count == agents.count else { return }
+        for index in agents.indices { agents[index].name = names[index] }
     }
     private mutating func setGoal(_ destination: SIMD2<Float>, actor: Int, hold: Float = 12) {
         agents[actor].seated = false; agents[actor].seatRequested = false

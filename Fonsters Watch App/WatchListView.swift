@@ -141,19 +141,7 @@ struct WatchListView: View {
     }
 
     private func seedInitialCreaturesIfNeeded() async {
-        guard !UserDefaults.standard.bool(forKey: InstallationSeeds.hasSeededKey) else { return }
-        let seeds = InstallationSeeds.seeds()
-        guard !seeds.isEmpty else { return }
-        var premadeShuffle = InitialCreatureNames.shuffledPremade()
-        var premadeIndex = 0
-        withAnimation {
-            for seed in seeds {
-                let name = InitialCreatureNames.nextName(premadeShuffle: &premadeShuffle, premadeIndex: &premadeIndex)
-                let f = Fonster(name: name, seed: seed, createdAtISO8601: Fonster.currentCreatedAtISO8601())
-                modelContext.insert(f)
-            }
-        }
-        UserDefaults.standard.set(true, forKey: InstallationSeeds.hasSeededKey)
+        try? await PersonalFonsterLibrary.ensureStarters(in: modelContext)
     }
 
     /// Runs once per app launch: if store is empty, creates one Fonster with current time.
@@ -161,11 +149,6 @@ struct WatchListView: View {
         guard !hasPerformedLaunchSelectionCheck else { return }
         hasPerformedLaunchSelectionCheck = true
         await Task.yield()
-        if fonsters.isEmpty {
-            withAnimation {
-                let f = Fonster(name: InitialCreatureNames.oneName(), seed: InstallationSeeds.currentTimeSeed(), createdAtISO8601: Fonster.currentCreatedAtISO8601())
-                modelContext.insert(f)
-            }
-        }
+
     }
 }

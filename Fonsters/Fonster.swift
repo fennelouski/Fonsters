@@ -34,6 +34,11 @@ public final class Fonster {
     public var createdAt: Date = Date()
     /// Full ISO 8601 date-time with timezone offset at creation (e.g. "2025-02-03T14:30:00-08:00"). Nil for legacy records.
     public var createdAtISO8601: String?
+    /// Optional additions keep existing SwiftData/CloudKit records readable.
+    public var biographyData: Data?
+    public var profileModifiedAt: Date?
+    /// Private logical key for converging simultaneous first launches. Never shared.
+    public var starterKey: String?
 
     public init(
         id: UUID = UUID(),
@@ -103,6 +108,11 @@ public final class Fonster {
     }
 
     private static let cap = 20
+
+    var biography: FonsterBiography {
+        get { biographyData.flatMap { try? JSONDecoder().decode(FonsterBiography.self, from: $0) } ?? .init() }
+        set { let encoder = JSONEncoder(); encoder.outputFormatting = [.sortedKeys]; biographyData = try? encoder.encode(newValue.normalized) }
+    }
 
     public var history: [String] {
         get { Self.decodeHistory(historyData) }

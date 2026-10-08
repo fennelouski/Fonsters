@@ -178,12 +178,36 @@ final class LocalLobbyController {
     @ObservationIgnored private var careIdentities: [UUID: UUID] = [:]
     private func careIdentity(for member: Member) -> UUID { careIdentities[member.id] ?? member.id }
     @ObservationIgnored private var savedRoster: [SavedAppearance] = []
-    struct SavedAppearance: Equatable { let id: UUID; let name: String; let seed: String }
+    @ObservationIgnored private var savedBiographies: [UUID: FonsterBiography] = [:]
+    var selectedBiography: FonsterBiography { selectedMember.visitCard?.biography ?? selectedSavedID.flatMap { savedBiographies[$0] } ?? .init() }
+    struct SavedAppearance: Equatable { let id: UUID; let name: String; let seed: String; var biography: FonsterBiography = .init() }
     func showSaved(_ records: [SavedAppearance]) {
         guard records != savedRoster else { return }
         let wasSaved = !savedRoster.isEmpty
+        let previous = savedRoster
+        savedBiographies = Dictionary(records.map { ($0.id, $0.biography) }, uniquingKeysWith: { first, _ in first })
         savedRoster = records
         guard !records.isEmpty || wasSaved else { return } // Empty libraries can play with the local showcase.
+        if records.count == previous.count && zip(records, previous).allSatisfy({ pair in pair.0.id == pair.1.id && pair.0.seed == pair.1.seed }) {
+            // Naming/story edits keep the same rigs, camera, paths and care state.
+            if records.map(\.name) != previous.map(\.name) {
+                takeOwnerControl()
+                members = zip(members, records).map { member, record in
+                    let name = record.name.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ? "Fonster" : record.name
+                    if name == member.name { return member }
+                    member.controller.rename(name)
+                    return .init(id: member.id, name: name, localCompanion: .init(name: name, seed: record.seed), visitCard: nil, controller: member.controller)
+                }
+                simulation.rename(names)
+                if !searchQuery.isEmpty && !inCare {
+                    presentation.change(query: searchQuery, care: nil, names: names, natural: naturalPoses, immediate: immediatePresentation)
+                    searchMatches = presentation.matches; applyLayout()
+                }
+            }
+            return
+        }
+        let selectedRecord = selectedSavedID
+        let returningToCare = inCare
         cancelContact(); agent.takeOver(lobby: self); presence.ownerTookOver()
         let memories = PersonalityMemoryStore.localPreview()
         members = records.map { record in
@@ -208,6 +232,10 @@ final class LocalLobbyController {
         selected = 0; buddy = members.count > 1 ? 1 : 0
         simulation = .init(names: names); presentation = .init(); browsingCamera = nil; careReturnCamera = nil; careFocus = nil; searchQuery = ""; searchMatches = Array(members.indices)
         for (i, member) in members.enumerated() { simulation.setFeeling(member.controller.feeling, actor: i) }
+        if returningToCare, let selectedRecord, let publicID = savedIdentities[selectedRecord], let index = members.firstIndex(where: { $0.id == publicID }) {
+            selected = index; careFocus = index
+            presentation.change(query: "", care: index, names: names, natural: naturalPoses, immediate: true)
+        }
         containers = []; camera = nil; ready = false; roomRevision += 1
     }
     struct ControlState: Equatable {
@@ -257,13 +285,14 @@ final class LocalLobbyController {
         applyLayout(); writeProbe()
     }
 
-    func card(for member: Member, includeFeeling: Bool) -> FonsterVisitCard {
+    func card(for member: Member, includeFeeling: Bool, includeBiography: Bool = false) -> FonsterVisitCard {
         let temperament = member.controller.personality
         let displayName = member.visitCard?.name ?? member.name
         let publicName = displayName.contains("@") ? "Fonster" : String(displayName.unicodeScalars.map { CharacterSet.alphanumerics.contains($0) ? String($0) : "-" }.joined().prefix(24))
         return .init(publicID: member.id, name: publicName.isEmpty ? "Fonster" : publicName, appearance: member.descriptor,
                      warmth: member.controller.agentRituals.warmth(temperament?.greetingWarmth ?? 0.5), energy: member.controller.agentRituals.energy(temperament?.playEnergy ?? 0.5),
-                     feeling: includeFeeling ? member.controller.feeling : nil)
+                     feeling: includeFeeling ? member.controller.feeling : nil,
+                     biography: includeBiography ? member.visitCard?.biography ?? savedIdentities.first(where: { $0.value == member.id }).flatMap { savedBiographies[$0.key] } : nil)
     }
     func chooseFeeling(_ chosen: CreatureFeeling) {
         guard !selectedMember.isVisitor else { return }

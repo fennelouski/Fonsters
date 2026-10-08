@@ -1,5 +1,6 @@
 #if os(tvOS)
 import SwiftUI
+import SwiftData
 import RealityKit
 
 @available(tvOS 26.0, *)
@@ -16,11 +17,14 @@ struct TelevisionFonstersHome: View {
 /// direction on the remote can always move focus without accidentally petting.
 @available(tvOS 26.0, *)
 struct TelevisionWorldView: View {
+    @Environment(\.modelContext) private var modelContext
+    @Query(sort: \Fonster.createdAt, order: .reverse) private var saved: [Fonster]
     @Environment(\.scenePhase) private var scenePhase
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @State private var lobby = LocalLobbyController()
     @State private var controlHistory = FonsterControlHistory<LocalLobbyController.ControlState>()
     private let ink = Color(red: 0.30, green: 0.23, blue: 0.43)
+    private var roster: [LocalLobbyController.SavedAppearance] { PersonalFonsterLibrary.canonical(saved).map { .init(id: $0.id, name: $0.name, seed: $0.seed, biography: $0.biography) } }
     var body: some View {
         ZStack {
             Color(red: 0.91, green: 0.94, blue: 0.87).ignoresSafeArea()
@@ -127,6 +131,8 @@ struct TelevisionWorldView: View {
                 return lobby.cameraKey(press.key, modifiers: press.modifiers) ? .handled : .ignored
             }
             .task { await verifyRuntimeIfRequested() }
+            .task { try? await PersonalFonsterLibrary.ensureStarters(in: modelContext) }
+            .onChange(of: roster, initial: true) { lobby.showSaved(roster) }
             .task(id: lobby.shouldAnimate) { if lobby.shouldAnimate { await lobby.animate() } else { lobby.refreshGates() } }
             .onChange(of: scenePhase, initial: true) { lobby.backgrounded = scenePhase != .active; lobby.refreshGates() }
             .onChange(of: reduceMotion, initial: true) { lobby.reduceMotion = reduceMotion || ProcessInfo.processInfo.arguments.contains("--verify-reduce-motion"); lobby.refreshGates() }

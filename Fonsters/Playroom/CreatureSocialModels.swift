@@ -49,13 +49,16 @@ struct FonsterVisitCard: Codable, Equatable {
     let appearance: CreatureAppearanceDescriptor
     let temperament: Temperament
     let feeling: CreatureFeeling?
+    let biography: FonsterBiography?
     struct Temperament: Codable, Equatable {
         let warmth: Double
         let energy: Double
     }
     init(publicID: UUID, name: String, appearance: CreatureAppearanceDescriptor,
-         warmth: Double, energy: Double, feeling: CreatureFeeling? = nil) {
-        format = "fonsters-visit"; version = 1
+         warmth: Double, energy: Double, feeling: CreatureFeeling? = nil, biography: FonsterBiography? = nil) {
+        let publicBiography = biography?.publicSnapshot
+        self.biography = publicBiography?.isEmpty == false ? publicBiography : nil
+        format = "fonsters-visit"; version = self.biography == nil ? 1 : 2
         self.publicID = publicID; self.name = name; self.appearance = appearance
         temperament = .init(warmth: warmth, energy: energy); self.feeling = feeling
     }
@@ -71,7 +74,10 @@ struct FonsterVisitCard: Codable, Equatable {
         do {
             guard let root = try JSONSerialization.jsonObject(with: data) as? [String: Any] else { throw VisitCardError.invalid }
             // Reject hidden metadata, rather than silently ignoring seeds or identifiers.
-            try keys(root, allowed: ["format", "version", "publicID", "name", "appearance", "temperament", "feeling"])
+            try keys(root, allowed: ["format", "version", "publicID", "name", "appearance", "temperament", "feeling", "biography"])
+            if let biography = root["biography"] as? [String: Any] {
+                try keys(biography, allowed: ["background", "likes", "dislikes", "movies", "shows", "creators", "celebrities"])
+            }
             guard let appearance = root["appearance"] as? [String: Any],
                   let head = appearance["head"] as? [String: Any],
                   let parts = appearance["parts"] as? [[String: Any]],
@@ -99,9 +105,10 @@ struct FonsterVisitCard: Codable, Equatable {
         for pixel in pixels { try keys(pixel, allowed: ["x", "y"]) }
     }
     func validate() throws {
-        guard format == "fonsters-visit", version == 1, appearance.version == 1,
+        guard format == "fonsters-visit", (1...2).contains(version), appearance.version == 1,
               appearance.legacyRendererVersion == "legacy-6e34657", appearance.supported,
               appearance.fallbackReason == nil else { throw VisitCardError.unsupported }
+        guard version == 1 ? biography == nil : biography?.isValidPublicSnapshot == true else { throw VisitCardError.invalid }
         guard (1...24).contains(name.count),
               name.unicodeScalars.allSatisfy({ CharacterSet.alphanumerics.contains($0) || $0 == "-" }),
               [temperament.warmth, temperament.energy].allSatisfy({ $0.isFinite && (0...1).contains($0) }),

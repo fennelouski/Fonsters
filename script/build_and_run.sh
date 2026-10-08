@@ -14,7 +14,7 @@ for INDEX in "${!LAUNCH_ARGS[@]}"; do
     EXPECT_PATH=false
   else
     case "$ARGUMENT" in
-      --personality-file|--social-file|--probe-file|--lobby-probe-file|--scene-export-dir|--window-export-file|--sample-visit-file|--touch-evidence-dir|--camera-ui-verification-file) EXPECT_PATH=true ;;
+      --library-store|--personality-file|--social-file|--probe-file|--lobby-probe-file|--scene-export-dir|--window-export-file|--sample-visit-file|--touch-evidence-dir|--camera-ui-verification-file) EXPECT_PATH=true ;;
     esac
   fi
 done
@@ -45,6 +45,14 @@ if $HAS_AGENT_DEMO && ! $HAS_PERSONALITY_FILE; then
 fi
 APP_NAME="Fonsters"
 BUILD_DIR="$ROOT_DIR/.prototype-build"
+HAS_LIBRARY_STORE=false
+IS_SCRIPTED_DEMO=false
+for ARGUMENT in ${LAUNCH_ARGS[@]+"${LAUNCH_ARGS[@]}"}; do
+  case "$ARGUMENT" in --library-store) HAS_LIBRARY_STORE=true ;; --verify-manual|--legacy-world|--legacy-playroom|--social-demo|--agent-demo|--presence-preview) IS_SCRIPTED_DEMO=true ;; esac
+done
+if ! $HAS_LIBRARY_STORE && ! $IS_SCRIPTED_DEMO; then
+  LAUNCH_ARGS+=(--library-store "$BUILD_DIR/personal-library/store.sqlite")
+fi
 APP_BUNDLE="$BUILD_DIR/Build/Products/Debug/Fonsters.app"
 cd "$ROOT_DIR"
 # Stop only this task's exact prototype executable, never a different Fonsters app.

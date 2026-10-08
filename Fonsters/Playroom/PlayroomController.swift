@@ -109,6 +109,10 @@ final class PlayroomController {
         memories = store; memoryIdentity = identity
         personality = store.profile(for: name ?? companionName, identity: identity); memoryStatus = store.status
     }
+    func rename(_ name: String) {
+        message = message.replacingOccurrences(of: companionName, with: name)
+        companionName = name
+    }
     func likeSound(_ variant: Int) {
         guard let memories else { return }
         personality = memories.likeSound(variant, name: memoryIdentity ?? companionName); memoryStatus = memories.status
