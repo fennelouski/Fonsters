@@ -25,6 +25,10 @@ import simd
   mirror.expire(time: 15); check(!mirror.sample.found && !mirror.sleeping, "lost camera returns to neutral")
   _ = mirror.receive(.init(gaze: [.nan, 0], eyeOpenness: 0), time: 16)
   check(!mirror.sample.found, "nonfinite cues rejected")
+  _ = mirror.receive(.init(bodyLean: 0.2, leftArm: 0.8, rightArm: 0.3, crouch: 0.4), time: 17)
+  check(mirror.sample.bodyLean == 0.2 && mirror.sample.leftArm == 0.8 && mirror.sample.crouch == 0.4, "body and both arm cues remain bounded and available")
+  _ = mirror.receive(.init(bodyLean: .nan), time: 17.1)
+  check(mirror.sample.bodyLean == 0.2, "invalid body motion cannot replace a valid pose")
   var lesson = CreatureImitationLesson(kind: .sway)
   for i in 0..<30 { lesson.observe(.init(motion: 0.9), time: Double(i) * 0.2) }
   check(lesson.ready && lesson.draft.valid && lesson.draft.amplitude > 1, "bounded visual rehearsal produces a stronger sway")

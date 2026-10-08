@@ -1,3 +1,9 @@
+# Current native launch
+
+The macOS/iOS lobby now mounts behind `FonsterLaunch` in `Playroom/FonsterWelcome.swift`. The static iOS launch screen uses the F (`LaunchIcon`) on the adaptive background. The in-app overlay assembles portrait friends alongside the name, tips the F backwards, scatters friends and fades into the already warming lobby. First launches take about 1.75 seconds; subsequent/low-power launches are shorter. Reduce Motion skips the moving sequence. Empty libraries then enter the first-Fonster guide; existing records go straight to their lobby.
+
+The following spec remains for the original gallery and the watch/TV/visionOS loading path.
+
 # Launch Screen and Loading Animation – Exact Recreation Spec
 
 This document specifies **exactly** how to recreate the app launch screen and ~1 second in-app loading animation on **iOS, macOS, visionOS, watchOS, and tvOS**. The same animation design (phases, order, timing) is identical on all platforms.

@@ -209,6 +209,13 @@ struct FonstersApp: App {
         }
     }()
 
+    private var nativeAnimatedLaunch: Bool {
+        #if os(macOS) || os(iOS)
+        return !ProcessInfo.processInfo.arguments.contains("--original-gallery")
+        #else
+        return false
+        #endif
+    }
     var body: some Scene {
         WindowGroup {
             if isPlayroomPrototype {
@@ -232,7 +239,7 @@ struct FonstersApp: App {
                 #else
                 ParentOnlyArea(purpose: "Review original seed links, imports and portrait exports before sharing outside Fonsters.") { ContentView() }.environmentObject(pendingImportURL).environmentObject(featureFlags)
                 #endif
-            } else if loadingComplete {
+            } else if loadingComplete || nativeAnimatedLaunch {
                 #if os(iOS)
                 Group {
                     if ProcessInfo.processInfo.arguments.contains("--original-gallery") { ParentOnlyArea(purpose: "Review original seed links, imports and portrait exports before sharing outside Fonsters.") { ContentView() } }

@@ -163,24 +163,29 @@ private struct FonsterDraftStage: View {
     @State private var controller = PlayroomController()
     @State private var inputs = CreatureInputs()
     @State private var gate = ParentActionGate()
-    private var suspended: Bool { !controller.shouldAnimate || gate.challenge != nil }
+    @State private var education: FonsterSenseEducation.Sense?
+    @State private var educationApproved = false
+    private var suspended: Bool { !controller.shouldAnimate || gate.challenge != nil || education != nil }
     var body: some View {
         CreatureStageView(companion: companion, controller: controller)
             .overlay(alignment: .topTrailing) {
-                FonsterIconButton(title: inputs.cameraEnabled ? "Turn editor camera off" : "Imitate me with the camera",
+                if !inputs.cameraDenied { FonsterIconButton(title: inputs.cameraEnabled ? "Turn editor camera off" : "Imitate me with the camera",
                     symbol: inputs.cameraEnabled ? "video.fill" : "video", tone: .company, selected: inputs.cameraEnabled,
                     detail: "A grown-up enables this camera preview. Your Fonster mirrors facial movements and raised hands on this device. Turn it off here; closing the editor stops it.") {
                     if inputs.cameraEnabled { inputs.toggleCamera() }
-                    else { gate.request("Enable camera mirroring for this draft. Frames and measurements stay on this device and are not saved or uploaded.") { inputs.toggleCamera(parentApproved: true) } }
-                }.padding(12).accessibilityIdentifier("editorCamera")
+                    else { education = .camera }
+                }.padding(12).accessibilityIdentifier("editorCamera") }
             }
+            .sheet(item: $education, onDismiss: {
+                if educationApproved { educationApproved = false; gate.request("Enable camera mirroring for this draft. Frames stay on this device.") { inputs.toggleCamera(parentApproved: true) } }
+            }) { sense in FonsterSenseEducation(sense: sense) { educationApproved = true } }
             .parentActions(gate)
             .onAppear { inputs.onMirror = { controller.receiveMirror($0, time: ProcessInfo.processInfo.systemUptime) } }
             .onChange(of: suspended, initial: true) { inputs.setSuspended(suspended); if suspended { controller.clearMirror() } }
             .onChange(of: inputs.cameraEnabled) { if !inputs.cameraEnabled { controller.clearMirror() } }
             .task(id: controller.shouldAnimate) { if controller.shouldAnimate { await controller.animate() } else { controller.refreshStillPose() } }
             .onChange(of: reduceMotion, initial: true) { controller.systemReduceMotion = reduceMotion || ProcessInfo.processInfo.arguments.contains("--verify-reduce-motion") }
-            .onChange(of: scenePhase, initial: true) { controller.backgrounded = scenePhase != .active }
+            .onChange(of: scenePhase, initial: true) { controller.backgrounded = scenePhase != .active; if scenePhase == .active { inputs.refreshPermissions() } }
             .onReceive(NotificationCenter.default.publisher(for: .NSProcessInfoPowerStateDidChange)) { _ in controller.lowPower = ProcessInfo.processInfo.isLowPowerModeEnabled }
             .onDisappear { inputs.stopAll(); inputs.onMirror = nil; gate.cancel(); controller.clearMirror(); controller.backgrounded = true; controller.cancelTouch(); controller.silence() }
     }

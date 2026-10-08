@@ -129,6 +129,8 @@
 			membershipExceptions = (
 				Playroom/ContinuousLobbyView.swift,
                 Playroom/FonsterProfileEditor.swift,
+                Playroom/FonsterWelcome.swift,
+                Playroom/FonsterSenseEducation.swift,
 				Playroom/MobilePlayroomView.swift,
 				Playroom/TelevisionPlayroomView.swift,
 				Assets.xcassets,

@@ -123,12 +123,12 @@ struct TelevisionWorldView: View {
         }.frame(maxWidth: .infinity, maxHeight: .infinity)
             .foregroundStyle(ink)
             .onPlayPauseCommand { lobby.paused.toggle() }
-            .onKeyPress(phases: [.down, .repeat]) { press in
+            .onKeyPress(phases: [.down, .repeat, .up]) { press in
                 let direction = [KeyEquivalent.leftArrow, .rightArrow, .upArrow, .downArrow].contains(press.key)
                 // Remote directions continue moving native focus. A physical
                 // keyboard can orbit with Shift-arrow and pan with W A S D Q E.
                 guard !direction || press.modifiers.contains(.shift) else { return .ignored }
-                return lobby.cameraKey(press.key, modifiers: press.modifiers) ? .handled : .ignored
+                return lobby.cameraKey(press.key, modifiers: press.modifiers, held: press.phase != .up) ? .handled : .ignored
             }
             .task { await verifyRuntimeIfRequested() }
             .task { try? await PersonalFonsterLibrary.ensureStarters(in: modelContext) }

@@ -109,9 +109,9 @@ struct LocalLobbyView: View {
         .frame(minWidth: 760, maxWidth: .infinity, minHeight: 540, maxHeight: .infinity)
         .foregroundStyle(ink)
         .focusable().focusEffectDisabled().focused($cameraFocused)
-        .onKeyPress(phases: [.down, .repeat]) { press in
+        .onKeyPress(phases: [.down, .repeat, .up]) { press in
             guard !typingRequest, !(agentStudio || socialStudio || sharing || reviewing || importing) else { return .ignored }
-            return lobby.cameraKey(press.key, modifiers: press.modifiers) ? .handled : .ignored
+            return lobby.cameraKey(press.key, modifiers: press.modifiers, held: press.phase != .up) ? .handled : .ignored
         }
         .onAppear { cameraFocused = true }
         .task { await verifyCameraKeyboardIfRequested() }

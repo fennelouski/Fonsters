@@ -2,6 +2,9 @@
 import SwiftUI
 import RealityKit
 import Observation
+#if os(macOS)
+import AppKit
+#endif
 
 @available(macOS 15.0, iOS 18.0, tvOS 26.0, *)
 @MainActor @Observable
@@ -29,6 +32,8 @@ final class LocalLobbyController {
     var cameraPitch: Float = 0
     var cameraPan: SIMD3<Float> = .zero
     var cameraGestureActive = false
+    private(set) var cameraNavigationActive = false
+    @ObservationIgnored private var cameraNavigation = LobbyCameraMotion()
     var cameraGestureOrigin: ControlState?
     var viewportAspect: Float = 1.5
     @ObservationIgnored var viewportHeight: Float = 1
@@ -37,6 +42,23 @@ final class LocalLobbyController {
     @ObservationIgnored private var socialAttention: [Int: (peer: Int, until: Double)] = [:]
     @ObservationIgnored private var gazePeers: [Int: Int] = [:]
     @ObservationIgnored var sceneCameraDetails: [String] = []
+    @ObservationIgnored var streamedWorld: LobbyWorldStream?
+    @ObservationIgnored var mirrorGuestsRoot = Entity()
+    @ObservationIgnored var mirrorGuests: [PlayroomController] = []
+    @ObservationIgnored private var guestSeen: Double = 0
+    func receiveGroup(_ samples: [CreatureMirrorSample]) {
+        guard inCare, shouldAnimate else { clearGroup(); return }
+        let extra = Array(samples.dropFirst().prefix(3))
+        guestSeen = ProcessInfo.processInfo.systemUptime
+        for (i, controller) in mirrorGuests.enumerated() {
+            guard mirrorGuestsRoot.children.indices.contains(i) else { continue }
+            let container = mirrorGuestsRoot.children[i]
+            container.isEnabled = extra.indices.contains(i)
+            if extra.indices.contains(i) { controller.receiveMirror(extra[i], time: guestSeen) }
+            else { controller.clearMirror() }
+        }
+    }
+    func clearGroup() { for child in mirrorGuestsRoot.children { child.isEnabled = false }; for controller in mirrorGuests { controller.clearMirror() } }
     @ObservationIgnored var fountainDrops: [Entity] = []
     @ObservationIgnored var dragOrbit: Float?
     @ObservationIgnored private(set) var contactID: UUID?
@@ -393,7 +415,7 @@ final class LocalLobbyController {
     func panCamera(_ translation: SIMD3<Float>) {
         guard translation.x.isFinite, translation.y.isFinite, translation.z.isFinite else { return }
         cameraPan += translation
-        let limit = world.radius * 1.5
+        let limit: Float = 100_000
         cameraPan.x = min(limit, max(-limit, cameraPan.x)); cameraPan.z = min(limit, max(-limit, cameraPan.z))
         cameraPan.y = min(10, max(-0.25, cameraPan.y)); updateCamera()
     }
@@ -416,8 +438,23 @@ final class LocalLobbyController {
         }
     }
     func endCameraGesture() { cameraGestureActive = false }
-    func cameraKey(_ key: KeyEquivalent, modifiers: EventModifiers) -> Bool {
+    func cameraKey(_ key: KeyEquivalent, modifiers: EventModifiers, held: Bool? = nil) -> Bool {
         guard ready, !backgrounded, !modifiers.contains(.command), !modifiers.contains(.control) else { return false }
+        if let held {
+            let token: String
+            switch key {
+            case .leftArrow: token = "left"
+            case .rightArrow: token = "right"
+            case .upArrow: token = "up"
+            case .downArrow: token = "down"
+            case "0", "h": if held { clearCameraKeys(); showOverview() }; return true
+            default: token = String(key.character).lowercased()
+            }
+            guard LobbyCameraMotion.supported.contains(token) else { return false }
+            cameraNavigation.press(token, down: held, fast: modifiers.contains(.shift))
+            cameraNavigationActive = cameraNavigation.active
+            return true
+        }
         let speed: Float = modifiers.contains(.shift) ? 0.6 : 0.2
         let right = SIMD3<Float>(cos(cameraOrbit), 0, -sin(cameraOrbit))
         let forward = SIMD3<Float>(sin(cameraOrbit), 0, cos(cameraOrbit))
@@ -441,10 +478,31 @@ final class LocalLobbyController {
         }
         return true
     }
+    func clearCameraKeys() { cameraNavigation.reset(); cameraNavigationActive = false }
+    func animateCameraNavigation() async {
+        var previous = ProcessInfo.processInfo.systemUptime
+        while !Task.isCancelled && cameraNavigationActive {
+            guard ready, !backgrounded, !reviewingControls else { clearCameraKeys(); return }
+            let now = ProcessInfo.processInfo.systemUptime
+            #if os(macOS)
+            cameraNavigation.fast = NSEvent.modifierFlags.contains(.shift)
+            #endif
+            let step = cameraNavigation.advance(dt: min(0.05, Float(now - previous)))
+            previous = now
+            let right = SIMD3<Float>(cos(cameraOrbit), 0, -sin(cameraOrbit))
+            let forward = SIMD3<Float>(sin(cameraOrbit), 0, cos(cameraOrbit))
+            if simd_length(step.translation) > 0 { panCamera(right * step.translation.x + SIMD3<Float>(0, step.translation.y, 0) + forward * step.translation.z) }
+            if simd_length(step.turn) > 0 { rotateCamera(step.turn.x, vertical: step.turn.y) }
+            if abs(step.zoom) > 0 { zoomCamera(exp(step.zoom)) }
+            cameraNavigationActive = cameraNavigation.active
+            do { try await Task.sleep(for: .milliseconds(lowPower ? 33 : 16)) } catch { return }
+        }
+    }
     var cameraDescription: String {
         "Camera angle \(Int(cameraOrbit * 180 / .pi)) degrees, elevation \(Int(cameraPitch * 180 / .pi)) degrees, zoom \(Int(100 / cameraZoom)) percent, position \(String(format: "%.1f, %.1f, %.1f", cameraPan.x, cameraPan.y, cameraPan.z))."
     }
     func updateCamera() {
+        streamedWorld?.update(center: cameraPan)
         guard let camera else { return }
         defer { updateAttention() }
         if continuousGallery && (inCare || !searchQuery.isEmpty) {
@@ -495,6 +553,8 @@ final class LocalLobbyController {
             c.backgrounded = backgrounded; c.lowPower = lowPower; c.soundEnabled = sounds && !listening; c.listening = listening
             c.refreshStillPose()
         }
+        if !shouldAnimate { clearGroup() }
+        for guest in mirrorGuests { guest.paused = !shouldAnimate; guest.refreshStillPose() }
         updateDance(); writeProbe()
     }
     func setDanceMode(_ mode: FonsterDanceMode) {
@@ -585,9 +645,11 @@ final class LocalLobbyController {
         if !events.isEmpty && danceMode == .daylight { dispatch(events, deliberate: false) }
         if continuousGallery { presentation.sideDistance = max(1.5, min(5.5, viewportAspect * 3.3)); presentation.advance(dt: dt, natural: naturalPoses) }
         for (i, member) in members.enumerated() {
-            member.controller.worldWalking = continuousGallery && presentation.borrowingStage ? presentation.transitioning && presentation.caringFor != i : simulation.agents[i].walking
+            member.controller.worldWalking = continuousGallery && presentation.borrowingStage ? (presentation.poses.indices.contains(i) && presentation.poses[i].walking) : simulation.agents[i].walking
             if !continuousGallery || !inCare || presentation.transitioning || i == selected { member.controller.advance(dt: dt) }
         }
+        if ProcessInfo.processInfo.systemUptime - guestSeen > 0.8 { clearGroup() }
+        for guest in mirrorGuests { guest.advance(dt: dt) }
         LobbyWorldScene.animate(fountainDrops, time: Float(activeSeconds))
         updateDance()
         applyLayout(); frames += 1

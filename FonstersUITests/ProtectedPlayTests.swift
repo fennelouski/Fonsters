@@ -74,6 +74,7 @@ final class ProtectedPlayTests: XCTestCase {
         app.buttons["searchFonsters"].tap(); app.textFields["lobbySearchField"].typeText("moss\n")
         waitShape(app, landscape: false)
         app.buttons["panel_Mirror and voice"].tap(); app.buttons["liveMicrophone"].tap()
+        XCTAssertTrue(app.buttons["senseEducationContinue"].waitForExistence(timeout: 5)); app.buttons["senseEducationContinue"].tap()
         XCTAssertTrue(app.textFields["parentAnswer"].waitForExistence(timeout: 5))
         app.buttons["cancelParentAction"].tap()
         // Parent modal is presented above an interaction panel. After dismissal
@@ -89,6 +90,8 @@ final class ProtectedPlayTests: XCTestCase {
         attach(app, "protected-07-input-gate")
     }
     @MainActor private func approveParent(_ app: XCUIApplication) {
+        let education = app.buttons["senseEducationContinue"]
+        if education.waitForExistence(timeout: 1) { education.tap() }
         let question = app.staticTexts["parentQuestion"]
         XCTAssertTrue(question.waitForExistence(timeout: 5))
         let values = question.label.components(separatedBy: CharacterSet.decimalDigits.inverted).compactMap(Int.init)

@@ -9,12 +9,16 @@ nonisolated struct CreatureMirrorSample: Sendable {
     var motion: Float = 0
     var raisedHand: Float = 0
     var handX: Float? = nil
+    var bodyLean: Float = 0
+    var leftArm: Float = 0
+    var rightArm: Float = 0
+    var crouch: Float = 0
     var found = true
     var facialSmile: Float? = nil
     var smilingEyes: Float? = nil
     var viewerAttention: Float = 0
     var valid: Bool {
-        gaze.x.isFinite && gaze.y.isFinite && tilt.isFinite && motion.isFinite && raisedHand.isFinite &&
+        bodyLean.isFinite && leftArm.isFinite && rightArm.isFinite && crouch.isFinite && gaze.x.isFinite && gaze.y.isFinite && tilt.isFinite && motion.isFinite && raisedHand.isFinite &&
         (eyeOpenness?.isFinite ?? true) && (handX?.isFinite ?? true) &&
         (facialSmile?.isFinite ?? true) && (smilingEyes?.isFinite ?? true) && viewerAttention.isFinite
     }
@@ -55,6 +59,10 @@ nonisolated struct CreatureMirrorDynamics {
             sample.motion += (min(1, max(0, input.motion)) - sample.motion) * blend
             sample.raisedHand = min(1, max(0, input.raisedHand)); sample.eyeOpenness = input.eyeOpenness
         }
+        sample.bodyLean = min(0.4, max(-0.4, input.bodyLean))
+        sample.leftArm = min(1, max(0, input.leftArm))
+        sample.rightArm = min(1, max(0, input.rightArm))
+        sample.crouch = min(1, max(0, input.crouch))
         sample.facialSmile = input.facialSmile.map { min(1, max(-0.85, $0)) }
         sample.smilingEyes = input.smilingEyes.map { min(1, max(0, $0)) }
         sample.viewerAttention = min(1, max(0, input.viewerAttention))

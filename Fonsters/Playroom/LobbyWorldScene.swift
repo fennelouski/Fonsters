@@ -19,9 +19,9 @@ enum LobbyWorldScene {
         let stone = material(0.86, 0.82, 0.74), white = material(0.98, 0.97, 0.90)
         let wood = material(0.70, 0.47, 0.31), dark = material(0.34, 0.39, 0.40)
         let water = material(0.43, 0.77, 0.86, roughness: 0.23)
-        let ground = box([100, 0.12, 100], [0, -0.13, 0], material(0.88, 0.91, 0.82))
+        let ground = box([world.radius * 2.4, 0.12, world.radius * 2.4], [0, -0.13, 0], material(0.88, 0.91, 0.82))
         root.addChild(ground)
-        root.addChild(cylinder(world.radius, 0.10, [0, -0.05, 0], grass))
+        root.addChild(box([world.radius * 2.4, 0.10, world.radius * 2.4], [0, -0.05, 0], grass))
         // Paths connect areas into one continuous place rather than display platforms.
         root.addChild(box([world.radius * 1.75, 0.025, 1.45], [0, 0.008, 0.15], path, corner: 0.18))
         root.addChild(box([1.45, 0.025, world.radius * 1.55], [0, 0.009, -0.15], path, corner: 0.18))
@@ -153,6 +153,62 @@ enum LobbyWorldScene {
         }
         e.addChild(box([1.60, 0.07, 1.48], [0, 0.035, 0], trim))
         return e
+    }
+}
+
+/// Nine deterministic tiles follow the camera. Revisited tiles have the same
+/// original scenery, with bounded memory and no real-world map extraction.
+@available(macOS 15.0, iOS 18.0, tvOS 26.0, *)
+@MainActor final class LobbyWorldStream {
+    let root = Entity()
+    private var tiles: [String: Entity] = [:]
+    private var last: SIMD2<Int>?
+    private let size: Float = 28
+    func update(center: SIMD3<Float>) {
+        guard center.x.isFinite, center.z.isFinite else { return }
+        let cell = SIMD2<Int>(Int(floor(center.x / size)), Int(floor(center.z / size)))
+        guard cell != last else { return }; last = cell
+        var wanted: Set<String> = []
+        for x in (cell.x - 1)...(cell.x + 1) { for z in (cell.y - 1)...(cell.y + 1) {
+            let key = "\(x):\(z)"; wanted.insert(key)
+            if tiles[key] == nil { let tile = make(x: x, z: z); root.addChild(tile); tiles[key] = tile }
+        } }
+        for key in Array(tiles.keys) where !wanted.contains(key) { tiles.removeValue(forKey: key)?.removeFromParent() }
+    }
+    private func make(x: Int, z: Int) -> Entity {
+        let tile = Entity(); tile.name = "world-tile-\(x)-\(z)"
+        tile.position = [Float(x) * size, -0.05, Float(z) * size]
+        let value = UInt64(bitPattern: Int64(x &* 73_856_093 ^ z &* 19_349_663))
+        func model(_ dimensions: SIMD3<Float>, _ position: SIMD3<Float>, _ color: FonsterPlatformColor) -> ModelEntity {
+            let entity = ModelEntity(mesh: .generateBox(size: dimensions), materials: [SimpleMaterial(color: color, roughness: 1, isMetallic: false)])
+            entity.position = position; return entity
+        }
+        tile.addChild(model([size, 0.1, size], [size/2, 0, size/2], .init(red: 0.66, green: 0.79, blue: 0.61, alpha: 1)))
+        tile.addChild(model([size, 0.025, 1.8], [size/2, 0.065, size/2], .init(red: 0.91, green: 0.86, blue: 0.73, alpha: 1)))
+        tile.addChild(model([1.8, 0.025, size], [size/2, 0.065, size/2], .init(red: 0.91, green: 0.86, blue: 0.73, alpha: 1)))
+        guard x != 0 || z != 0 else { return tile }
+        for index in 0..<8 {
+            let n = value &+ UInt64(index) &* 7919
+            let px = Float(n % 11) * 2 + 2, pz = Float((n / 17) % 11) * 2 + 2
+            if abs(px - size/2) < 2 || abs(pz - size/2) < 2 { continue }
+            if value % 4 == 0 {
+                let mountain = ModelEntity(mesh: .generateSphere(radius: 2), materials: [SimpleMaterial(color: .init(red: 0.56, green: 0.65, blue: 0.52, alpha: 1), roughness: 1, isMetallic: false)])
+                mountain.position = [px, 0.6, pz]; mountain.scale = [1.4, Float(index % 3 + 1), 1.4]; tile.addChild(mountain)
+            } else if value % 4 == 1 {
+                let height = 1.7 + Float(index % 3)
+                tile.addChild(model([3.8, height, 3.4], [px, height/2 + 0.1, pz], .init(red: 0.87, green: 0.73, blue: 0.62, alpha: 1)))
+                tile.addChild(model([4, 0.25, 3.6], [px, height + 0.2, pz], .init(red: 0.46, green: 0.53, blue: 0.59, alpha: 1)))
+                for window in -1...1 {
+                    tile.addChild(model([0.55, 0.7, 0.035], [px + Float(window), height * 0.65, pz + 1.72], .init(red: 0.54, green: 0.75, blue: 0.83, alpha: 1)))
+                }
+                tile.addChild(model([0.65, 1.2, 0.04], [px, 0.65, pz + 1.73], .init(red: 0.40, green: 0.49, blue: 0.43, alpha: 1)))
+            } else {
+                tile.addChild(model([0.25, 1.6, 0.25], [px, 0.8, pz], .init(red: 0.58, green: 0.39, blue: 0.25, alpha: 1)))
+                let crown = ModelEntity(mesh: .generateSphere(radius: 1), materials: [SimpleMaterial(color: .init(red: 0.38, green: 0.61, blue: 0.29, alpha: 1), roughness: 1, isMetallic: false)])
+                crown.position = [px, 2, pz]; tile.addChild(crown)
+            }
+        }
+        return tile
     }
 }
 #endif
