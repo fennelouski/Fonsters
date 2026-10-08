@@ -236,7 +236,7 @@ struct ContinuousLobbyView: View {
                 if lobby.inCare {
                     FonsterIconButton(title: "Share Fonster", symbol: "square.and.arrow.up", tone: .company,
                         detail: "A grown-up reviews the snapshot before sharing. Recipients can keep a copy.") {
-                        parentGate.request("Review this Fonster snapshot before sharing. Backstory and feelings are optional; recipients can keep a copy.") { sharing = true }
+                        parentGate.request("Review this Fonster snapshot before sharing. Feelings and source references are optional. Typed drafts and backstory stay private; recipients can keep a copy.") { sharing = true }
                     }
                         .accessibilityIdentifier("shareFonster")
                 } else { searchControl }
@@ -281,8 +281,9 @@ struct ContinuousLobbyView: View {
     private var searchControl: some View {
         HStack(spacing: 6) {
             if searching {
-                TextField("Find a Fonster", text: $query).textFieldStyle(.plain).focused($searchFocused)
-                    .frame(maxWidth: 230).padding(12).background(.regularMaterial, in: RoundedRectangle(cornerRadius: 14))
+                TextField("Find a Fonster", text: $query, prompt: Text("Find a Fonster").foregroundStyle(FonsterChrome.secondary)).textFieldStyle(.plain).focused($searchFocused)
+                    .foregroundStyle(FonsterChrome.primary)
+                    .frame(maxWidth: 230).padding(12).background(FonsterChrome.surface, in: RoundedRectangle(cornerRadius: 14))
                     .accessibilityLabel("Find a Fonster").accessibilityIdentifier("lobbySearchField")
                     .onSubmit { searchFocused = false; stageFocused = true; if let first = lobby.searchMatches.first { lobby.openCare(first) } }
                 FonsterIconButton(title: "Clear and close search", symbol: "xmark", tone: .company) { closeSearch() }
@@ -321,9 +322,9 @@ struct ContinuousLobbyView: View {
                 FonsterIconButton(title: "Name and backstory", symbol: "book.closed", tone: .company,
                     detail: "Name this Fonster and choose its backstory, likes, dislikes and favorites. Save keeps your changes; X leaves them as they were.") { editor = .init(record: record) }
                     .accessibilityIdentifier("editFonsterProfile")
-            } else if !lobby.selectedBiography.isEmpty {
-                FonsterControlPanel(title: "Backstory and favorites", symbol: "book.closed", tone: .company) {
-                    FonsterBiographySummary(biography: lobby.selectedBiography)
+            } else {
+                FonsterControlPanel(title: "Shared interests", symbol: "heart", tone: .company) {
+                    FonsterRecipientInterests(selections: lobby.selectedBiography.interests ?? [])
                 }
             }
             FonsterControlPanel(title: "Appearance and personality", symbol: "person.crop.circle", tone: .company) {
@@ -580,22 +581,33 @@ private struct LobbyVisitShare: View {
     var body: some View {
         VStack(spacing: 20) {
             HStack { LobbyPortrait(appearance: lobby.selectedMember.descriptor).frame(width: 84, height: 84); Spacer(); FonsterIconButton(title: "Close sharing", symbol: "xmark") { dismiss() } }
-            Toggle("Include chosen feeling", isOn: $feeling)
-            if !lobby.selectedBiography.isEmpty {
-                Toggle("Include backstory and favorites", isOn: $biography).accessibilityIdentifier("shareBiography")
-                if biography { FonsterBiographySummary(biography: lobby.selectedBiography.publicSnapshot) }
+            ScrollView {
+                VStack(spacing: 20) {
+                    FonsterControlGroup(title: "Visit contents", tone: .company) {
+                        FonsterIconButton(title: "Include chosen feeling", symbol: "heart", tone: .company, selected: feeling,
+                            detail: "Include your chosen feeling in this visit. Tap again to exclude it; changing this choice does not change your Fonster's feeling.") { feeling.toggle() }
+                            .accessibilityValue(feeling ? "Included" : "Excluded")
+                        if !(lobby.selectedBiography.interests ?? []).isEmpty {
+                            FonsterIconButton(title: "Include selected source interests", symbol: "square.stack.3d.up", tone: .company, selected: biography,
+                                detail: "Include only the source chips shown below. Your typed drafts and backstory stay private. Tap again to exclude all interest chips.") { biography.toggle() }
+                                .accessibilityValue(biography ? "Included" : "Excluded").accessibilityIdentifier("shareBiography")
+                        }
+                    }
+                    if biography { FonsterRecipientInterests(selections: lobby.selectedBiography.interests ?? []) }
+                    FonsterInfo(title: "Portable visit", detail: "Shares a snapshot with a random public identifier, appearance and personality tendencies. Typed drafts and backstory stay private. Only selected source records can be included. No original seed, private learned memories or live connection. Recipients can keep their copy.")
+                    if let data = try? lobby.card(for: lobby.selectedMember, includeFeeling: feeling, includeBiography: biography).encoded() {
+                        ShareLink(item: LobbyVisitExport(data: data), preview: SharePreview(lobby.card(for: lobby.selectedMember, includeFeeling: feeling).name, image: Image(systemName: "heart"))) {
+                            FonsterIcon(symbol: "square.and.arrow.up", tone: .company)
+                        }.buttonStyle(.plain).fonsterHelp("Share visit snapshot", symbol: "square.and.arrow.up").accessibilityLabel("Share visit snapshot")
+                    }
+                }.frame(maxWidth: .infinity)
             }
-            FonsterInfo(title: "Portable visit", detail: "Shares a snapshot with a random public identifier, appearance and personality tendencies. Backstory and favorites are private until you turn them on here. Email addresses are omitted. No original seed, private learned memories or live connection. Recipients can keep their copy.")
-            if let data = try? lobby.card(for: lobby.selectedMember, includeFeeling: feeling, includeBiography: biography).encoded() {
-                ShareLink(item: LobbyVisitExport(data: data), preview: SharePreview(lobby.card(for: lobby.selectedMember, includeFeeling: feeling).name, image: Image(systemName: "heart"))) {
-                    FonsterIcon(symbol: "square.and.arrow.up", tone: .company)
-                }.buttonStyle(.plain).fonsterHelp("Share visit snapshot", symbol: "square.and.arrow.up").accessibilityLabel("Share visit snapshot")
-            }
-        }.padding(24)
+        }.padding(24).foregroundStyle(FonsterChrome.primary).background(FonsterChrome.background)
         #if os(macOS)
-        .frame(width: 380)
+        .frame(width: 380, height: 440)
         #else
         .presentationDetents([.medium, .large])
+        .presentationBackground(FonsterChrome.background)
         #endif
     }
 }

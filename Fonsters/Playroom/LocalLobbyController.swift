@@ -184,7 +184,10 @@ final class LocalLobbyController {
     private func careIdentity(for member: Member) -> UUID { careIdentities[member.id] ?? member.id }
     @ObservationIgnored private var savedRoster: [SavedAppearance] = []
     @ObservationIgnored private var savedBiographies: [UUID: FonsterBiography] = [:]
-    var selectedBiography: FonsterBiography { selectedMember.visitCard?.biography ?? selectedSavedID.flatMap { savedBiographies[$0] } ?? .init() }
+    var selectedBiography: FonsterBiography {
+        if let card = selectedMember.visitCard { return FonsterBiography(interests: card.interests).recipientSnapshot }
+        return selectedSavedID.flatMap { savedBiographies[$0] } ?? .init()
+    }
     struct SavedAppearance: Equatable { let id: UUID; let name: String; let seed: String; var biography: FonsterBiography = .init() }
     func showSaved(_ records: [SavedAppearance]) {
         guard records != savedRoster else { return }
@@ -322,7 +325,7 @@ final class LocalLobbyController {
         let collision = members.enumerated().contains { $0.offset != slot && $0.element.name.caseInsensitiveCompare(card.name) == .orderedSame }
         let alias = knownName && !collision ? card.name : "Visitor"
         members[slot] = .init(id: card.publicID, name: alias, localCompanion: nil, visitCard: card, controller: controller)
-        rebuildSimulation(); buddy = slot; message = "\(card.name) is visiting from a shared snapshot."
+        rebuildSimulation(); buddy = slot; message = "\(alias) is visiting from a shared snapshot."
     }
     func endVisit() {
         guard hasVisitor else { return }

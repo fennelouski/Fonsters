@@ -19,7 +19,7 @@ struct PlayroomView: View {
     @State private var interpreter = TypedActionInterpreter()
     @State private var typingRequest = false
     @State private var controlHistory = FonsterControlHistory<PlayroomController.ControlState>()
-    private let ink = Color(red: 0.19, green: 0.15, blue: 0.27)
+    private let ink = FonsterChrome.primary
     private let accent = Color(red: 0.45, green: 0.32, blue: 0.62)
     private var selected: PlayroomCompanion { companions[selection] }
 
@@ -37,9 +37,9 @@ struct PlayroomView: View {
             .padding(22)
         }
         .frame(minWidth: 950, minHeight: 700)
-        .background(Color(red: 0.98, green: 0.97, blue: 0.95))
+        .background(FonsterChrome.background)
         .foregroundStyle(ink)
-        .preferredColorScheme(.light)
+
         .background(VerificationWindowCapture(label: "playroom").frame(width: 0, height: 0))
         .task(id: controller.shouldAnimate) {
             if controller.shouldAnimate { await controller.animate() }
@@ -107,7 +107,7 @@ struct PlayroomView: View {
             }
             FonsterInfo(title: "About the Playroom", detail: "Choose a portrait, then touch your Fonster. Stroke the fluff, hold for a cuddle, or tap a paw for a high five. The original portrait beside it stays unchanged. Your companion is always happy when you return.")
                 .padding(.bottom, 16)
-        }.background(Color(red: 0.95, green: 0.93, blue: 0.92))
+        }.background(FonsterChrome.background)
     }
 
     private var header: some View {
@@ -163,7 +163,7 @@ struct PlayroomView: View {
         HStack(spacing: 16) {
             ZStack(alignment: .topLeading) {
                 RoundedRectangle(cornerRadius: 26)
-                    .fill(LinearGradient(colors: [Color(red: 0.91, green: 0.88, blue: 0.95), Color(red: 0.98, green: 0.95, blue: 0.92)], startPoint: .topLeading, endPoint: .bottomTrailing))
+                    .fill(LinearGradient(colors: [FonsterTone.world.wash, FonsterChrome.background], startPoint: .topLeading, endPoint: .bottomTrailing))
                 if selected.descriptor.supported && controller.rendererError == nil {
                     CreatureStageView(companion: selected, controller: controller)
                         .id(selected.id.uuidString + controller.environment.rawValue)
@@ -182,7 +182,7 @@ struct PlayroomView: View {
                     .accessibilityLabel("Original two dimensional portrait")
                 CreatureAvatarView(seed: selected.seed, size: 104)
                     .frame(width: 116, height: 116)
-                    .background(Color(red: 0.94, green: 0.92, blue: 0.91), in: RoundedRectangle(cornerRadius: 18))
+                    .background(FonsterChrome.background, in: RoundedRectangle(cornerRadius: 18))
                     .accessibilityLabel("Original 32 by 32 portrait of \(selected.name)")
                 HStack(spacing: 6) {
                     ForEach(Array(selected.descriptor.rgbaPalette.prefix(selected.descriptor.palette.count).enumerated()), id: \.offset) { _, p in
@@ -198,7 +198,7 @@ struct PlayroomView: View {
                     .frame(width: 44, height: 44).background(FonsterTone.world.wash, in: RoundedRectangle(cornerRadius: 14))
                     .help("Save original PNG or evolution GIF").accessibilityLabel("Save original portrait")
             }.padding(14).frame(width: 144).frame(maxHeight: .infinity)
-                .background(.white.opacity(0.72), in: RoundedRectangle(cornerRadius: 24))
+                .background(FonsterChrome.surface, in: RoundedRectangle(cornerRadius: 24))
         }.frame(minHeight: 260, maxHeight: .infinity)
     }
 

@@ -23,7 +23,7 @@ struct FonsterSocialStudio: View {
     private var store: FonsterSocialStore { lobby.presence.store }
     private var member: LocalLobbyController.Member { lobby.selectedMember }
     private var profile: FonsterSocialProfile? { store.profile(member.id) }
-    private let ink = Color(red: 0.20, green: 0.22, blue: 0.27)
+    private let ink = FonsterChrome.primary
 
     var body: some View {
         VStack(spacing: 0) {
@@ -69,7 +69,7 @@ struct FonsterSocialStudio: View {
                 FonsterInfo(title: "Local notebook status", detail: store.status)
             }.padding(.horizontal, 18).padding(.vertical, 8)
 
-        }.frame(width: 1040, height: 690).background(Color(red: 0.97, green: 0.97, blue: 0.94)).foregroundStyle(ink).preferredColorScheme(.light)
+        }.frame(width: 1040, height: 690).background(FonsterChrome.background).foregroundStyle(ink)
             .background(VerificationWindowCapture(label: "social").frame(width: 0, height: 0))
             .fileExporter(isPresented: $exporting, document: document, contentType: .json, defaultFilename: "\(member.name).fonster-social-review") { result in
                 if case .failure(let failure) = result, (failure as NSError).code != NSUserCancelledError { error = "The review file couldn't be saved." }
@@ -100,7 +100,7 @@ struct FonsterSocialStudio: View {
                 Text(profile.name).font(.system(size: 30, weight: .bold, design: .rounded))
                 HStack(spacing: 12) {
                     ResolvedPortrait(appearance: member.descriptor).frame(width: 32, height: 32).padding(8)
-                        .background(.white.opacity(0.7), in: RoundedRectangle(cornerRadius: 12)).accessibilityLabel("Original two dimensional portrait")
+                        .background(FonsterChrome.surface, in: RoundedRectangle(cornerRadius: 12)).accessibilityLabel("Original two dimensional portrait")
                     FonsterInfo(title: "Profile identity and voice", detail: "@\(profile.handle)\n\(profile.voice.bio)\nFictional character; local agent voice.")
                 }
                 HStack(spacing: 18) {
@@ -110,7 +110,7 @@ struct FonsterSocialStudio: View {
                     .accessibilityLabel("\(profile.posts.filter { $0.state == .localFeed }.count) local moments, \(profile.posts.filter { $0.state == .draft }.count) drafts")
             }
             Spacer(minLength: 0)
-        }.padding(16).background(LinearGradient(colors: [Color(red: 0.83, green: 0.92, blue: 0.85), Color(red: 0.97, green: 0.91, blue: 0.80)], startPoint: .topLeading, endPoint: .bottomTrailing), in: RoundedRectangle(cornerRadius: 24))
+        }.padding(16).background(LinearGradient(colors: [FonsterTone.company.wash, FonsterTone.play.wash], startPoint: .topLeading, endPoint: .bottomTrailing), in: RoundedRectangle(cornerRadius: 24))
     }
     private var displayedProfiles: [FonsterSocialProfile] { neighborhood ? store.profiles : profile.map { [$0] } ?? [] }
     private var posts: some View {
@@ -252,7 +252,7 @@ private struct FonsterSocialPostCard: View {
                     Text("This Mac only").font(.system(size: 10)).foregroundStyle(.secondary)
                 }
             }
-        }.padding(16).frame(maxWidth: .infinity, alignment: .leading).background(.white.opacity(0.9), in: RoundedRectangle(cornerRadius: 20))
+        }.padding(16).frame(maxWidth: .infinity, alignment: .leading).background(FonsterChrome.surface, in: RoundedRectangle(cornerRadius: 20))
             .accessibilityElement(children: .contain)
 
     }

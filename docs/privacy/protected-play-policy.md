@@ -24,7 +24,7 @@ play will not silently become an account or social service.
 
 | Information | Purpose and destination | Retention and control |
 | --- | --- | --- |
-| Appearance seed, name, creation date, internal library ID, optional fictional story and favorites | Creates and saves the creature. SwiftData stores these on the device. The existing iCloud configuration can sync them through Apple's private CloudKit database when the user's iCloud setup permits it. | Kept until edited or removed. Existing records are not deleted or migrated by this update. Use made-up names/stories and avoid contact details. |
+| Appearance seed, name, creation date, internal library ID, optional fictional story, private favorite drafts and selected source references | Creates and saves the creature. SwiftData stores these on the device. The existing iCloud configuration can sync them through Apple's private CloudKit database when the user's iCloud setup permits it. Typed favorite drafts match only a small bundled source catalog; the protected app does not submit them to an external search or Jev service. | Kept until edited or removed. Existing records are not deleted or migrated by this update. Use made-up names/stories and avoid contact details. |
 | Namespaced account digest used for matching starter creatures | Makes starter appearances consistent with the existing iCloud account. Apple's account record identifier is resolved internally and hashed; the raw identifier is not logged, stored in the appearance descriptor or exported. | Private library seed/starter identifiers remain part of the library. They are not public sharing identifiers. |
 | Local care tendencies, chosen feelings, friendships, movement memory and sound preference | Supports non-punitive play and familiar reactions. Kept in local app files, separately from appearance identity. | No absence penalty, death or care deadline. Learned movement can be discarded before Keep, then undone or reset. Care files are not currently synchronized across accounts/devices. |
 | Camera frames and transient face/body measurements | Optional on-device mirroring of eyes, mouth shape, head, hands and movement with Apple Vision. Approximate screen-facing attention can trigger a brief greeting; it does not identify the user or infer their feelings. | Off initially. Enable requires a grown-up task and OS permission. Frames and measurements are not archived or uploaded by Fonsters. The owner's chosen feeling is never changed by camera cues. Capture pauses in the background/low power; Stop, switching creatures or leaving care turns it off. |
@@ -48,10 +48,19 @@ external agents or public social posting.
 
 A 3D visit file contains a random non-sensitive public identifier, creature name,
 resolved appearance and limited personality tendencies. Chosen feeling and
-backstory/favorites are optional and initially excluded. Email addresses are
-removed from the public snapshot. It contains no original seed, CloudKit account
+selected bundled source references are optional and initially excluded. New
+visits never include typed favorite drafts or backstory. Source identification
+does not establish endorsement or child suitability. The recipient view hides
+raw text from older imported visits too; previously sent copies remain with
+their recipients. It contains no original seed, CloudKit account
 identifier, private care key, recordings or conversation history. A recipient
 can keep or reshare a copy; sending cannot be undone by Fonsters.
+
+The editor camera is separately off initially and requires the same grown-up
+task and OS permission. Closing the editor or changing the preview appearance
+stops its capture. Opening a source link is a parent-directed action in the
+system browser; the destination has its own privacy practices. No draft text
+is appended to that link.
 
 The original 2D link format is preserved for compatibility. Its base64 JSON
 **contains recoverable original seed text**. Base64 is not encryption. A parent

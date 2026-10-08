@@ -23,7 +23,7 @@ struct TelevisionWorldView: View {
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @State private var lobby = LocalLobbyController()
     @State private var controlHistory = FonsterControlHistory<LocalLobbyController.ControlState>()
-    private let ink = Color(red: 0.30, green: 0.23, blue: 0.43)
+    private let ink = FonsterChrome.primary
     private var roster: [LocalLobbyController.SavedAppearance] { PersonalFonsterLibrary.canonical(saved).map { .init(id: $0.id, name: $0.name, seed: $0.seed, biography: $0.biography) } }
     var body: some View {
         ZStack {
@@ -121,7 +121,7 @@ struct TelevisionWorldView: View {
             }.disabled(!lobby.ready).focusSection()
             }.padding(48)
         }.frame(maxWidth: .infinity, maxHeight: .infinity)
-            .foregroundStyle(ink).preferredColorScheme(.light)
+            .foregroundStyle(ink)
             .onPlayPauseCommand { lobby.paused.toggle() }
             .onKeyPress(phases: [.down, .repeat]) { press in
                 let direction = [KeyEquivalent.leftArrow, .rightArrow, .upArrow, .downArrow].contains(press.key)

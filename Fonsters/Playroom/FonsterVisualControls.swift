@@ -8,21 +8,10 @@ import UIKit
 /// tooltips and native accessibility keep every choice usable without color.
 enum FonsterTone {
     case company, play, world, quiet
-    var ink: Color {
-        switch self {
-        case .company: Color(red: 0.19, green: 0.40, blue: 0.31)
-        case .play: Color(red: 0.58, green: 0.28, blue: 0.16)
-        case .world: Color(red: 0.39, green: 0.28, blue: 0.55)
-        case .quiet: Color(red: 0.33, green: 0.34, blue: 0.40)
-        }
-    }
-    var wash: Color {
-        switch self {
-        case .company: Color(red: 0.86, green: 0.94, blue: 0.89)
-        case .play: Color(red: 0.99, green: 0.89, blue: 0.80)
-        case .world: Color(red: 0.92, green: 0.88, blue: 0.97)
-        case .quiet: Color(red: 0.94, green: 0.94, blue: 0.95)
-        }
+    var ink: Color { Color(prefix + "Ink") }
+    var wash: Color { Color(prefix + "Wash") }
+    private var prefix: String {
+        switch self { case .company: "Company"; case .play: "Play"; case .world: "World"; case .quiet: "Quiet" }
     }
 }
 
@@ -34,12 +23,12 @@ struct FonsterIcon: View {
         Image(systemName: symbol)
             .font(.system(size: 20, weight: .medium))
             .frame(width: 44, height: 44)
-            .foregroundStyle(selected ? .white : tone.ink)
+            .foregroundStyle(selected ? FonsterChrome.onSelection : tone.ink)
             .background(selected ? tone.ink : tone.wash, in: RoundedRectangle(cornerRadius: 14))
             .overlay(alignment: .bottomTrailing) {
                 if selected {
                     Image(systemName: "checkmark.circle.fill")
-                        .font(.system(size: 11, weight: .bold)).foregroundStyle(tone.ink, .white)
+                        .font(.system(size: 11, weight: .bold)).foregroundStyle(tone.ink, FonsterChrome.onSelection)
                         .offset(x: 3, y: 3)
                 }
             }
@@ -414,10 +403,10 @@ struct FonsterPortraitChoice<Portrait: View>: View {
     var body: some View {
         Button(action: action) {
             portrait.frame(width: 48, height: 48).padding(10)
-                .background(selected ? FonsterTone.world.wash : .white.opacity(0.75), in: RoundedRectangle(cornerRadius: 21))
+                .background(selected ? FonsterTone.world.wash : FonsterChrome.surface, in: RoundedRectangle(cornerRadius: 21))
                 .overlay(RoundedRectangle(cornerRadius: 21).strokeBorder(selected ? FonsterTone.world.ink : .clear, lineWidth: 2))
                 .overlay(alignment: .bottomTrailing) {
-                    if selected { Image(systemName: "checkmark.circle.fill").font(.system(size: 15)).foregroundStyle(FonsterTone.world.ink, .white).offset(x: 3, y: 3) }
+                    if selected { Image(systemName: "checkmark.circle.fill").font(.system(size: 15)).foregroundStyle(FonsterTone.world.ink, FonsterChrome.onSelection).offset(x: 3, y: 3) }
                 }
         }.buttonStyle(.plain).fonsterHelp(name, detail: detail ?? "Choose this companion. The selected portrait has a checkmark; choose another portrait or Undo to return.").accessibilityLabel(name)
             .accessibilityAddTraits(selected ? .isSelected : [])
