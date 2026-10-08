@@ -112,8 +112,9 @@ struct LobbyStageView: View {
         #else
         RealityView { content in
                 content.camera = .virtual
+                let revision = lobby.roomRevision
                 do {
-                    let revision = lobby.roomRevision
+                    lobby.error = nil
                     lobby.viewportAspect = Float(size.width / max(1, size.height))
                     let roots = try await LobbySceneAssembly.make(lobby)
                     guard !Task.isCancelled, lobby.roomRevision == revision else { return }
@@ -134,7 +135,10 @@ struct LobbyStageView: View {
                     #if os(macOS)
                     NativeSceneExport.verificationTask(entities: Array(content.entities), label: "lobby")
                     #endif
-                } catch { lobby.error = "Couldn’t open this little room: \(error.localizedDescription)"; lobby.refreshGates() }
+                } catch {
+                    guard !Task.isCancelled, !(error is CancellationError), lobby.roomRevision == revision else { return }
+                    lobby.error = "Couldn’t open this little room: \(error.localizedDescription)"; lobby.refreshGates()
+                }
             } update: { content in
                 content.camera = .virtual
                 lobby.updateCamera()
@@ -149,13 +153,14 @@ struct LobbyStageView: View {
 @available(macOS 15.0, iOS 18.0, tvOS 26.0, *)
 @MainActor private enum LobbySceneAssembly {
     static func make(_ lobby: LocalLobbyController) async throws -> [Entity] {
+        let revision = lobby.roomRevision, members = lobby.members
         let camera = PerspectiveCamera()
         camera.camera.fieldOfViewInDegrees = 42
         camera.camera.near = 0.05; camera.camera.far = 1000
         camera.name = "preview-camera"; lobby.camera = camera; lobby.updateCamera()
         var roots: [Entity] = [camera]
         lobby.containers = []
-        for member in lobby.members {
+        for member in members {
             let container = Entity(); container.scale = .init(repeating: 0.55)
             if member.descriptor.supported {
                 let rig = try CreatureRig(member.descriptor, furDetail: lobby.members.count > 6 ? .world : .lobby)
@@ -165,6 +170,7 @@ struct LobbyStageView: View {
                 // Unsupported families retain their exact legacy portrait rather
                 // than inventing a different 3D silhouette.
                 let texture = try await TextureResource(image: image, options: .init(semantic: .color))
+                guard !Task.isCancelled, lobby.roomRevision == revision else { throw CancellationError() }
                 var material = UnlitMaterial(); material.color = .init(tint: .white, texture: .init(texture))
                 material.blending = .transparent(opacity: .init(floatLiteral: 1))
                 let portrait = ModelEntity(mesh: .generatePlane(width: 1.9, height: 1.9), materials: [material])
@@ -184,6 +190,7 @@ struct LobbyStageView: View {
         fill.light.color = FonsterPlatformColor(srgbRed: 0.88, green: 0.91, blue: 1, alpha: 1)
         fill.position = [0, 2, 4]; roots.append(fill)
         roots.append(try await CreatureSceneLighting.studio(for: roots))
+        guard !Task.isCancelled, lobby.roomRevision == revision else { throw CancellationError() }
         lobby.applyLayout()
         return roots
     }
@@ -220,6 +227,7 @@ private struct NativeLobbyStage: UIViewRepresentable {
         coordinator.buildTask = Task { @MainActor [weak view, weak lobby] in
             guard let view, let lobby else { return }
             do {
+                lobby.error = nil
                 let roots = try await LobbySceneAssembly.make(lobby)
                 guard !Task.isCancelled, lobby.roomRevision == revision else { return }
                 let anchor = AnchorEntity(world: .zero)
@@ -234,7 +242,7 @@ private struct NativeLobbyStage: UIViewRepresentable {
                     }
                 }
             } catch {
-                guard !Task.isCancelled else { return }
+                guard !Task.isCancelled, !(error is CancellationError), lobby.roomRevision == revision else { return }
                 lobby.error = "Couldn’t open this little room: \(error.localizedDescription)"
                 lobby.refreshGates()
             }

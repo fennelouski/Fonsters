@@ -82,13 +82,23 @@ import simd
             let learned = lobby.selectedMember.controller.personality!
             precondition(learned.hellos == 1)
             precondition(publicID != savedID && lobby.selectedSavedID == savedID)
-            lobby.showSaved([.init(id: savedID, name: "My Moss renamed", seed: "little-fonster-138")])
+            lobby.ready = true; lobby.openCare(0)
+            let sameRoom = lobby.roomRevision, sameController = lobby.selectedMember.controller
+            let learnedBeforeRename = sameController.personality
+            let samePositions = lobby.simulation.agents.map(\.position), sameGoals = lobby.simulation.agents.map(\.goal)
+            lobby.showSaved([.init(id: savedID, name: "My Moss renamed", seed: "little-fonster-138", biography: .init(background: "A tiny moon traveler.", likes: ["Comets"]))])
             precondition(lobby.selectedMember.id == publicID && lobby.selectedMember.name == "My Moss renamed")
-            precondition(lobby.selectedMember.controller.personality == learned && lobby.selectedMember.controller.feeling == .cozy)
+            precondition(lobby.roomRevision == sameRoom && lobby.selectedMember.controller === sameController && lobby.inCare)
+            precondition(lobby.simulation.agents.map(\.position) == samePositions && lobby.simulation.agents.map(\.goal) == sameGoals)
+            precondition(lobby.selectedMember.controller.personality == learnedBeforeRename && lobby.selectedMember.controller.feeling == .cozy)
+            precondition(lobby.selectedBiography.likes == ["Comets"])
+            let included = lobby.card(for: lobby.selectedMember, includeFeeling: false, includeBiography: true)
+            precondition(included.biography?.background == "A tiny moon traveler." && included.version == 2)
+            let updatedLearned = lobby.selectedMember.controller.personality!
             lobby.showSaved([.init(id: savedID, name: "My Moss renamed", seed: "little-fonster-233")])
-            precondition(lobby.selectedMember.id != publicID && lobby.selectedMember.controller.personality == learned && lobby.selectedMember.controller.feeling == .cozy)
+            precondition(lobby.selectedMember.id != publicID && lobby.selectedMember.controller.personality == updatedLearned && lobby.selectedMember.controller.feeling == .cozy)
             lobby.showSaved([.init(id: savedID, name: "My Moss renamed", seed: "little-fonster-138")])
-            precondition(lobby.selectedMember.id == publicID && lobby.selectedMember.controller.personality == learned && lobby.selectedMember.controller.feeling == .cozy)
+            precondition(lobby.selectedMember.id == publicID && lobby.selectedMember.controller.personality == updatedLearned && lobby.selectedMember.controller.feeling == .cozy)
             let card = try lobby.card(for: lobby.selectedMember, includeFeeling: false).encoded()
             let text = String(data: card, encoding: .utf8)!
             precondition(!text.contains(savedID.uuidString) && !text.contains("little-fonster-138"))

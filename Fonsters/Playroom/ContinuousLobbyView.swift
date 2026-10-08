@@ -18,6 +18,7 @@ nonisolated struct LobbyVisitExport: Transferable, Sendable {
 struct ContinuousLobbyView: View {
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @Environment(\.scenePhase) private var scenePhase
+    @Environment(\.modelContext) private var modelContext
     @EnvironmentObject private var pendingImportURL: PendingImportURLHolder
     @Query(sort: \Fonster.createdAt, order: .reverse) private var saved: [Fonster]
     @State private var lobby = LocalLobbyController()
@@ -30,11 +31,15 @@ struct ContinuousLobbyView: View {
     @State private var profiles = false
     @State private var command = false
     @State private var typing = false
+    @State private var editor: FonsterEditorTarget?
+    @State private var focusAfterSave: UUID?
+    @State private var libraryError: String?
     @State private var availableStageHeight: CGFloat = 1
     @State private var history = FonsterControlHistory<LocalLobbyController.ControlState>()
     @FocusState private var searchFocused: Bool
     @FocusState private var stageFocused: Bool
-    private var roster: [LocalLobbyController.SavedAppearance] { saved.map { .init(id: $0.id, name: $0.name, seed: $0.seed) } }
+    private var library: [Fonster] { PersonalFonsterLibrary.canonical(saved) }
+    private var roster: [LocalLobbyController.SavedAppearance] { library.map { .init(id: $0.id, name: $0.name, seed: $0.seed, biography: $0.biography) } }
     private var blocked: Bool { !lobby.ready || lobby.paused || lobby.backgrounded || lobby.lowPower }
 
     var body: some View {
@@ -51,13 +56,20 @@ struct ContinuousLobbyView: View {
         .onChange(of: lobby.searchQuery) { _, value in if query != value { query = value; searching = !value.isEmpty } }
         .focusable().focused($stageFocused)
         .onKeyPress(phases: [.down, .repeat]) { press in
-            guard !searchFocused && !typing && !gallery && !sharing && !agents && !profiles else { return .ignored }
+            guard !searchFocused && !typing && !gallery && !sharing && !agents && !profiles && editor == nil else { return .ignored }
             if press.key == .escape { if lobby.inCare { lobby.returnToLobby() } else { closeSearch() }; return .handled }
             if press.key == .return, !lobby.inCare, let first = lobby.searchMatches.first { lobby.openCare(first); return .handled }
             if press.key == .tab { return .ignored }
             return lobby.cameraKey(press.key, modifiers: press.modifiers) ? .handled : .ignored
         }
         .onChange(of: roster, initial: true) { lobby.continuousGallery = true; lobby.showSaved(roster); lobby.search(query) }
+        .task { await openPersonalLibrary() }
+        .task(id: lobby.ready) {
+            if lobby.ready, let id = focusAfterSave,
+               let record = roster.firstIndex(where: { $0.id == id }) {
+                focusAfterSave = nil; lobby.openCare(record)
+            }
+        }
         .task(id: lobby.shouldAnimate) { if lobby.shouldAnimate { await lobby.animate() } else { lobby.refreshGates() } }
         .onChange(of: reduceMotion, initial: true) { lobby.reduceMotion = reduceMotion || ProcessInfo.processInfo.arguments.contains("--verify-reduce-motion"); lobby.refreshGates() }
         .onChange(of: scenePhase, initial: true) { lobby.backgrounded = scenePhase != .active; lobby.refreshGates() }
@@ -67,6 +79,10 @@ struct ContinuousLobbyView: View {
         .onChange(of: lobby.inCare) { _, care in if care { searchFocused = false }; command = false; interpreter.cancel() }
         .onChange(of: pendingImportURL.url, initial: true) { if pendingImportURL.url != nil { gallery = true } }
         .onChange(of: gallery) { _, showing in lobby.reviewingControls = showing; lobby.refreshGates() }
+        .onChange(of: editor != nil) { _, showing in lobby.reviewingControls = showing; lobby.cancelContact(); lobby.refreshGates() }
+        .sheet(item: $editor) { target in
+            FonsterProfileEditor(record: target.record) { id in if target.record == nil { focusAfterSave = id } }
+        }
         .sheet(isPresented: $gallery) {
             VStack(spacing: 0) {
                 HStack { Spacer(); FonsterIconButton(title: "Back to lobby", symbol: "xmark") { gallery = false } }.padding(12)
@@ -85,6 +101,10 @@ struct ContinuousLobbyView: View {
         .task { await verifyCameraKeyboardIfRequested() }
         #endif
         .onDisappear { lobby.backgrounded = true; lobby.cancelContact(); lobby.refreshGates(); interpreter.cancel() }
+    }
+    private func openPersonalLibrary() async {
+        do { try await PersonalFonsterLibrary.ensureStarters(in: modelContext); libraryError = nil }
+        catch { libraryError = error.localizedDescription }
     }
 
     #if os(macOS)
@@ -133,6 +153,9 @@ struct ContinuousLobbyView: View {
                         detail: "Bring everyone back and resume their previous activities in this same world.") { lobby.returnToLobby() }
                         .accessibilityIdentifier("backToLobby")
                 } else {
+                    HStack(spacing: 10) {
+                    FonsterIconButton(title: "Create a Fonster", symbol: "plus", tone: .company, detail: "Choose a fuzzy appearance and a name. Save adds it to your library; X cancels.") { editor = .init(record: nil) }
+                        .accessibilityIdentifier("createFonster")
                     FonsterControlPanel(title: "Lobby", symbol: "person.3", tone: .company) {
                         companionChoices
                         FonsterControlGroup(title: "Library and company", tone: .company) {
@@ -142,6 +165,11 @@ struct ContinuousLobbyView: View {
                             FonsterIconButton(title: "Local profiles", symbol: "sparkles.rectangle.stack", tone: .company) { profiles = true }
                             #endif
                         }
+                        if let libraryError {
+                            Text(libraryError).font(.callout)
+                            FonsterIconButton(title: "Retry iCloud library", symbol: "arrow.clockwise") { Task { await openPersonalLibrary() } }
+                        }
+                    }
                     }
                 }
                 Spacer(minLength: 8)
@@ -221,6 +249,15 @@ struct ContinuousLobbyView: View {
             LobbyPortrait(appearance: lobby.selectedMember.descriptor).frame(width: 48, height: 48)
                 .padding(6).background(FonsterTone.company.wash, in: RoundedRectangle(cornerRadius: 14))
                 .accessibilityElement().accessibilityLabel("Original portrait of " + lobby.selectedMember.name)
+            if let id = lobby.selectedSavedID, let record = library.first(where: { $0.id == id }) {
+                FonsterIconButton(title: "Name and backstory", symbol: "book.closed", tone: .company,
+                    detail: "Name this Fonster and choose its backstory, likes, dislikes and favorites. Save keeps your changes; X leaves them as they were.") { editor = .init(record: record) }
+                    .accessibilityIdentifier("editFonsterProfile")
+            } else if !lobby.selectedBiography.isEmpty {
+                FonsterControlPanel(title: "Backstory and favorites", symbol: "book.closed", tone: .company) {
+                    FonsterBiographySummary(biography: lobby.selectedBiography)
+                }
+            }
             FonsterControlPanel(title: "Appearance and personality", symbol: "person.crop.circle", tone: .company) {
                 HStack(spacing: 20) {
                     LobbyPortrait(appearance: lobby.selectedMember.descriptor).frame(width: 90, height: 90)
@@ -252,7 +289,7 @@ struct ContinuousLobbyView: View {
                 }
             }
             #endif
-            FonsterInfo(title: "Care aspects", detail: "The portrait opens appearance and personality. The feeling icon changes the emotion you choose. The original gallery keeps name, appearance editing and image exports. These controls do not create care debts or death states.")
+            FonsterInfo(title: "Care aspects", detail: "The book opens name, backstory and favorites. The portrait opens appearance and learned personality. The feeling icon changes the emotion you choose. Your backstory stays private unless you include it when sharing.")
         }.padding(6).background(.regularMaterial, in: RoundedRectangle(cornerRadius: 22))
     }
     private var reactions: some View {
@@ -331,13 +368,18 @@ private struct LobbyVisitShare: View {
     let lobby: LocalLobbyController
     @Environment(\.dismiss) private var dismiss
     @State private var feeling = false
+    @State private var biography = false
     var body: some View {
         VStack(spacing: 20) {
             HStack { LobbyPortrait(appearance: lobby.selectedMember.descriptor).frame(width: 84, height: 84); Spacer(); FonsterIconButton(title: "Close sharing", symbol: "xmark") { dismiss() } }
             Toggle("Include chosen feeling", isOn: $feeling)
-            FonsterInfo(title: "Portable visit", detail: "Shares a snapshot with a random public identifier, appearance and personality tendencies. No email, original seed, private memories or live connection. Recipients can keep their copy.")
-            if let data = try? lobby.card(for: lobby.selectedMember, includeFeeling: feeling).encoded() {
-                ShareLink(item: LobbyVisitExport(data: data), preview: SharePreview(lobby.selectedMember.name, image: Image(systemName: "heart"))) {
+            if !lobby.selectedBiography.isEmpty {
+                Toggle("Include backstory and favorites", isOn: $biography).accessibilityIdentifier("shareBiography")
+                if biography { FonsterBiographySummary(biography: lobby.selectedBiography.publicSnapshot) }
+            }
+            FonsterInfo(title: "Portable visit", detail: "Shares a snapshot with a random public identifier, appearance and personality tendencies. Backstory and favorites are private until you turn them on here. Email addresses are omitted. No original seed, private learned memories or live connection. Recipients can keep their copy.")
+            if let data = try? lobby.card(for: lobby.selectedMember, includeFeeling: feeling, includeBiography: biography).encoded() {
+                ShareLink(item: LobbyVisitExport(data: data), preview: SharePreview(lobby.card(for: lobby.selectedMember, includeFeeling: feeling).name, image: Image(systemName: "heart"))) {
                     FonsterIcon(symbol: "square.and.arrow.up", tone: .company)
                 }.buttonStyle(.plain).fonsterHelp("Share visit snapshot", symbol: "square.and.arrow.up").accessibilityLabel("Share visit snapshot")
             }
@@ -345,7 +387,7 @@ private struct LobbyVisitShare: View {
         #if os(macOS)
         .frame(width: 380)
         #else
-        .presentationDetents([.medium])
+        .presentationDetents([.medium, .large])
         #endif
     }
 }
