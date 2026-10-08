@@ -484,6 +484,8 @@ struct ContinuousLobbyView: View {
             FonsterIconButton(title: "Fixture sleep", symbol: "moon.zzz") { inputs.verifyCommand("sleep") }.accessibilityIdentifier("fixtureSleep")
             FonsterIconButton(title: "Fixture dance", symbol: "music.note") { inputs.verifyCommand("dance") }.accessibilityIdentifier("fixtureDance")
             FonsterIconButton(title: "Fixture open eyes", symbol: "eye") { inputs.verifyMirror(.init(eyeOpenness: 1)) }.accessibilityIdentifier("fixtureEyes")
+            FonsterIconButton(title: "Fixture smile shape", symbol: "face.smiling") { faceFixture(smile: 0.9) }.accessibilityIdentifier("fixtureSmile")
+            FonsterIconButton(title: "Fixture downturned mouth", symbol: "cloud") { faceFixture(smile: -0.65) }.accessibilityIdentifier("fixtureFrown")
             FonsterIconButton(title: "Fixture rehearsal", symbol: "hand.wave") {
                 fixtureTask?.cancel()
                 fixtureTask = Task { @MainActor in
@@ -494,6 +496,17 @@ struct ContinuousLobbyView: View {
                     }
                 }
             }.accessibilityIdentifier("fixtureRehearsal")
+        }
+    }
+    private func faceFixture(smile: Float) {
+        guard ProcessInfo.processInfo.arguments.contains("--verify-live-inputs") else { return }
+        fixtureTask?.cancel()
+        fixtureTask = Task { @MainActor in
+            for _ in 0..<32 {
+                guard !Task.isCancelled else { return }
+                inputs.verifyMirror(.init(eyeOpenness: smile > 0 ? 0.8 : 1, facialSmile: smile, smilingEyes: smile > 0 ? 0.6 : 0, viewerAttention: 0.95))
+                do { try await Task.sleep(for: .milliseconds(120)) } catch { return }
+            }
         }
     }
     private var danceControls: some View {

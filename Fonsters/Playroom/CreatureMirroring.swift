@@ -10,9 +10,13 @@ nonisolated struct CreatureMirrorSample: Sendable {
     var raisedHand: Float = 0
     var handX: Float? = nil
     var found = true
+    var facialSmile: Float? = nil
+    var smilingEyes: Float? = nil
+    var viewerAttention: Float = 0
     var valid: Bool {
         gaze.x.isFinite && gaze.y.isFinite && tilt.isFinite && motion.isFinite && raisedHand.isFinite &&
-        (eyeOpenness?.isFinite ?? true) && (handX?.isFinite ?? true)
+        (eyeOpenness?.isFinite ?? true) && (handX?.isFinite ?? true) &&
+        (facialSmile?.isFinite ?? true) && (smilingEyes?.isFinite ?? true) && viewerAttention.isFinite
     }
 }
 
@@ -51,6 +55,9 @@ nonisolated struct CreatureMirrorDynamics {
             sample.motion += (min(1, max(0, input.motion)) - sample.motion) * blend
             sample.raisedHand = min(1, max(0, input.raisedHand)); sample.eyeOpenness = input.eyeOpenness
         }
+        sample.facialSmile = input.facialSmile.map { min(1, max(-0.85, $0)) }
+        sample.smilingEyes = input.smilingEyes.map { min(1, max(0, $0)) }
+        sample.viewerAttention = min(1, max(0, input.viewerAttention))
         sample.found = true; lastSeen = time
         if let eyes = input.eyeOpenness {
             if eyes < 0.22 { if closedSince == nil { closedSince = time }; sleeping = time - (closedSince ?? time) >= 1.4 }
