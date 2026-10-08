@@ -99,6 +99,9 @@ func installUprightCreatureShakeListenerIfNeeded() {
 
 /// iOS-only app delegate that installs global shake detection so shake is received even when sheets/modals are presented.
 final class ShakeListenerAppDelegate: NSObject, UIApplicationDelegate {
+    func application(_ application: UIApplication, supportedInterfaceOrientationsFor window: UIWindow?) -> UIInterfaceOrientationMask {
+        PhoneOrientation.mask(for: window)
+    }
     func application(
         _ application: UIApplication,
         didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]? = nil

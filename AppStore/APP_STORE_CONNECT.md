@@ -1,3 +1,5 @@
+> **Protected play update — 8 October 2026:** The store copy, privacy answers, age rating and review notes below describe the earlier 2D release and are historical. Use [PROTECTED_PLAY.md](PROTECTED_PLAY.md) and [the child release boundary](../docs/privacy/release-boundary.md) for the current native experience. Do not upload these old drafts. External quote and remote flag requests are now disabled; parent tasks guard exports/sharing/device inputs. Operator contacts, policy website and release-country review remain pending.
+
 # Fonsters — App Store Connect submission guide
 
 Everything that needs to be entered into App Store Connect for the 1.0 release, plus

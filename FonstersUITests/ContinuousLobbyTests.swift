@@ -42,14 +42,14 @@ final class ContinuousLobbyTests: XCTestCase {
         let response = stage.value as? String ?? ""
         XCTAssertTrue(["touch", "stroke", "cuddle", "bobs", "ticklish", "high five", "blink"].contains { response.contains($0) }, response)
         attach(app, "continuous-04-contact")
-        app.buttons["shareFonster"].tap()
+        app.buttons["shareFonster"].tap(); approveParentAction(in: app)
         XCTAssertTrue(app.buttons["Share visit snapshot"].waitForExistence(timeout: 5))
         app.buttons["Close sharing"].tap()
         app.buttons["backToLobby"].tap()
         XCTAssertTrue(app.buttons["searchFonsters"].waitForExistence(timeout: 5))
         XCTAssertEqual(app.images["searchResults"].label, "Front match: Moss")
         app.buttons["Clear and close search"].tap()
-        XCTAssertFalse(app.textFields["lobbySearchField"].exists)
+        XCTAssertTrue(app.textFields["lobbySearchField"].waitForNonExistence(timeout: 3))
         attach(app, "continuous-05-returned")
         // Click the creature itself after spatial search, rather than choosing a
         // surrogate list button. The same stage handles selection and petting.
@@ -80,6 +80,7 @@ final class ContinuousLobbyTests: XCTestCase {
         XCTAssertTrue(app.buttons["backToLobby"].waitForExistence(timeout: 5))
         XCTAssertEqual(app.staticTexts["careName"].label, "Moss")
         app.buttons["backToLobby"].tap()
+        XCTAssertTrue(app.keyboards.firstMatch.waitForNonExistence(timeout: 5))
         // Touch the rendered search result to enter care, through the native
         // world's transparent input surface rather than a list surrogate.
         let stage = app.otherElements["continuousStage"]
@@ -106,7 +107,7 @@ final class ContinuousLobbyTests: XCTestCase {
         app.buttons["backToLobby"].tap()
         let data = try JSONSerialization.data(withJSONObject: ["lilac-sun-legacy-link-smoke"])
         let cards = data.base64EncodedString().replacingOccurrences(of: "+", with: "-").replacingOccurrences(of: "/", with: "_").replacingOccurrences(of: "=", with: "")
-        app.open(URL(string: "fonsters://import?cards=" + cards)!)
+        app.open(URL(string: "fonsters://import?cards=" + cards)!); approveParentAction(in: app)
         XCTAssertTrue(app.buttons["Fonster portrait"].firstMatch.waitForExistence(timeout: 10))
         attach(app, "continuous-08-original-import")
     }

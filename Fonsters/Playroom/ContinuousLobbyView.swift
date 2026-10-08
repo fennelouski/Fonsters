@@ -24,6 +24,9 @@ struct ContinuousLobbyView: View {
     @State private var lobby = LocalLobbyController()
     @State private var interpreter = TypedActionInterpreter()
     @State private var inputs = CreatureInputs()
+    @State private var parentGate = ParentActionGate()
+    @State private var inputParentGate = ParentActionGate()
+    @State private var privacy = false
     @State private var lesson: CreatureImitationLesson?
     @State private var learnedUndo: CreatureMovementStyle?
     @State private var canUndoLearning = false
@@ -47,10 +50,16 @@ struct ContinuousLobbyView: View {
     private var library: [Fonster] { PersonalFonsterLibrary.canonical(saved) }
     private var roster: [LocalLobbyController.SavedAppearance] { library.map { .init(id: $0.id, name: $0.name, seed: $0.seed, biography: $0.biography) } }
     private var blocked: Bool { !lobby.ready || lobby.paused || lobby.backgrounded || lobby.lowPower || lobby.reviewingControls }
-    private var reviewing: Bool { gallery || sharing || agents || profiles || editor != nil }
+    private var reviewing: Bool { gallery || sharing || agents || profiles || editor != nil || privacy || parentGate.challenge != nil || inputParentGate.challenge != nil }
     private var inputsSuspended: Bool { blocked || !lobby.inCare || typing || searchFocused }
 
-    var body: some View { presentations }
+    var body: some View {
+        presentations
+            .parentActions(parentGate)
+            #if os(iOS)
+            .phoneOrientation(lobby.inCare || reviewing ? .details : .lobby)
+            #endif
+    }
     private var stageAndKeyboard: some View {
         ZStack {
             (lobby.danceMode == .daylight ? Color(red: 0.91, green: 0.94, blue: 0.87) : Color(red: 0.075, green: 0.07, blue: 0.14)).ignoresSafeArea()
@@ -62,7 +71,12 @@ struct ContinuousLobbyView: View {
         .fontDesign(.rounded)
         .onGeometryChange(for: CGFloat.self) { $0.size.height } action: { height in availableStageHeight = height; updateVisibleStage() }
         .onChange(of: searchFocused) { updateVisibleStage() }
-        .onChange(of: lobby.searchQuery) { _, value in if query != value { query = value; searching = !value.isEmpty } }
+        .onChange(of: lobby.searchQuery) { _, value in
+            // A delayed model observation during rotation must not restore a
+            // query the owner just cleared.
+            guard value == lobby.searchQuery else { return }
+            if query != value { query = value; searching = !value.isEmpty }
+        }
         .focusable().focused($stageFocused)
         .onKeyPress(phases: [.down, .repeat]) { press in
             guard !searchFocused && !typing && !gallery && !sharing && !agents && !profiles && editor == nil else { return .ignored }
@@ -98,7 +112,7 @@ struct ContinuousLobbyView: View {
     }
     private var inputLifecycle: some View {
         lifecycle
-        .onChange(of: lobby.inCare) { _, care in if care { searchFocused = false }; command = false; interpreter.cancel(); stopLiveActivity() }
+        .onChange(of: lobby.inCare) { searchFocused = false; stageFocused = true; command = false; interpreter.cancel(); stopLiveActivity() }
         .onChange(of: lobby.selected) { stopLiveActivity(); canUndoLearning = false }
         .onChange(of: inputsSuspended, initial: true) { inputs.setSuspended(inputsSuspended); if inputsSuspended { cancelLesson(); lobby.selectedMember.controller.clearMirror() } }
         .onChange(of: inputs.microphoneEnabled) { if inputs.microphoneEnabled { for member in lobby.members { member.controller.silence() } }; lobby.listening = inputs.microphoneEnabled; lobby.refreshGates() }
@@ -115,17 +129,28 @@ struct ContinuousLobbyView: View {
         inputLifecycle
         .sheet(item: $editor) { target in
             FonsterProfileEditor(record: target.record) { id in if target.record == nil { focusAfterSave = id } }
+                #if os(iOS)
+                .phoneOrientation(.details)
+                #endif
         }
         .sheet(isPresented: $gallery) {
             VStack(spacing: 0) {
                 HStack { Spacer(); FonsterIconButton(title: "Back to lobby", symbol: "xmark") { gallery = false } }.padding(12)
-                ContentView(initialSelectionID: lobby.inCare ? lobby.selectedSavedID : nil)
+                ParentOnlyArea(purpose: "Review original seed links, imports and portrait exports before sharing outside Fonsters.") {
+                    ContentView(initialSelectionID: lobby.inCare ? lobby.selectedSavedID : nil)
+                }
             }
             #if os(macOS)
             .frame(minWidth: 800, minHeight: 600)
             #endif
         }
-        .sheet(isPresented: $sharing) { LobbyVisitShare(lobby: lobby) }
+        .sheet(isPresented: $sharing) {
+            LobbyVisitShare(lobby: lobby)
+                #if os(iOS)
+                .phoneOrientation(.details)
+                #endif
+        }
+        .sheet(isPresented: $privacy) { FamilyPrivacyView() }
         #if os(macOS)
         .sheet(isPresented: $agents) { FonsterAgentStudio(lobby: lobby) }
         .sheet(isPresented: $profiles) { FonsterSocialStudio(lobby: lobby) }
@@ -195,7 +220,9 @@ struct ContinuousLobbyView: View {
                             FonsterIconButton(title: "Original portrait gallery and exports", symbol: "square.grid.2x2") { gallery = true }
                             FonsterIconButton(title: "Play together", symbol: "tennisball", tone: .play) { lobby.playTogether() }.disabled(blocked)
                             #if os(macOS)
-                            FonsterIconButton(title: "Local profiles", symbol: "sparkles.rectangle.stack", tone: .company) { profiles = true }
+                            if ProtectedPlayPolicy.allowsPublicSocialProfiles {
+                                FonsterIconButton(title: "Local profiles", symbol: "sparkles.rectangle.stack", tone: .company) { profiles = true }
+                            }
                             #endif
                         }
                         if let libraryError {
@@ -207,7 +234,10 @@ struct ContinuousLobbyView: View {
                 }
                 Spacer(minLength: 8)
                 if lobby.inCare {
-                    FonsterIconButton(title: "Share Fonster", symbol: "square.and.arrow.up", tone: .company) { sharing = true }
+                    FonsterIconButton(title: "Share Fonster", symbol: "square.and.arrow.up", tone: .company,
+                        detail: "A grown-up reviews the snapshot before sharing. Recipients can keep a copy.") {
+                        parentGate.request("Review this Fonster snapshot before sharing. Backstory and feelings are optional; recipients can keep a copy.") { sharing = true }
+                    }
                         .accessibilityIdentifier("shareFonster")
                 } else { searchControl }
             }
@@ -223,6 +253,9 @@ struct ContinuousLobbyView: View {
                     onFocusChange: { typing = $0; if $0 { lobby.takeOwnerControl() } })
             }
             HStack(alignment: .bottom) {
+                FonsterIconButton(title: "Privacy and family", symbol: "hand.raised", tone: .quiet,
+                    detail: "Read the privacy policy for this protected play experience. No account is needed.") { privacy = true }
+                    .accessibilityIdentifier("familyPrivacyButton")
                 FonsterControlPanel(title: "World and camera", symbol: "rotate.3d", tone: .world) { cameraControls }
                 FonsterControlPanel(title: "Dance world", symbol: "music.note", tone: .play) { danceControls }
                 Spacer(minLength: 4)
@@ -251,7 +284,7 @@ struct ContinuousLobbyView: View {
                 TextField("Find a Fonster", text: $query).textFieldStyle(.plain).focused($searchFocused)
                     .frame(maxWidth: 230).padding(12).background(.regularMaterial, in: RoundedRectangle(cornerRadius: 14))
                     .accessibilityLabel("Find a Fonster").accessibilityIdentifier("lobbySearchField")
-                    .onSubmit { if let first = lobby.searchMatches.first { lobby.openCare(first) } }
+                    .onSubmit { searchFocused = false; stageFocused = true; if let first = lobby.searchMatches.first { lobby.openCare(first) } }
                 FonsterIconButton(title: "Clear and close search", symbol: "xmark", tone: .company) { closeSearch() }
             }
             FonsterIconButton(title: "Search Fonsters", symbol: "magnifyingglass", tone: .company, selected: searching,
@@ -264,7 +297,7 @@ struct ContinuousLobbyView: View {
         lobby.visibleStageFraction = searchFocused ? min(1, max(0.25, Float(availableStageHeight) / max(1, lobby.viewportHeight))) : 1
         lobby.updateCamera()
     }
-    private func closeSearch() { query = ""; searching = false; searchFocused = false; lobby.search("") }
+    private func closeSearch() { query = ""; searching = false; searchFocused = false; stageFocused = true; lobby.search("") }
 
     private var companionChoices: some View {
         FonsterControlGroup(title: "Meet a Fonster", tone: .company) {
@@ -283,7 +316,7 @@ struct ContinuousLobbyView: View {
             LobbyPortrait(appearance: lobby.selectedMember.descriptor).frame(width: 48, height: 48)
                 .padding(6).background(FonsterTone.company.wash, in: RoundedRectangle(cornerRadius: 14))
                 .accessibilityElement().accessibilityLabel("Original portrait of " + lobby.selectedMember.name)
-            FonsterControlPanel(title: "Mirror and voice", symbol: inputs.cameraEnabled || inputs.microphoneEnabled ? "person.crop.circle.badge.checkmark" : "hand.draw", tone: .company) { liveControls }
+            FonsterControlPanel(title: "Mirror and voice", symbol: inputs.cameraEnabled || inputs.microphoneEnabled ? "person.crop.circle.badge.checkmark" : "hand.draw", tone: .company) { liveControls.parentActions(inputParentGate) }
             if let id = lobby.selectedSavedID, let record = library.first(where: { $0.id == id }) {
                 FonsterIconButton(title: "Name and backstory", symbol: "book.closed", tone: .company,
                     detail: "Name this Fonster and choose its backstory, likes, dislikes and favorites. Save keeps your changes; X leaves them as they were.") { editor = .init(record: record) }
@@ -317,11 +350,13 @@ struct ContinuousLobbyView: View {
                 }
             }
             #if os(macOS)
+            if ProtectedPlayPolicy.allowsExternalAgents || ProtectedPlayPolicy.allowsPublicSocialProfiles {
             FonsterControlPanel(title: "Profiles and agents", symbol: "sparkles.rectangle.stack", tone: .company) {
                 FonsterControlGroup(title: "Profiles and agents", tone: .company) {
                     FonsterIconButton(title: "Local profiles", symbol: "sparkles.rectangle.stack") { profiles = true }
                     FonsterIconButton(title: "Agent controls", symbol: "sparkles") { agents = true }
                 }
+            }
             }
             #endif
             FonsterInfo(title: "Care aspects", detail: "The book opens name, backstory and favorites. The portrait opens appearance and learned personality. The feeling icon changes the emotion you choose. Your backstory stays private unless you include it when sharing.")
@@ -386,10 +421,16 @@ struct ContinuousLobbyView: View {
         VStack(spacing: 16) {
             FonsterControlGroup(title: "Opt-in senses", tone: .company) {
                 FonsterIconButton(title: inputs.cameraEnabled ? "Turn camera off" : "Enable camera mirror", symbol: inputs.cameraEnabled ? "video.fill" : "video", tone: .company, selected: inputs.cameraEnabled,
-                    detail: "Mirror blinks, head tilts and raised-hand waves. Deliberately close your eyes for a moment to settle. Camera frames stay on this device. Tap again to turn off.") { lobby.takeOwnerControl(); inputs.toggleCamera() }
+                    detail: "A grown-up enables this. Mirror blinks, head tilts and raised-hand waves. Camera frames stay on this device. Tap again to turn off.") {
+                    if inputs.cameraEnabled { inputs.toggleCamera() }
+                    else { inputParentGate.request("Enable camera mirroring on this device. No camera frames are saved or uploaded. You can turn it off at any time.") { lobby.takeOwnerControl(); inputs.toggleCamera(parentApproved: true) } }
+                }
                     .disabled(blocked || lobby.selectedMember.isVisitor).accessibilityIdentifier("liveCamera")
                 FonsterIconButton(title: inputs.microphoneEnabled ? "Turn microphone off" : "Enable spoken commands", symbol: inputs.microphoneEnabled ? "mic.fill" : "mic", tone: .company, selected: inputs.microphoneEnabled,
-                    detail: "Say wave, dance, sleep, jump, blink, spin, stretch or stop in English. One short action at a time. Requires local speech support and your permission. No audio or words are saved or uploaded. Tap again to turn off.") { lobby.takeOwnerControl(); inputs.toggleMicrophone() }
+                    detail: "A grown-up enables this. Say wave, dance, sleep, jump, blink, spin, stretch or stop in English. Requires local speech support and device permission. No audio or words are saved or uploaded. Tap again to turn off.") {
+                    if inputs.microphoneEnabled { inputs.toggleMicrophone() }
+                    else { inputParentGate.request("Enable short spoken commands on this device. No audio or recognized words are saved or uploaded. Local English speech support is required.") { lobby.takeOwnerControl(); inputs.toggleMicrophone(parentApproved: true) } }
+                }
                     .disabled(blocked || lobby.selectedMember.isVisitor).accessibilityIdentifier("liveMicrophone")
                 FonsterIconButton(title: "Stop camera, microphone and practice", symbol: "stop.fill", tone: .quiet) { stopLiveActivity(); lobby.stopActivity() }.accessibilityIdentifier("stopLiveInputs")
             }

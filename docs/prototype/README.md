@@ -1,5 +1,7 @@
 # Fonsters Playroom — MacBook Air preview
 
+The current [phone orientation and protected play revision](phone-orientation-and-protected-play.md) uses a landscape iPhone lobby and portrait care/sheets. The hand icon opens the child privacy notice; parent tasks guard sharing, original exports and device inputs. Everyone stays in protected play while future signup is specified. Use `script/Open Fonsters.command` for the current persistent preview. Earlier milestone instructions below describe their original builds.
+
 Open `Launch Playroom.command` at the repository root, or double-click
 `.prototype-build/Build/Products/Debug/Fonsters.app`. The preview is already built locally.
 Rebuild with `./script/build_and_run.sh --verify` using the installed Xcode.

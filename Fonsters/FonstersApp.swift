@@ -214,28 +214,28 @@ struct FonstersApp: App {
             if isPlayroomPrototype {
                 #if os(macOS)
                 if #available(macOS 15.0, *) {
-                    if ProcessInfo.processInfo.arguments.contains("--legacy-playroom") { PlayroomView() }
-                    else if ProcessInfo.processInfo.arguments.contains("--legacy-world") { LocalLobbyView() }
+                    if ProcessInfo.processInfo.arguments.contains("--legacy-playroom") { ParentOnlyArea(purpose: "Open the original playroom and its export controls.") { PlayroomView() } }
+                    else if ProcessInfo.processInfo.arguments.contains("--legacy-world") { ParentOnlyArea(purpose: "Open the original local world and its experimental tools.") { LocalLobbyView() } }
                     else { ContinuousLobbyView().environmentObject(pendingImportURL).environmentObject(featureFlags).onOpenURL { pendingImportURL.url = $0 } }
                 }
                 else { Text("The Playroom requires macOS 15 or later.") }
                 #elseif os(iOS)
                 Group {
-                    if ProcessInfo.processInfo.arguments.contains("--legacy-world") { MobileLobbyView() }
-                    else if ProcessInfo.processInfo.arguments.contains("--legacy-playroom") { MobileFonstersHome() }
+                    if ProcessInfo.processInfo.arguments.contains("--legacy-world") { ParentOnlyArea(purpose: "Open the original mobile lobby and exports.") { MobileLobbyView() } }
+                    else if ProcessInfo.processInfo.arguments.contains("--legacy-playroom") { ParentOnlyArea(purpose: "Open the original gallery and portrait exports.") { MobileFonstersHome() } }
                     else { ContinuousLobbyView() }
                 }.environmentObject(pendingImportURL).environmentObject(featureFlags)
                     .onOpenURL { url in pendingImportURL.url = url }
                 #elseif os(tvOS)
                 if #available(tvOS 26.0, *) { TelevisionFonstersHome().environmentObject(pendingImportURL).environmentObject(featureFlags) }
-                else { ContentView().environmentObject(pendingImportURL).environmentObject(featureFlags) }
+                else { ParentOnlyArea(purpose: "Review original seed links, imports and portrait exports before sharing outside Fonsters.") { ContentView() }.environmentObject(pendingImportURL).environmentObject(featureFlags) }
                 #else
-                ContentView().environmentObject(pendingImportURL).environmentObject(featureFlags)
+                ParentOnlyArea(purpose: "Review original seed links, imports and portrait exports before sharing outside Fonsters.") { ContentView() }.environmentObject(pendingImportURL).environmentObject(featureFlags)
                 #endif
             } else if loadingComplete {
                 #if os(iOS)
                 Group {
-                    if ProcessInfo.processInfo.arguments.contains("--original-gallery") { ContentView() }
+                    if ProcessInfo.processInfo.arguments.contains("--original-gallery") { ParentOnlyArea(purpose: "Review original seed links, imports and portrait exports before sharing outside Fonsters.") { ContentView() } }
                     else { ContinuousLobbyView() }
                 }
                     .task { featureFlags.refreshFromRemote() }
@@ -245,20 +245,20 @@ struct FonstersApp: App {
                 #elseif os(tvOS)
                 Group {
                     if #available(tvOS 26.0, *) { TelevisionFonstersHome() }
-                    else { ContentView() }
+                    else { ParentOnlyArea(purpose: "Review original seed links, imports and portrait exports before sharing outside Fonsters.") { ContentView() } }
                 }.environmentObject(pendingImportURL).environmentObject(featureFlags)
                     .task { featureFlags.refreshFromRemote() }
                 #elseif os(macOS)
                 Group {
                     if #available(macOS 15.0, *), !ProcessInfo.processInfo.arguments.contains("--original-gallery") { ContinuousLobbyView() }
-                    else { ContentView() }
+                    else { ParentOnlyArea(purpose: "Review original seed links, imports and portrait exports before sharing outside Fonsters.") { ContentView() } }
                 }
                     .environmentObject(pendingImportURL)
                     .environmentObject(featureFlags)
                     .task { featureFlags.refreshFromRemote() }
                     .onOpenURL { pendingImportURL.url = $0 }
                 #else
-                ContentView()
+                ParentOnlyArea(purpose: "Review original seed links, imports and portrait exports before sharing outside Fonsters.") { ContentView() }
                     .environmentObject(pendingImportURL)
                     .environmentObject(featureFlags)
                     .task { featureFlags.refreshFromRemote() }
@@ -285,12 +285,12 @@ struct FonstersApp: App {
         #if os(macOS)
         Window("Fonsters Playroom", id: "playroom") {
             if #available(macOS 15.0, *) {
-                PlayroomView()
+                ParentOnlyArea(purpose: "Open the original playroom and its export controls.") { PlayroomView() }
             } else { Text("The Playroom requires macOS 15 or later.") }
         }
         .defaultSize(width: 1080, height: 740)
         Window("Fonsters Lobby", id: "lobby") {
-            if #available(macOS 15.0, *) { LocalLobbyView() }
+            if #available(macOS 15.0, *) { ParentOnlyArea(purpose: "Open the original local world and its experimental tools.") { LocalLobbyView() } }
             else { Text("The local lobby requires macOS 15 or later.") }
         }
         .defaultSize(width: 1080, height: 740)

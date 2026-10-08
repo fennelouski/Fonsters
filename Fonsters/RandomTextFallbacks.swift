@@ -2,9 +2,8 @@
 //  RandomTextFallbacks.swift
 //  Fonsters
 //
-//  Random text sources: "quote" uses Quotable API (api.quotable.io) with local fallback;
-//  "words", "uuid", and "lorem" are local-only. Register sources with a closure that
-//  returns optional text; the fetch layer uses API for quote, local for the rest.
+//  Protected play uses bundled local sources. The older external quote provider
+//  is retained behind the immutable protected-play network boundary.
 //
 
 import Foundation
@@ -101,6 +100,10 @@ func fetchRandomTextWithFallback(source: String) async -> (String?, Bool) {
 }
 
 private func fetchQuoteWithFallback() async -> (String?, Bool) {
+    guard ProtectedPlayPolicy.allowsThirdPartyRequests else {
+        let text = RandomTextFallbacks.localText(for: "quote")
+        return (text, text != nil)
+    }
     do {
         let (data, response) = try await URLSession.shared.data(from: quotableAPIURL)
         guard let http = response as? HTTPURLResponse, (200...299).contains(http.statusCode) else {

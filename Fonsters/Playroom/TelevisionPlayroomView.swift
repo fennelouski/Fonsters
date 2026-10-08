@@ -8,7 +8,7 @@ struct TelevisionFonstersHome: View {
     var body: some View {
         TabView {
             TelevisionWorldView().tabItem { Image(systemName: "person.3").accessibilityLabel("Fuzzy world") }
-            ContentView().tabItem { Image(systemName: "square.grid.2x2").accessibilityLabel("Original gallery") }
+            ParentOnlyArea(purpose: "Review the original gallery and seed links before sharing.") { ContentView() }.tabItem { Image(systemName: "square.grid.2x2").accessibilityLabel("Original gallery") }
         }
     }
 }

@@ -53,6 +53,7 @@ final class FonsterAgentDirector {
         if let id = controlID { controlID = nil; lobby.cancelAgentMotion(id: id); message = reason }
     }
     func prepare(_ plan: FonsterAgentProgram, source: FonsterAgentSource, lobby: LocalLobbyController, now: Date = .now) throws {
+        guard source == .simulated || ProtectedPlayPolicy.allowsExternalAgents else { throw FonsterAgentError.denied }
         try plan.validate(now: now)
         try validateTarget(plan, lobby: lobby)
         guard !replayIDs.contains(plan.programID) else { throw FonsterAgentError.replay }

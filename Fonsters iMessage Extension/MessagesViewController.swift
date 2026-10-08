@@ -32,6 +32,9 @@ final class MessagesViewController: MSMessagesAppViewController {
     private var modelContainer: ModelContainer?
     private var cacheDirectory: URL?
     private var generatedURLs: [URL] = [] // keep references so files persist for MSSticker
+    private var parentCover: UIButton!
+    private var parentApproved = false
+    private var parentGeneration = 0
 
     override func viewDidLoad() {
         super.viewDidLoad()
@@ -62,10 +65,40 @@ final class MessagesViewController: MSMessagesAppViewController {
             helpButton.topAnchor.constraint(equalTo: view.safeAreaLayoutGuide.topAnchor, constant: 8),
             helpButton.widthAnchor.constraint(equalToConstant: 44), helpButton.heightAnchor.constraint(equalToConstant: 44)
         ])
-        loadStickers()
+        parentCover = UIButton(type: .system)
+        parentCover.setImage(UIImage(systemName: "person.badge.shield.checkmark"), for: .normal)
+        parentCover.setTitle(" Ask a grown-up to open stickers", for: .normal)
+        parentCover.accessibilityLabel = "Ask a grown-up to open stickers"
+        parentCover.backgroundColor = .systemBackground
+        parentCover.frame = view.bounds
+        parentCover.autoresizingMask = [.flexibleWidth, .flexibleHeight]
+        parentCover.addAction(UIAction { [weak self] _ in self?.requestParentAccess() }, for: .primaryActionTriggered)
+        view.addSubview(parentCover)
+    }
+
+    override func willResignActive(with conversation: MSConversation) {
+        super.willResignActive(with: conversation)
+        parentGeneration += 1
+        parentApproved = false; parentCover.isHidden = false
+        if presentedViewController is UIAlertController { dismiss(animated: false) }
+    }
+
+    private func requestParentAccess() {
+        let generation = parentGeneration
+        let challenge = ParentChallenge()
+        let alert = UIAlertController(title: "Ask a grown-up", message: "Stickers are shared through Messages. Recipients can keep their copy.\n\n" + challenge.question, preferredStyle: .alert)
+        alert.addTextField { $0.placeholder = "Answer"; $0.keyboardType = .numberPad }
+        alert.addAction(UIAlertAction(title: "Cancel", style: .cancel))
+        alert.addAction(UIAlertAction(title: "Continue", style: .default) { [weak self, weak alert] _ in
+            guard let self, self.parentGeneration == generation,
+                  challenge.accepts(alert?.textFields?.first?.text ?? "") else { return }
+            self.parentApproved = true; self.parentCover.isHidden = true; self.loadStickers()
+        })
+        present(alert, animated: true)
     }
 
     private func loadStickers() {
+        guard parentApproved else { return }
         guard let cacheDir = cacheDirectory else { return }
         try? FileManager.default.createDirectory(at: cacheDir, withIntermediateDirectories: true)
 

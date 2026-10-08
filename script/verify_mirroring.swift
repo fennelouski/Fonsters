@@ -47,6 +47,8 @@ import simd
   let inputs = CreatureInputs(); var commands = 0, samples = 0
   inputs.onCommand = { _ in commands += 1 }; inputs.onMirror = { _ in samples += 1 }
   inputs.toggleMicrophone(); inputs.toggleCamera()
+  check(!inputs.microphoneEnabled && !inputs.cameraEnabled, "inputs require a parent action before any permission request")
+  inputs.toggleMicrophone(parentApproved: true); inputs.toggleCamera(parentApproved: true)
   inputs.verifyCommand("sleep"); inputs.verifyMirror(.init(eyeOpenness: 0.1))
   check(commands == 1 && samples == 1, "same native input routing exercised without hardware")
   inputs.setSuspended(true); let pausedSamples = samples

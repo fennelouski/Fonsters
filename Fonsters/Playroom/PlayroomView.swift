@@ -10,6 +10,7 @@ struct PlayroomView: View {
     @Environment(\.openWindow) private var openWindow
     @State private var controller = PlayroomController()
     @State private var inputs = CreatureInputs()
+    @State private var parentGate = ParentActionGate()
     @State private var companions = PlayroomCompanion.fixtures
     @State private var selection = 0
     @State private var exportMessage: String?
@@ -80,6 +81,7 @@ struct PlayroomView: View {
         }
         .onChange(of: controller.orbit) { controller.refreshStillPose() }
         .onChange(of: controller.controls(selection: selection)) { old, new in controlHistory.record(old: old, new: new) }
+        .parentActions(parentGate)
         .onDisappear { inputs.stopAll(); interpreter.cancel(); controller.silence(); controller.toyBall = nil; controller.touchCamera = nil; controller.rig = nil; controller.rendererReady = false }
     }
 
@@ -268,8 +270,14 @@ struct PlayroomView: View {
     private var inputControls: some View {
         FonsterControlGroup(title: "Sound, microphone and camera") {
             FonsterIconToggle(title: "Sounds", symbol: "speaker.wave.2", isOn: $controller.soundEnabled)
-            FonsterIconButton(title: inputs.microphoneEnabled ? "Stop listening" : "Listen locally; audio is not recorded", symbol: "mic", selected: inputs.microphoneEnabled) { inputs.toggleMicrophone() }
-            FonsterIconButton(title: inputs.cameraEnabled ? "Turn camera off" : "Follow a face locally; frames are not stored", symbol: "video", selected: inputs.cameraEnabled) { inputs.toggleCamera() }
+            FonsterIconButton(title: inputs.microphoneEnabled ? "Stop listening" : "Listen locally; audio is not recorded", symbol: "mic", selected: inputs.microphoneEnabled) {
+                if inputs.microphoneEnabled { inputs.toggleMicrophone() }
+                else { parentGate.request("Enable on-device spoken commands. No audio or words are saved or uploaded.") { inputs.toggleMicrophone(parentApproved: true) } }
+            }
+            FonsterIconButton(title: inputs.cameraEnabled ? "Turn camera off" : "Follow a face locally; frames are not stored", symbol: "video", selected: inputs.cameraEnabled) {
+                if inputs.cameraEnabled { inputs.toggleCamera() }
+                else { parentGate.request("Enable on-device camera mirroring. No frames are saved or uploaded.") { inputs.toggleCamera(parentApproved: true) } }
+            }
             if inputs.microphoneEnabled {
                 ProgressView(value: Double(inputs.level)).frame(width: 36).accessibilityLabel("Microphone activity")
             }
