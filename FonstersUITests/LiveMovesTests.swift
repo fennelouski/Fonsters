@@ -1,0 +1,61 @@
+import XCTest
+
+final class LiveMovesTests: XCTestCase {
+ override func setUpWithError() throws { continueAfterFailure = false }
+ @MainActor private func launch(still: Bool = false) -> XCUIApplication {
+  let app = XCUIApplication()
+  app.launchArguments = ["--prototype", "--verify-manual", "--world-members", "6", "--verify-live-inputs", "--personality-file", "/tmp/live-moves-\(UUID().uuidString).json"]
+  if still { app.launchArguments.append("--verify-reduce-motion") }
+  app.launch(); XCTAssertTrue(app.buttons["searchFonsters"].waitForExistence(timeout: 25))
+  app.buttons["searchFonsters"].tap(); app.textFields["lobbySearchField"].typeText("moss\n")
+  XCTAssertTrue(app.buttons["care_play"].waitForExistence(timeout: 10))
+  let ready = XCTNSPredicateExpectation(predicate: NSPredicate(format: "enabled == true"), object: app.buttons["care_play"])
+  XCTAssertEqual(XCTWaiter.wait(for: [ready], timeout: 25), .completed)
+  return app
+ }
+ @MainActor func testDanceWorldAndSyntheticVoicePractice() throws {
+  let app = launch()
+  app.buttons["panel_Dance world"].tap(); app.buttons["dance_disco"].tap()
+  app.buttons["danceConfetti"].tap(); app.buttons["danceBalloons"].tap(); app.buttons["Close panel"].tap()
+  attach(app, "live-01-disco-world")
+  app.buttons["pauseLobby"].tap(); attach(app, "live-02-paused-party")
+  app.buttons["pauseLobby"].tap()
+  app.buttons["panel_Mirror and voice"].tap()
+  app.buttons["liveMicrophone"].tap()
+  XCTAssertTrue(app.staticTexts["liveInputStatus"].label.contains("Synthetic voice"))
+  app.swipeUp()
+  XCTAssertTrue(app.buttons["fixtureSleep"].waitForExistence(timeout: 5)); app.buttons["fixtureSleep"].tap()
+  XCTAssertEqual(app.staticTexts["liveInputStatus"].label, "Heard sleep.")
+  app.buttons["Close panel"].tap(); attach(app, "live-03-spoken-sleep-fixture")
+  app.buttons["panel_Mirror and voice"].tap()
+  app.buttons["fixtureDance"].tap(); app.buttons["Close panel"].tap()
+  attach(app, "live-04-spoken-dance-fixture")
+  app.buttons["panel_Mirror and voice"].tap(); app.buttons["liveCamera"].tap()
+  app.buttons["lessonWave"].tap(); app.swipeUp(); app.buttons["fixtureRehearsal"].tap()
+  let keep = app.buttons["keepLesson"]
+  XCTAssertTrue(keep.waitForExistence(timeout: 10))
+  let complete = XCTNSPredicateExpectation(predicate: NSPredicate(format: "enabled == true"), object: keep)
+  XCTAssertEqual(XCTWaiter.wait(for: [complete], timeout: 15), .completed)
+  attach(app, "live-05-ready-to-keep-practice")
+  keep.tap(); XCTAssertTrue(app.buttons["undoLesson"].isEnabled); app.buttons["undoLesson"].tap()
+  XCTAssertFalse(app.buttons["undoLesson"].isEnabled)
+  app.buttons["stopLiveInputs"].tap(); XCTAssertTrue(app.staticTexts["liveInputStatus"].label.contains("off"))
+  app.buttons["Close panel"].tap()
+  app.buttons["panel_Dance world"].tap(); app.buttons["endDance"].tap(); app.buttons["Close panel"].tap()
+  attach(app, "live-06-restored-world")
+ }
+ @MainActor func testStaticPartyAndPermissionHelp() throws {
+  let app = launch(still: true)
+  app.buttons["panel_Dance world"].tap(); app.buttons["dance_disco"].tap()
+  XCTAssertFalse(app.buttons["danceConfetti"].isEnabled); XCTAssertFalse(app.buttons["danceBalloons"].isEnabled)
+  app.buttons["Close panel"].tap()
+  XCTAssertTrue((app.otherElements["continuousStage"].value as? String ?? "").contains("Reduce Motion"))
+  attach(app, "live-07-static-party")
+  app.buttons["panel_Mirror and voice"].tap(); app.buttons["helpPanel_Mirror and voice"].tap()
+  XCTAssertTrue(app.buttons["Close help"].waitForExistence(timeout: 5)); attach(app, "live-08-input-help")
+  app.buttons["Close help"].tap(); app.buttons["Close panel"].tap()
+ }
+ @MainActor private func attach(_ app: XCUIApplication, _ name: String) {
+  let a = XCTAttachment(screenshot: app.screenshot()); a.name = name; a.lifetime = .keepAlways; add(a)
+ }
+}

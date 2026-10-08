@@ -55,6 +55,7 @@ struct PlayroomView: View {
         .onChange(of: controller.staticMode) { controller.refreshStillPose() }
         .onChange(of: controller.systemReduceMotion) { controller.refreshStillPose() }
         .onChange(of: controller.soundEnabled) { if !controller.soundEnabled { controller.silence() } }
+        .onChange(of: inputs.microphoneEnabled) { controller.listening = inputs.microphoneEnabled; if inputs.microphoneEnabled { controller.silence() } }
         .onChange(of: selection, initial: true) {
             if controller.personality == nil { controller.enablePersonalityLearning(PersonalityMemoryStore.localPreview()) }
             inputs.onVoiceActivity = { [weak current = controller, name = selected.name] in
@@ -62,6 +63,17 @@ struct PlayroomView: View {
                 current.perform(.greet, name: name, learn: false)
             }
             inputs.onFace = { [weak current = controller] point in current?.look(point) }
+            inputs.onMirror = { [weak current = controller] sample in current?.receiveMirror(sample, time: ProcessInfo.processInfo.systemUptime) }
+            inputs.onCommand = { [weak current = controller, name = selected.name] action in
+                guard let current, !current.paused, !current.backgrounded, !current.lowPower else { return }
+                let reaction: PlayroomController.Reaction
+                switch action {
+                case .wave: reaction = .greet; case .dance: reaction = .play; case .sleep: reaction = .rest
+                case .jump: reaction = .hop; case .blink: reaction = .blink; case .spin: reaction = .spin
+                case .stretch: reaction = .stretch; case .stop: current.stopActivity(); return
+                }
+                current.perform(reaction, name: name)
+            }
         }
         .onReceive(NotificationCenter.default.publisher(for: Notification.Name.NSProcessInfoPowerStateDidChange)) { _ in
             controller.lowPower = ProcessInfo.processInfo.isLowPowerModeEnabled
@@ -280,7 +292,7 @@ struct PlayroomView: View {
             Spacer()
             FonsterStatus(symbol: controller.shouldAnimate ? "waveform.path" : "pause.circle", detail: controller.motionStatus)
                 .accessibilityIdentifier("motionStatus")
-            FonsterInfo(title: "Camera and microphone privacy", detail: inputs.status + "\nMicrophone activity triggers a hello; audio stays local and isn't recorded. Camera face detection stays local; frames aren't stored. Pause, background, and Low Power suspend both inputs.")
+            FonsterInfo(title: "Camera and microphone privacy", detail: inputs.status + "\nSay wave, dance, sleep, jump, blink, spin, stretch or stop in English. Speech requires on-device support; audio and words aren't saved or uploaded. Camera eyes, head and hand cues stay local; frames aren't stored. Pause, background and Low Power suspend both inputs.")
         }
     }
 

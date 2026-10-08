@@ -58,6 +58,9 @@ final class LocalLobbyController {
     var lowPower = ProcessInfo.processInfo.isLowPowerModeEnabled
     var wander = true
     var sounds = false
+    var listening = false
+    private(set) var danceMode = FonsterDanceMode.daylight
+    @ObservationIgnored var danceScene: LobbyDanceScene?
     var ready = false
     var reviewingControls = false
     var error: String?
@@ -254,10 +257,11 @@ final class LocalLobbyController {
         var feeling: CreatureFeeling
         var careFocus: Int?
         var query: String
+        var dance: FonsterDanceMode
     }
     var controls: ControlState {
         .init(selected: selected, buddy: buddy, area: focusArea, follow: followSelected, zoom: cameraZoom, orbit: cameraOrbit, pitch: cameraPitch, pan: cameraPan,
-              paused: paused, still: still, wander: wander, sounds: sounds, feeling: selectedMember.controller.feeling, careFocus: careFocus, query: searchQuery)
+              paused: paused, still: still, wander: wander, sounds: sounds, feeling: selectedMember.controller.feeling, careFocus: careFocus, query: searchQuery, dance: danceMode)
     }
     func restoreControls(_ state: ControlState) {
         guard members.indices.contains(state.selected), members.indices.contains(state.buddy) else { return }
@@ -272,6 +276,7 @@ final class LocalLobbyController {
         focusArea = state.area; followSelected = state.follow; cameraZoom = state.zoom; cameraOrbit = state.orbit; cameraPitch = state.pitch; cameraPan = state.pan
         paused = state.paused; still = state.still; setWander(state.wander); sounds = state.sounds
         if selectedMember.controller.feeling != state.feeling { chooseFeeling(state.feeling) }
+        if danceMode != state.dance { setDanceMode(state.dance) }
         message = "Previous controls restored."
         updateCamera(); refreshGates()
     }
@@ -479,10 +484,35 @@ final class LocalLobbyController {
         for member in members {
             let c = member.controller
             c.paused = paused || reviewingControls; c.staticMode = still; c.systemReduceMotion = reduceMotion
-            c.backgrounded = backgrounded; c.lowPower = lowPower; c.soundEnabled = sounds
+            c.backgrounded = backgrounded; c.lowPower = lowPower; c.soundEnabled = sounds && !listening; c.listening = listening
             c.refreshStillPose()
         }
-        writeProbe()
+        updateDance(); writeProbe()
+    }
+    func setDanceMode(_ mode: FonsterDanceMode) {
+        takeOwnerControl(); danceMode = mode; danceScene?.clearCelebrations()
+        for (i, member) in members.enumerated() {
+            if mode == .daylight { if member.controller.dancingContinuously { member.controller.stopActivity() } }
+            else if !inCare || i == selected {
+                member.controller.perform(.play, name: member.name, learn: false, audible: false)
+                member.controller.dancingContinuously = true
+            }
+        }
+        updateDance(); writeProbe()
+    }
+    func celebrate(balloons: Bool) { guard shouldAnimate, danceMode != .daylight else { return }; takeOwnerControl(); danceScene?.celebrate(balloons: balloons, time: activeSeconds) }
+    func updateDance() {
+        let target = containers.indices.contains(selected) ? containers[selected].position : SIMD3<Float>(0, 0.6, 2.7)
+        danceScene?.apply(danceMode, time: activeSeconds, moving: shouldAnimate, target: target)
+    }
+    func spoken(_ action: CreatureSpokenAction) {
+        guard ready, !paused, !backgrounded, !lowPower, !reviewingControls else { return }
+        switch action {
+        case .wave: perform(.greet); case .dance: if danceMode == .daylight { setDanceMode(.spotlight) }; perform(.play); selectedMember.controller.dancingContinuously = true
+        case .sleep: perform(.rest); case .jump: perform(.hop); case .blink: perform(.blink)
+        case .spin: perform(.spin); case .stretch: perform(.stretch)
+        case .stop: setDanceMode(.daylight); stopActivity()
+        }
     }
     func perform(_ action: PlayroomController.Reaction, actor: Int? = nil) {
         let index = actor ?? selected
@@ -544,13 +574,14 @@ final class LocalLobbyController {
         if !continuousGallery || !presentation.borrowingStage { agent.advance(lobby: self, now: now); presence.advance(lobby: self, now: now) }
         let held = members.firstIndex { $0.id == contactID && $0.controller.touching }
         let events = continuousGallery && presentation.borrowingStage ? [] : simulation.step(dt: dt, wander: wander, heldActor: held)
-        if !events.isEmpty { dispatch(events, deliberate: false) }
+        if !events.isEmpty && danceMode == .daylight { dispatch(events, deliberate: false) }
         if continuousGallery { presentation.sideDistance = max(1.5, min(5.5, viewportAspect * 3.3)); presentation.advance(dt: dt, natural: naturalPoses) }
         for (i, member) in members.enumerated() {
             member.controller.worldWalking = continuousGallery && presentation.borrowingStage ? presentation.transitioning && presentation.caringFor != i : simulation.agents[i].walking
             if !continuousGallery || !inCare || presentation.transitioning || i == selected { member.controller.advance(dt: dt) }
         }
         LobbyWorldScene.animate(fountainDrops, time: Float(activeSeconds))
+        updateDance()
         applyLayout(); frames += 1
         if ProcessInfo.processInfo.arguments.contains("--social-demo") {
             if frames == 20 { selected = 0; buddy = 3; chooseFeeling(.cozy); pair(quiet: false) }

@@ -52,6 +52,12 @@ final class PlayroomController {
     @ObservationIgnored private var gaze: SIMD2<Float> = .zero
     @ObservationIgnored private var actualGaze: SIMD2<Float> = .zero
     @ObservationIgnored private var pose: Pose = .init()
+    @ObservationIgnored private var mirror = CreatureMirrorDynamics()
+    @ObservationIgnored private var mirrorTime: Double = 0
+    @ObservationIgnored private var mirrorHoldUntil: Float = 0
+    var listening = false
+    var dancingContinuously = false
+    var movementPreview: CreatureMovementStyle?
     @ObservationIgnored private var companionName = "Coral"
     private(set) var actionCount = 0
     @ObservationIgnored private(set) var frameCount = 0
@@ -146,7 +152,9 @@ final class PlayroomController {
     }
     func perform(_ action: Reaction, name: String, learn: Bool = true, audible: Bool = true) {
         cancelTouch(); touchRecovery = 0
+        mirror.reset(); dancingContinuously = false
         reaction = action; actionTime = 0; actionCount += 1
+        if learn { mirrorHoldUntil = elapsed + duration }
         if learn { userRevision += 1; wanderGoal = groundPosition; nextCuriosity = elapsed + 6 }
         let ritual: String
         switch action {
@@ -172,7 +180,7 @@ final class PlayroomController {
         case .fetch: message = "\(name) is chasing the little ball."
         case .idle: message = "\(name) is happy to see you."
         }
-        if audible && soundEnabled && !paused && !backgrounded && !lowPower && action != .idle {
+        if audible && soundEnabled && !listening && !paused && !backgrounded && !lowPower && action != .idle {
             let cue = ["greet", "play", "rest", "blink", "look"].contains(ritual) ? ritual : "play"
             soundBank.play(cue, preferredVariant: personality?.favoriteSound)
         }
@@ -181,6 +189,17 @@ final class PlayroomController {
         writeVerificationProbe()
     }
     func silence() { soundBank.stop() }
+    func receiveMirror(_ sample: CreatureMirrorSample, time: Double) {
+        guard shouldAnimate, !touch.active, sample.valid, elapsed >= mirrorHoldUntil, reaction != .rest else { return }
+        let waving = mirror.receive(sample, time: time); mirrorTime = time
+        if waving { perform(.greet, name: companionName, learn: false, audible: false) }
+        else { gaze = mirror.sample.gaze }
+    }
+    func clearMirror() { mirror.reset(); gaze = .zero }
+    func keepMovementStyle(_ style: CreatureMovementStyle?) {
+        guard let memories, let updated = memories.keepMoves(style, identity: memoryIdentity ?? companionName) else { return }
+        personality = updated; movementPreview = nil; memoryStatus = memories.status
+    }
     func look(_ point: SIMD2<Float>) {
         guard !touch.active else { return }
         gaze = [point.x.isFinite ? min(1, max(-1, point.x)) : 0,
@@ -309,7 +328,7 @@ final class PlayroomController {
         } else { touch.settle(dt: dt) }
         touchRecovery = max(0, touchRecovery - dt)
         elapsed += dt; actionTime += dt; frameCount += 1
-        if reaction != .rest && reaction != .idle && actionTime > duration {
+        if !dancingContinuously && reaction != .rest && reaction != .idle && actionTime > duration {
             if reaction == .spin { pose.yaw -= 2 * .pi }
             reaction = .idle; actionTime = 0; message = "\(companionName) is happy to see you."
         }
@@ -335,6 +354,14 @@ final class PlayroomController {
         if distance > 0.0001 { groundPosition += delta / distance * step }
         locomotion = dt > 0 ? step / dt : 0
         var target = targetPose()
+        mirror.expire(time: mirrorTime + Double(dt)); mirrorTime += Double(dt)
+        if mirror.sample.found && !touch.active {
+            target.tilt += mirror.sample.tilt
+            target.arms += mirror.sample.raisedHand * 0.35
+            if let eyes = mirror.sample.eyeOpenness { target.eyes = min(1, max(0.06, eyes)) }
+            if mirror.sleeping { target.eyes = 0.06; target.nod = 0.18; target.y = -0.08; target.arms = -0.09 }
+            else { target.y += sin(elapsed * 5) * mirror.sample.motion * 0.05; target.squash += mirror.sample.motion * 0.03 }
+        }
         let contact = touch.response
         target.tilt += contact.lean; target.nod += contact.nod; target.squash += contact.squash
         target.y += contact.lift; target.arms += contact.arms
@@ -381,6 +408,7 @@ final class PlayroomController {
         let moving = shouldAnimate
         let t = moving ? elapsed : 0
         let a = moving ? actionTime : 0.9
+        let style = movementPreview ?? personality?.learnedMoves ?? .init()
         var result = Pose(y: moving ? sin(t * 1.9) * 0.016 : 0,
                           yaw: sin(t * 0.53) * 0.035,
                           nod: sin(t * 1.1) * 0.018,
@@ -396,12 +424,12 @@ final class PlayroomController {
         switch reaction {
         case .greet:
             let warmth = Float(agentRituals.warmth(personality?.greetingWarmth ?? 0.5))
-            result.tilt = -0.10; result.arms = moving ? sin(a * 13) * (0.27 + warmth * 0.3) + 0.22 : 0.3 + warmth * 0.3
+            result.tilt = -0.10; result.arms = moving ? sin(a * 13 * style.tempo) * (0.27 + warmth * 0.3) * style.wave + 0.22 : 0.3 + warmth * 0.3
             result.nod = moving ? -0.08 + sin(a * 5) * 0.09 : -0.1; result.mouth = 1.25
         case .play:
             let energy = Float(agentRituals.energy(personality?.playEnergy ?? 0.5)) * feeling.energy
-            result.y = moving ? abs(sin(a * 5)) * (0.13 + energy * 0.24) : 0.08
-            result.tilt = moving ? sin(a * 5) * 0.18 : 0.16
+            result.y = moving ? abs(sin(a * 5 * style.tempo)) * (0.13 + energy * 0.24) * style.amplitude : 0.08
+            result.tilt = moving ? sin(a * 5 * style.tempo) * 0.18 * style.amplitude : 0.16
             result.squash = moving ? -cos(a * 10) * 0.08 : 0
             result.arms = moving ? sin(a * 10) * 0.33 : 0.35
             result.mouth = 1.35

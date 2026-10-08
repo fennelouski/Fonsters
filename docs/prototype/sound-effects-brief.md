@@ -51,6 +51,25 @@ Do not imply these are already played. Start with 3 distinct takes per event/voi
 - Sound stays opt-in. A favorite voice can be auditioned only with sound enabled.
 - Touch cannot fire sound on every pointer sample. Retain the current cooldown, small voice limit, and interruptible playback; continuous rubbing must never form an audio pile-up.
 - Silence on pause, background, low power, and sound-off. Respect Static/Reduce Motion gates and the existing action behavior; never use audio to evade a paused agent.
-- No audio recording is needed. Microphone input currently measures activity locally; camera input detects a face locally. Do not send either to generation APIs.
+- No audio recording is needed. Microphone commands use on-device speech; camera mirroring uses local landmarks and body cues. Do not send audio, words or frames to generation APIs.
 - Sound supplements visible action and accessible status; it is never the only indication of a choice, error, consent, or state.
 - Review all voices at quiet volume on the Air speakers and headphones. Verify no clipping, abrupt cuts, duplicate playback, restart storm, or seamless-loop click. Record exactly which checks ran.
+
+## Dance world and imitation additions
+
+Generate original nonverbal, soft sounds; no recognizable song or artist imitation. Supply dry mono 44.1 kHz 16-bit WAV plus licensed provenance and catalog IDs. Audio stays off during microphone commands to avoid feedback.
+
+| Cue | Length | Requested variations |
+| --- | --- | --- |
+| Spotlight welcome | 0.5–1 s | Warm ascending felt mallet + tiny creature breath, 4 |
+| Disco entrance | 1–2 s | Playful restrained bass/mallet flourish, 4 |
+| Dance loop | 8–16 s, seamless | Gentle toy disco grooves at 75/95/115 BPM, instrumental, 6 |
+| Confetti burst | 0.3–0.8 s | Soft paper flutter with a tiny pop, 4 |
+| Balloon arrival | 0.4–0.8 s | Gentle rubber squeak and airy wobble, no startling pop, 4 |
+| Practice begins | 0.3–0.6 s | Two inviting soft notes, 4 |
+| Practice progress | 0.15–0.3 s | Quiet bell accent, throttle to milestones, 4 |
+| Learned movement kept | 0.5–0.9 s | Friendly satisfied hum with a soft two-note resolution, 6 |
+| Blink / wake / settle | 0.2–0.7 s | Eyelid flutter, tiny yawn, warm waking chirp, 6 each |
+| Mirrored wave | 0.4–0.8 s | Breathy hello, tonal rather than spoken words, 8 |
+
+No audio generation call was made for these additions. The party currently relies on the existing opt-in action chirps; the requested loops are not presented as generated or installed assets.
