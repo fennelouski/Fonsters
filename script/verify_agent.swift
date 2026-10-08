@@ -79,10 +79,12 @@ import simd
         rejects { try director.start(lobby: lobby, now: clock) }
         print("PASS: all eight simulated actions run in a native 12-Fonster world; only the owned Fonster learns, source is recorded, owner learning stays unchanged, friendships grow and plan replay is rejected")
 
-        try director.prepare(.init(fonsterID: owned, actions: [.init(kind: .explore, area: "neighborhood"), .init(kind: .react, reaction: "spin")], now: clock), source: .localHandoff, lobby: lobby, now: clock)
+        rejects { try director.prepare(.init(fonsterID: owned, actions: [.init(kind: .react, reaction: "spin")], now: clock), source: .localHandoff, lobby: lobby, now: clock) }
+        print("PASS: protected play denies external agent handoff before preparing a plan")
+        try director.prepare(.init(fonsterID: owned, actions: [.init(kind: .explore, area: "neighborhood"), .init(kind: .react, reaction: "spin")], now: clock), source: .simulated, lobby: lobby, now: clock)
         try director.start(lobby: lobby, now: clock)
         step(20)
-        precondition(director.history.first?.source == .localHandoff)
+        precondition(director.history.first?.source == .simulated)
         // Any owner input replaces both the current route and future actions.
         lobby.perform(.rest)
         let cursor = director.cursor, historyCount = director.history.count
@@ -112,14 +114,14 @@ import simd
 
         // Changing scopes invalidates the reviewed plan, including overlapping movement.
         director.setScope(.movement, enabled: false, lobby: lobby)
-        rejects { try director.prepare(.init(fonsterID: owned, actions: [.init(kind: .react, reaction: "fetch")], now: clock), source: .localHandoff, lobby: lobby, now: clock) }
-        rejects { try director.prepare(.init(fonsterID: owned, actions: [.init(kind: .explore, area: "park")], now: clock), source: .localHandoff, lobby: lobby, now: clock) }
+        rejects { try director.prepare(.init(fonsterID: owned, actions: [.init(kind: .react, reaction: "fetch")], now: clock), source: .simulated, lobby: lobby, now: clock) }
+        rejects { try director.prepare(.init(fonsterID: owned, actions: [.init(kind: .explore, area: "park")], now: clock), source: .simulated, lobby: lobby, now: clock) }
         director.setScope(.movement, enabled: true, lobby: lobby)
-        rejects { try director.prepare(.init(fonsterID: UUID(), actions: [.init(kind: .bench)], now: clock), source: .localHandoff, lobby: lobby, now: clock) }
-        rejects { try director.prepare(.init(fonsterID: owned, actions: [.init(kind: .greet, peerID: UUID())], now: clock), source: .localHandoff, lobby: lobby, now: clock) }
+        rejects { try director.prepare(.init(fonsterID: UUID(), actions: [.init(kind: .bench)], now: clock), source: .simulated, lobby: lobby, now: clock) }
+        rejects { try director.prepare(.init(fonsterID: owned, actions: [.init(kind: .greet, peerID: UUID())], now: clock), source: .simulated, lobby: lobby, now: clock) }
         let guest = FonsterVisitCard(publicID: UUID(), name: "Guest", appearance: PlayroomCompanion.fixtures[3].descriptor, warmth: 0.5, energy: 0.5)
         try lobby.invite(guest); lobby.ready = true; lobby.selected = 3
-        rejects { try director.prepare(.init(fonsterID: guest.publicID, actions: [.init(kind: .react, reaction: "play")], now: clock), source: .localHandoff, lobby: lobby, now: clock) }
+        rejects { try director.prepare(.init(fonsterID: guest.publicID, actions: [.init(kind: .react, reaction: "play")], now: clock), source: .simulated, lobby: lobby, now: clock) }
         lobby.endVisit(); lobby.ready = true; lobby.selected = 0; lobby.refreshGates()
         print("PASS: disabled scopes, absent peers, non-owned public IDs and visitor control are rejected; room changes revoke plans")
 
@@ -127,20 +129,20 @@ import simd
         for field in HumanReflectionField.allCases {
             let cue = field.choices[0]
             let reflect = FonsterAgentAction(kind: .reflect, reflectionField: field, cue: cue)
-            rejects { try director.prepare(.init(fonsterID: owned, actions: [reflect], now: clock), source: .localHandoff, lobby: lobby, now: clock) }
+            rejects { try director.prepare(.init(fonsterID: owned, actions: [reflect], now: clock), source: .simulated, lobby: lobby, now: clock) }
             director.setReflection(field, rule: .init(enabled: true, cue: cue), lobby: lobby)
-            try director.prepare(.init(fonsterID: owned, actions: [reflect, .init(kind: .react, reaction: "blink")], now: clock), source: .localHandoff, lobby: lobby, now: clock)
+            try director.prepare(.init(fonsterID: owned, actions: [reflect, .init(kind: .react, reaction: "blink")], now: clock), source: .simulated, lobby: lobby, now: clock)
             try director.start(lobby: lobby, now: clock); step(20)
             precondition(lobby.selectedMember.controller.feeling == savedFeeling)
             precondition(lobby.card(for: lobby.selectedMember, includeFeeling: true).feeling == savedFeeling)
             director.setReflection(field, rule: .init(enabled: true, cue: cue, audience: .localCompanions), lobby: lobby)
-            rejects { try director.prepare(.init(fonsterID: owned, actions: [reflect], now: clock), source: .localHandoff, lobby: lobby, now: clock) }
+            rejects { try director.prepare(.init(fonsterID: owned, actions: [reflect], now: clock), source: .simulated, lobby: lobby, now: clock) }
             let socialReflect = FonsterAgentAction(kind: .reflect, peerID: friend, reflectionField: field, cue: cue)
-            try director.prepare(.init(fonsterID: owned, actions: [socialReflect, .init(kind: .react, reaction: "spin")], now: clock), source: .localHandoff, lobby: lobby, now: clock)
+            try director.prepare(.init(fonsterID: owned, actions: [socialReflect, .init(kind: .react, reaction: "spin")], now: clock), source: .simulated, lobby: lobby, now: clock)
             try director.start(lobby: lobby, now: clock); step(9)
             director.setReflection(field, rule: .init(enabled: false, cue: cue), lobby: lobby)
             precondition(!director.running && director.program == nil && lobby.simulation.pairGame == nil)
-            rejects { try director.prepare(.init(fonsterID: owned, actions: [socialReflect], now: clock), source: .localHandoff, lobby: lobby, now: clock) }
+            rejects { try director.prepare(.init(fonsterID: owned, actions: [socialReflect], now: clock), source: .simulated, lobby: lobby, now: clock) }
         }
         precondition(lobby.selectedMember.controller.feeling == savedFeeling)
         print("PASS: feeling/activity/travel each require a matching owner-chosen cue and audience; reflection is transient, never changes exported feelings, and per-field revocation cancels every pending action")

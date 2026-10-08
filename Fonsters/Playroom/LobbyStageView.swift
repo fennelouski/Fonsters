@@ -26,7 +26,7 @@ struct LobbyStageView: View {
             platformStage(size: geometry.size, cameraState: cameraState)
                 .accessibilityElement(children: .ignore)
                 .accessibilityLabel(Text("Explorable Fonster world with " + lobby.names.joined(separator: ", ")))
-                .accessibilityValue(lobby.message + " " + lobby.motionStatus + " " + lobby.cameraDescription)
+                .accessibilityValue(lobby.ready ? lobby.message + " " + lobby.motionStatus + " " + lobby.cameraDescription : lobby.error ?? "Opening the Fonster world")
                 #if os(tvOS)
                 .accessibilityHint("Use the area, companion and camera buttons to explore. Friendship buttons let the selected Fonster greet and play.")
                 #else
@@ -220,27 +220,34 @@ private struct NativeLobbyStage: UIViewRepresentable {
     @MainActor final class Coordinator {
         var buildTask: Task<Void, Never>?
         var readySubscription: (any Cancellable)?
+        var inCare = false
     }
     func makeCoordinator() -> Coordinator { Coordinator() }
-    func makeUIView(context: Context) -> ARView {
-        let view = ARView(frame: .zero, cameraMode: .nonAR, automaticallyConfigureSession: false)
+    func sizeThatFits(_ proposal: ProposedViewSize, uiView: LobbyViewport, context: Context) -> CGSize? {
+        CGSize(width: proposal.width ?? size.width, height: proposal.height ?? size.height)
+    }
+    func makeUIView(context: Context) -> LobbyViewport {
+        let viewport = LobbyViewport(size: size)
+        let view = viewport.renderer
         view.environment.background = .color(.init(srgbRed: 0.91, green: 0.94, blue: 0.87, alpha: 1))
         view.renderOptions = [.disableMotionBlur, .disableDepthOfField, .disableCameraGrain]
         let coordinator = context.coordinator, revision = lobby.roomRevision
         lobby.viewportAspect = Float(size.width / max(1, size.height))
-        coordinator.buildTask = Task { @MainActor [weak view, weak lobby] in
-            guard let view, let lobby else { return }
+        coordinator.buildTask = Task { @MainActor [weak viewport, weak lobby] in
+            guard let viewport, let lobby else { return }
             do {
                 lobby.error = nil
                 let roots = try await LobbySceneAssembly.make(lobby)
                 guard !Task.isCancelled, lobby.roomRevision == revision else { return }
                 let anchor = AnchorEntity(world: .zero)
                 for entity in roots { anchor.addChild(entity) }
-                view.scene.addAnchor(anchor)
-                coordinator.readySubscription = view.scene.subscribe(to: SceneEvents.Update.self) { event in
+                viewport.attach(anchor)
+                coordinator.readySubscription?.cancel()
+                coordinator.readySubscription = viewport.renderer.scene.subscribe(to: SceneEvents.Update.self) { event in
                     Task { @MainActor [weak lobby, weak coordinator] in
                         guard let lobby, let coordinator, lobby.roomRevision == revision, !lobby.ready else { return }
                         LobbySceneAssembly.recordCameras(event.scene, lobby: lobby)
+                        viewport.fit(camera: lobby.camera)
                         lobby.updateCamera(); lobby.ready = true; lobby.refreshGates()
                         coordinator.readySubscription?.cancel(); coordinator.readySubscription = nil
                     }
@@ -251,13 +258,21 @@ private struct NativeLobbyStage: UIViewRepresentable {
                 lobby.refreshGates()
             }
         }
-        return view
+        return viewport
     }
-    func updateUIView(_ view: ARView, context: Context) {
+    func updateUIView(_ viewport: LobbyViewport, context: Context) {
+        if context.coordinator.inCare != lobby.inCare {
+            // UIKit can restore the removed search field's responder while the
+            // scene rotates. End editing only on this window's care transition;
+            // later command/parent fields remain usable.
+            viewport.window?.endEditing(true); context.coordinator.inCare = lobby.inCare
+        }
+        let view = viewport.renderer
         view.environment.background = lobby.danceMode == .daylight
             ? .color(.init(srgbRed: 0.91, green: 0.94, blue: 0.87, alpha: 1))
             : .color(.init(srgbRed: 0.075, green: 0.07, blue: 0.14, alpha: 1))
         lobby.viewportAspect = Float(size.width / max(1, size.height)); lobby.updateCamera()
+        viewport.fit(camera: lobby.camera)
         view.setNeedsDisplay()
         if ProcessInfo.processInfo.arguments.contains("--world-camera-diagnostics") {
             let authored = lobby.camera?.transformMatrix(relativeTo: nil) ?? matrix_identity_float4x4
@@ -270,14 +285,48 @@ private struct NativeLobbyStage: UIViewRepresentable {
                  "position": [$0.position.x, $0.position.y, $0.position.z]] as [String: Any]
             }
             let diagnostic: [String: Any] = ["authored": columns(authored), "active": columns(actual), "cameras": cameras]
+            if let window = view.window {
+                NSLog("Fonsters native viewport: geometry %@, bounds %@, window %@, root %@", String(describing: size), String(describing: view.bounds), String(describing: window.bounds), String(describing: window.rootViewController?.view.bounds ?? .zero))
+            }
             if let data = try? JSONSerialization.data(withJSONObject: diagnostic, options: [.prettyPrinted, .sortedKeys]) {
                 try? data.write(to: FileManager.default.temporaryDirectory.appendingPathComponent("fonsters-native-camera.json"), options: .atomic)
             }
         }
     }
-    static func dismantleUIView(_ view: ARView, coordinator: Coordinator) {
+    static func dismantleUIView(_ viewport: LobbyViewport, coordinator: Coordinator) {
         coordinator.buildTask?.cancel(); coordinator.readySubscription?.cancel()
-        view.scene.anchors.removeAll()
+        viewport.renderer.scene.anchors.removeAll()
+    }
+    /// Keep one square rendering surface through rotation and clip it to the
+    /// visible window. Adjust its lens so the visible vertical field stays 42°;
+    /// the shared controller's camera fitting and touch projection stay exact.
+    /// No scene/entity transfer or creature-state reset occurs on rotation.
+    final class LobbyViewport: UIView {
+        let renderer: ARView
+        private weak var camera: PerspectiveCamera?
+        init(size: CGSize) {
+            let side = max(size.width, size.height)
+            renderer = ARView(frame: CGRect(x: 0, y: 0, width: side, height: side), cameraMode: .nonAR, automaticallyConfigureSession: false)
+            super.init(frame: CGRect(origin: .zero, size: size)); clipsToBounds = true; addSubview(renderer)
+        }
+        required init?(coder: NSCoder) { fatalError("init(coder:) is not used") }
+        func attach(_ anchor: AnchorEntity) { renderer.scene.addAnchor(anchor) }
+        func fit(camera: PerspectiveCamera?) {
+            self.camera = camera
+            let side = max(bounds.width, bounds.height)
+            guard side > 0, bounds.height > 0 else { return }
+            camera?.camera.fieldOfViewInDegrees = Float(2 * atan(tan(21 * Double.pi / 180) * side / bounds.height) * 180 / Double.pi)
+        }
+        override func layoutSubviews() {
+            super.layoutSubviews()
+            let side = max(bounds.width, bounds.height)
+            renderer.frame = CGRect(x: (bounds.width - side) / 2, y: (bounds.height - side) / 2, width: side, height: side)
+            fit(camera: camera)
+            renderer.setNeedsLayout(); renderer.layoutIfNeeded()
+            if ProcessInfo.processInfo.arguments.contains("--world-camera-diagnostics") {
+                NSLog("Fonsters laid out viewport: container %@, renderer %@", String(describing: bounds), String(describing: renderer.bounds))
+            }
+        }
     }
 }
 #endif

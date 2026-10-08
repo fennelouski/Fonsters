@@ -8,7 +8,7 @@ final class FuzzyWorldTests: XCTestCase {
     @MainActor func testFuzzyCompanionAndExplorableWorld() throws {
         let app = XCUIApplication()
         app.launchArguments = ["--prototype", "--legacy-playroom", "--verify-manual", "--world-members", "12", "--personality-file", "/tmp/fonsters-ui-\(UUID().uuidString).json"]
-        app.launch()
+        app.launch(); approveParentAction(in: app)
         let play = app.buttons["reaction_play"]
         XCTAssertTrue(play.waitForExistence(timeout: 20))
         waitEnabled(play)
@@ -72,7 +72,7 @@ final class FuzzyWorldTests: XCTestCase {
     @MainActor func testLegacyLinkSelectsOriginalGallery() throws {
         let app = XCUIApplication()
         app.launchArguments = ["--prototype", "--legacy-playroom", "--verify-manual", "--personality-file", "/tmp/fonsters-link-\(UUID().uuidString).json"]
-        app.launch()
+        app.launch(); approveParentAction(in: app)
         XCTAssertTrue(app.buttons["openWorld"].waitForExistence(timeout: 20))
         let data = try JSONSerialization.data(withJSONObject: ["lilac-sun-legacy-link-smoke"])
         let cards = data.base64EncodedString().replacingOccurrences(of: "+", with: "-").replacingOccurrences(of: "/", with: "_").replacingOccurrences(of: "=", with: "")
@@ -85,7 +85,7 @@ final class FuzzyWorldTests: XCTestCase {
     @MainActor func testNativeContactBeforeAndAfterWorld() throws {
         let app = XCUIApplication()
         app.launchArguments = ["--prototype", "--legacy-playroom", "--verify-manual", "--world-members", "12", "--personality-file", "/tmp/fonsters-contact-\(UUID().uuidString).json"]
-        app.launch()
+        app.launch(); approveParentAction(in: app)
         let play = app.buttons["reaction_play"]
         XCTAssertTrue(play.waitForExistence(timeout: 20)); waitEnabled(play)
         for returning in [false, true] {
@@ -104,7 +104,7 @@ final class FuzzyWorldTests: XCTestCase {
     @MainActor func testReduceMotionStillAcceptsExpression() throws {
         let app = XCUIApplication()
         app.launchArguments = ["--prototype", "--legacy-playroom", "--verify-manual", "--verify-reduce-motion", "--personality-file", "/tmp/fonsters-still-\(UUID().uuidString).json"]
-        app.launch()
+        app.launch(); approveParentAction(in: app)
         XCTAssertTrue(app.buttons["reaction_greet"].waitForExistence(timeout: 20))
         waitEnabled(app.buttons["reaction_greet"])
         app.buttons["reaction_greet"].tap()
@@ -116,7 +116,7 @@ final class FuzzyWorldTests: XCTestCase {
     @MainActor func testPanelHelpUndoAndFullWindowCamera() throws {
         let app = XCUIApplication()
         app.launchArguments = ["--prototype", "--legacy-playroom", "--verify-manual", "--world-members", "12", "--world-camera-diagnostics", "--personality-file", "/tmp/fonsters-controls-\(UUID().uuidString).json"]
-        app.launch(); XCTAssertTrue(app.buttons["reaction_play"].waitForExistence(timeout: 20)); waitEnabled(app.buttons["reaction_play"])
+        app.launch(); approveParentAction(in: app); XCTAssertTrue(app.buttons["reaction_play"].waitForExistence(timeout: 20)); waitEnabled(app.buttons["reaction_play"])
         XCTAssertFalse(app.buttons["reaction_hop"].exists, "Secondary reactions should start inside a closed panel")
         app.buttons["help_Reactions"].tap()
         XCTAssertTrue(app.staticTexts["Say hello"].waitForExistence(timeout: 5))
@@ -175,7 +175,7 @@ final class FuzzyWorldTests: XCTestCase {
     @MainActor func testDirectWorldCamera() throws {
         let app = XCUIApplication()
         app.launchArguments = ["--prototype", "--legacy-world", "--world-members", "12", "--world-camera-diagnostics", "--personality-file", "/tmp/fonsters-camera-\(UUID().uuidString).json"]
-        app.launch()
+        app.launch(); approveParentAction(in: app)
         XCTAssertTrue(app.buttons["pairBall"].waitForExistence(timeout: 20)); waitEnabled(app.buttons["pairBall"])
         assertWorldRendered(app)
         app.buttons["pauseWorld"].tap()

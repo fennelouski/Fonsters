@@ -21,7 +21,7 @@ final class LiveMovesTests: XCTestCase {
   app.buttons["pauseLobby"].tap(); attach(app, "live-02-paused-party")
   app.buttons["pauseLobby"].tap()
   app.buttons["panel_Mirror and voice"].tap()
-  app.buttons["liveMicrophone"].tap()
+  app.buttons["liveMicrophone"].tap(); approveParentAction(in: app)
   XCTAssertTrue(app.staticTexts["liveInputStatus"].label.contains("Synthetic voice"))
   app.swipeUp()
   XCTAssertTrue(app.buttons["fixtureSleep"].waitForExistence(timeout: 5)); app.buttons["fixtureSleep"].tap()
@@ -30,7 +30,7 @@ final class LiveMovesTests: XCTestCase {
   app.buttons["panel_Mirror and voice"].tap()
   app.buttons["fixtureDance"].tap(); app.buttons["Close panel"].tap()
   attach(app, "live-04-spoken-dance-fixture")
-  app.buttons["panel_Mirror and voice"].tap(); app.buttons["liveCamera"].tap()
+  app.buttons["panel_Mirror and voice"].tap(); app.buttons["liveCamera"].tap(); approveParentAction(in: app)
   app.buttons["lessonWave"].tap(); app.swipeUp(); app.buttons["fixtureRehearsal"].tap()
   let keep = app.buttons["keepLesson"]
   XCTAssertTrue(keep.waitForExistence(timeout: 10))

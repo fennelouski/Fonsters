@@ -2,12 +2,13 @@
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
 <dict>
-	<!-- Fonsters does not track users and does not collect any data.
-	     Creatures are generated on-device from text seeds; the only network
-	     calls are anonymous random-text fetches and a feature-flag lookup,
-	     neither of which sends user data. Fonsters sync through the user's
-	     own private CloudKit database, which is not "collection" by the
-	     developer under Apple's definition. -->
+	<!-- Protected play has no ads/tracking/analytics, external random text,
+	     remote flags, accounts or external agent control. Library data can
+	     sync through Apple's private CloudKit database. Camera/speech/typed
+	     requests are processed on-device; learned care files stay local.
+	     Parent-directed exports disclose data only to the chosen recipient.
+	     This manifest is not a COPPA consent or release approval. See the
+	     versioned child policy and release review in docs/privacy. -->
 	<key>NSPrivacyTracking</key>
 	<false/>
 	<key>NSPrivacyTrackingDomains</key>

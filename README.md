@@ -1,5 +1,7 @@
 # Fonsters
 
+The current native experience is a fuzzy 3D local lobby with portrait care. iPhone browsing uses landscape; the child experience remains signup-free. Read the [protected play implementation](docs/prototype/phone-orientation-and-protected-play.md) and [privacy/release boundary](docs/privacy/release-boundary.md). The original deterministic 2D generator and exports remain available in a parent area.
+
 Cross-platform SwiftUI app for creating and sharing **deterministic creature avatars (Fonsters)** from text seeds. Same seed → same creature. Each Fonster is a 32×32 pixel creature driven by a text seed. Supports **iOS**, **macOS**, **watchOS**, **tvOS**, and **visionOS**.
 
 ## How it works
@@ -17,7 +19,7 @@ Same seed always gives the same creature. You can watch the creature "evolve" as
 
 - **List and detail** — Create, name, and manage multiple Fonsters.
 - **Editable name and seed** — Change the source text to change the creature.
-- **Load random** — Quote, Words, UUID, or Lorem; fetches from API with local fallback when offline.
+- **Load random** — Quote, Words, UUID, or Lorem from bundled local providers in protected play.
 - **Prepend random** — Add new random text to the current seed (undoable).
 - **Play** — In-app evolution animation (one frame per character of seed).
 - **PNG / GIF export** — Share or save a static PNG or animated GIF (one frame per seed prefix).

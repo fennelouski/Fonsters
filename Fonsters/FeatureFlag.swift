@@ -57,6 +57,7 @@ struct HTTPFeatureFlagRemoteProvider: FeatureFlagRemoteProviding {
     }
 
     func fetchOverrides() async -> [String: Bool] {
+        guard ProtectedPlayPolicy.allowsThirdPartyRequests else { return [:] }
         do {
             let (data, response) = try await URLSession.shared.data(from: url)
             guard let http = response as? HTTPURLResponse, http.statusCode == 200 else {
@@ -91,6 +92,7 @@ struct HTTPFeatureFlagRemoteProvider: FeatureFlagRemoteProviding {
 /// Returns nil if missing or invalid so the app can fall back to NoOpFeatureFlagRemoteProvider.
 enum FeatureFlagBackendConfiguration {
     static func backendURL() -> URL? {
+        guard ProtectedPlayPolicy.allowsThirdPartyRequests else { return nil }
         guard let raw = Bundle.main.infoDictionary?["FeatureFlagBackendURL"] as? String,
               !raw.isEmpty,
               let url = URL(string: raw) else {
@@ -183,6 +185,7 @@ final class FeatureFlagStore: ObservableObject {
 
     /// Trigger a fetch from the configured remote provider and apply results. Call from main app only.
     func refreshFromRemote() {
+        guard ProtectedPlayPolicy.allowsThirdPartyRequests else { return }
         guard let provider = remoteProvider else { return }
         Task {
             let overrides = await provider.fetchOverrides()

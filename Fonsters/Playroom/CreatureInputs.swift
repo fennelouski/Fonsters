@@ -46,8 +46,9 @@ final class CreatureInputs {
         }
         #endif
     }
-    func toggleMicrophone() {
+    func toggleMicrophone(parentApproved: Bool = false) {
         if microphoneEnabled { microphoneConsentGeneration += 1; microphoneEnabled = false; stopMicrophone(); status = "Microphone off."; return }
+        guard parentApproved else { status = "Ask a grown-up to enable spoken commands."; return }
         if synthetic { microphoneEnabled = true; status = "Synthetic voice fixture · no microphone opened."; return }
         guard let recognizer = SFSpeechRecognizer(locale: Locale(identifier: "en-US")), recognizer.supportsOnDeviceRecognition else {
             status = "On-device speech isn’t available for this language. Use the action icons or type a request."; return
@@ -65,8 +66,9 @@ final class CreatureInputs {
             if !suspended { startMicrophone() }
         }
     }
-    func toggleCamera() {
+    func toggleCamera(parentApproved: Bool = false) {
         if cameraEnabled { cameraConsentGeneration += 1; cameraEnabled = false; stopCamera(); status = "Camera off."; return }
+        guard parentApproved else { status = "Ask a grown-up to enable camera mirroring."; return }
         if synthetic { cameraEnabled = true; status = "Synthetic camera fixture · no camera opened."; return }
         cameraEnabled = true; cameraConsentGeneration += 1; let generation = cameraConsentGeneration
         Task { @MainActor in
@@ -79,7 +81,10 @@ final class CreatureInputs {
     func setSuspended(_ value: Bool) {
         guard suspended != value else { return }; suspended = value
         if value { stopMicrophone(); stopCamera(); status = "Inputs paused with the world." }
-        else if !synthetic {
+        else if synthetic {
+            status = microphoneEnabled ? "Synthetic voice fixture · no microphone opened."
+                : cameraEnabled ? "Synthetic camera fixture · no camera opened." : "Camera and microphone are off."
+        } else {
             if microphoneEnabled && microphoneAllowed { startMicrophone() }
             if cameraEnabled && cameraAllowed { startCamera() }
         }

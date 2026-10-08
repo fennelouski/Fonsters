@@ -33,7 +33,7 @@ final class PersonalFonsterLibraryTests: XCTestCase {
         name.tap(); name.typeText(" temporary")
         app.buttons["cancelProfile"].tap()
         XCTAssertEqual(app.staticTexts["careName"].label, "Luma")
-        app.buttons["shareFonster"].tap()
+        app.buttons["shareFonster"].tap(); approveParentAction(in: app)
         let profileSwitch = app.switches["shareBiography"]
         XCTAssertTrue(profileSwitch.waitForExistence(timeout: 5)); XCTAssertEqual(profileSwitch.value as? String, "0")
         profileSwitch.coordinate(withNormalizedOffset: CGVector(dx: 0.92, dy: 0.5)).tap()
