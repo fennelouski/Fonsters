@@ -33,7 +33,7 @@ struct ContinuousLobbyView: View {
     @State private var panelEducation: FonsterSenseEducation.Sense?
     @State private var panelApproval: FonsterSenseEducation.Sense?
     @State private var panelInputGate = ParentActionGate()
-    @State private var launching = !ProcessInfo.processInfo.arguments.contains("--verify-manual")
+    @State private var launching = !ProcessInfo.processInfo.arguments.contains("--verify-manual") || ProcessInfo.processInfo.arguments.contains("--verify-launch")
     @State private var needsWelcome = false
     @State private var savingWelcome = false
     @State private var explorationGuide = false
@@ -85,7 +85,7 @@ struct ContinuousLobbyView: View {
                     lobby.careViewportFrame = frame; lobby.updateCamera()
                 }
                 .accessibilityIdentifier("continuousStage")
-            hud
+            if !launching { hud }
             if explorationGuide {
                 VStack(spacing: 24) {
                     HStack(spacing: 28) { Image(systemName: "hand.draw"); Image(systemName: "arrow.up.and.down.and.arrow.left.and.right"); Image(systemName: "person.crop.circle") }.font(.largeTitle)
@@ -112,7 +112,7 @@ struct ContinuousLobbyView: View {
                 FonsterWelcome { seed, destination in finishWelcome(seed: seed, destination: destination) }.disabled(savingWelcome)
             }
             if let libraryError, needsWelcome { Text(libraryError).font(.callout).foregroundStyle(FonsterChrome.primary).padding().background(FonsterChrome.background).frame(maxHeight: .infinity, alignment: .bottom) }
-            if launching { FonsterLaunch { launching = false } }
+            if launching { FonsterLaunch(worldReady: lobby.ready || lobby.error != nil) { launching = false } }
             if let error = lobby.error { Text(error).padding().background(.regularMaterial, in: RoundedRectangle(cornerRadius: 16)) }
         }
         .fontDesign(.rounded)

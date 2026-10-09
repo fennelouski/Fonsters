@@ -10,6 +10,27 @@ final class ContinuousLobbyTests: XCTestCase {
         if largeText { app.launchArguments += ["-UIPreferredContentSizeCategoryName", "UICTContentSizeCategoryAccessibilityXXXL"] }
         app.launch(); return app
     }
+    @MainActor func testFirstLaunchSequenceCompletes() throws {
+        try verifyLaunch("--launch-first", still: false)
+    }
+    @MainActor func testReturningLaunchSequenceCompletes() throws {
+        try verifyLaunch("--launch-returning", still: false)
+    }
+    @MainActor func testReducedMotionLaunchCompletes() throws {
+        try verifyLaunch("--launch-first", still: true)
+    }
+    @MainActor private func verifyLaunch(_ mode: String, still: Bool) throws {
+        let app = XCUIApplication()
+        app.launchArguments = ["--prototype", "--verify-manual", "--verify-launch", mode,
+            "--personality-file", "/tmp/launch-\(UUID().uuidString).json"]
+        if still { app.launchArguments.append("--verify-reduce-motion") }
+        app.launch()
+        XCTAssertTrue(app.buttons["searchFonsters"].waitForExistence(timeout: 30), "Launch must hand off to an interactive lobby")
+        XCTAssertFalse(app.otherElements["fonsterLaunch"].exists, "Launch overlay must finish")
+        app.buttons["searchFonsters"].tap()
+        XCTAssertTrue(app.textFields["lobbySearchField"].waitForExistence(timeout: 5))
+        attachDevice("launch-completed-" + mode)
+    }
     @MainActor func testCompactCareKeepsControlsOutsideCreatureArea() throws {
         try verifyCompactCare(largeText: false)
     }

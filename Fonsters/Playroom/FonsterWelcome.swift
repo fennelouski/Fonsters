@@ -1,5 +1,6 @@
 #if os(macOS) || os(iOS)
 import SwiftUI
+import SceneKit
 #if os(iOS)
 import UIKit
 #endif
@@ -43,54 +44,83 @@ struct FonsterWelcome: View {
 
 @available(macOS 15.0, iOS 18.0, *)
 struct FonsterLaunch: View {
+    let worldReady: Bool
     let finished: () -> Void
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @Environment(\.scenePhase) private var scenePhase
     @State private var assembled = false
     @State private var fallen = false
+    @State private var creatures: FonsterLaunchScene?
     @State private var faded = false
-    private var returning: Bool { UserDefaults.standard.bool(forKey: "Fonsters.hasLaunched.v1") }
+    @State private var phase = "logo"
+    @State private var returning = UserDefaults.standard.bool(forKey: "Fonsters.hasLaunched.v1")
+    private var verification: Bool { ProcessInfo.processInfo.arguments.contains("--verify-manual") }
     var body: some View {
         GeometryReader { geometry in
+            let width = min(geometry.size.width - 24, 780)
             ZStack {
-                FonsterChrome.background.ignoresSafeArea()
-                HStack(spacing: 3) {
-                    Image("LaunchIcon").resizable().scaledToFit().frame(width: 100, height: 100)
-                        .rotation3DEffect(.degrees(fallen ? 85 : 0), axis: (x: 1, y: 0, z: 0), anchor: .bottom)
-                    if geometry.size.width > geometry.size.height || !returning {
-                        ForEach(Array("ONSTERS".enumerated()), id: \.offset) { index, letter in
-                            ZStack {
-                                Text(String(letter)).font(.system(size: 58, weight: .black, design: .rounded)).foregroundStyle(FonsterTone.company.ink)
-                                LobbyPortrait(appearance: PlayroomCompanion.fixtures[index].descriptor).frame(width: 32, height: 32).offset(y: -24)
-                            }.offset(x: fallen ? CGFloat(index + 1) * 90 : assembled ? 0 : -CGFloat(index + 1) * 58, y: fallen ? (index.isMultiple(of: 2) ? -300 : 300) : assembled ? 0 : 30)
-                                .opacity(assembled ? 1 : 0)
-                        }
-                    } else {
-                        ForEach(0..<3) { index in
-                            LobbyPortrait(appearance: PlayroomCompanion.fixtures[index].descriptor).frame(width: 45, height: 45)
-                                .offset(x: fallen ? CGFloat(index + 1) * 170 : -60, y: fallen ? -200 : 0)
-                        }
-                    }
-                }.scaleEffect(min(1, geometry.size.width / 600))
-            }.opacity(faded ? 0 : 1)
-        }.accessibilityElement(children: .ignore).accessibilityLabel("Fonsters is opening")
-        .task {
-            let quick = returning || ProcessInfo.processInfo.isLowPowerModeEnabled
-            defer { UserDefaults.standard.set(true, forKey: "Fonsters.hasLaunched.v1") }
-            if !reduceMotion {
-                withAnimation(.spring(response: quick ? 0.25 : 0.55, dampingFraction: 0.8)) { assembled = true }
-                do { try await Task.sleep(for: .milliseconds(quick ? 280 : 850)) } catch { return }
-                guard scenePhase == .active else { finished(); return }
-                withAnimation(.easeIn(duration: quick ? 0.22 : 0.4)) { fallen = true }
-                #if os(iOS)
-                UIImpactFeedbackGenerator(style: .soft).impactOccurred(intensity: 0.5)
-                #endif
-                do { try await Task.sleep(for: .milliseconds(quick ? 280 : 650)) } catch { return }
+                if let creatures {
+                    FonsterLaunchViewport(scene: creatures.scene)
+                        .frame(width: width, height: width * 0.4)
+                        .opacity(assembled ? 1 : 0)
+                }
+                Image("LaunchIcon").resizable().scaledToFit()
+                    .frame(width: width * 0.17, height: width * 0.17)
+                    .rotation3DEffect(.degrees(fallen ? 88 : 0), axis: (x: 1, y: 0, z: 0), anchor: .bottom)
+                    .offset(x: assembled ? -width * 0.4 : 0, y: fallen ? width * 0.07 : 0)
+            }.frame(maxWidth: .infinity, maxHeight: .infinity).opacity(faded ? 0 : 1)
+        }
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel("Fonsters is opening")
+        .accessibilityValue(phase)
+        .accessibilityIdentifier("fonsterLaunch")
+        .task(id: worldReady) {
+            guard worldReady else { return }
+            if verification {
+                if ProcessInfo.processInfo.arguments.contains("--launch-first") { returning = false }
+                if ProcessInfo.processInfo.arguments.contains("--launch-returning") { returning = true }
             }
-            withAnimation(reduceMotion ? nil : .easeOut(duration: 0.25)) { faded = true }
-            do { try await Task.sleep(for: .milliseconds(reduceMotion ? 0 : 250)) } catch { return }
+            let still = reduceMotion || ProcessInfo.processInfo.isLowPowerModeEnabled || (verification && ProcessInfo.processInfo.arguments.contains("--verify-reduce-motion"))
+            let quick = returning || ProcessInfo.processInfo.isLowPowerModeEnabled
+            do {
+                // Let the static logo actually paint before changing its state.
+                try await Task.sleep(for: .milliseconds(still ? 180 : 300))
+                if !still {
+                    if creatures == nil { creatures = FonsterLaunchScene() }
+                    guard let creatures else { return }
+                    phase = "emerging"
+                    withAnimation(.spring(response: quick ? 0.45 : 0.65, dampingFraction: 0.74)) { assembled = true }
+                    creatures.emerge(quick: quick)
+                    try await Task.sleep(for: .milliseconds(quick ? 550 : 850))
+                    phase = "forming letters"
+                    creatures.formLetters(quick: quick)
+                    try await Task.sleep(for: .milliseconds(quick ? 550 : 850))
+                    if verification && ProcessInfo.processInfo.arguments.contains("--launch-hold") {
+                        try await Task.sleep(for: .seconds(6))
+                    }
+                    guard scenePhase == .active else { finished(); return }
+                    phase = "falling"
+                    withAnimation(.easeIn(duration: 0.38)) { fallen = true }
+                    try await Task.sleep(for: .milliseconds(380))
+                    #if os(iOS)
+                    UIImpactFeedbackGenerator(style: .soft).impactOccurred(intensity: 0.5)
+                    #endif
+                    phase = "scattering"
+                    creatures.scatter(quick: quick)
+                    try await Task.sleep(for: .milliseconds(quick ? 480 : 700))
+                }
+                phase = "finished"
+                withAnimation(still ? nil : .easeOut(duration: 0.25)) { faded = true }
+                try await Task.sleep(for: .milliseconds(still ? 0 : 250))
+            } catch { return }
+            // A canceled/abandoned launch must not mark onboarding as seen.
+            if !verification { UserDefaults.standard.set(true, forKey: "Fonsters.hasLaunched.v1") }
             finished()
         }
+        .onChange(of: scenePhase) { _, phase in
+            if phase != .active { creatures?.stop(); finished() }
+        }
+        .onDisappear { creatures?.stop() }
     }
 }
 #endif
