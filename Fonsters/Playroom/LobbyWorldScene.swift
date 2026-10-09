@@ -157,10 +157,13 @@ enum LobbyWorldScene {
 }
 
 /// Nine deterministic tiles follow the camera. Revisited tiles have the same
-/// original scenery, with bounded memory and no real-world map extraction.
+/// Nine bounded tiles of generated scenery or an attributed offline map snapshot.
 @available(macOS 15.0, iOS 18.0, tvOS 26.0, *)
 @MainActor final class LobbyWorldStream {
     let root = Entity()
+    var mappedWorld: LobbyMappedWorld? {
+        didSet { for tile in tiles.values { tile.removeFromParent() }; tiles.removeAll(); last = nil }
+    }
     private var tiles: [String: Entity] = [:]
     private var last: SIMD2<Int>?
     private let size: Float = 28
@@ -184,6 +187,10 @@ enum LobbyWorldScene {
             entity.position = position; return entity
         }
         tile.addChild(model([size, 0.1, size], [size/2, 0, size/2], .init(red: 0.66, green: 0.79, blue: 0.61, alpha: 1)))
+        if let mappedWorld {
+            addMappedFeatures(mappedWorld, to: tile, x: x, z: z)
+            return tile
+        }
         tile.addChild(model([size, 0.025, 1.8], [size/2, 0.065, size/2], .init(red: 0.91, green: 0.86, blue: 0.73, alpha: 1)))
         tile.addChild(model([1.8, 0.025, size], [size/2, 0.065, size/2], .init(red: 0.91, green: 0.86, blue: 0.73, alpha: 1)))
         guard x != 0 || z != 0 else { return tile }
@@ -210,5 +217,61 @@ enum LobbyWorldScene {
         }
         return tile
     }
+    private func addMappedFeatures(_ map: LobbyMappedWorld, to tile: Entity, x: Int, z: Int) {
+        let origin = SIMD2<Float>(Float(x) * size, Float(z) * size)
+        let lower = simd_max(origin, map.minPoint), upper = simd_min(origin + SIMD2<Float>(repeating: size), map.maxPoint)
+        guard lower.x < upper.x && lower.y < upper.y else { return }
+        func material(_ r: CGFloat, _ g: CGFloat, _ b: CGFloat) -> SimpleMaterial { .init(color: .init(red: r, green: g, blue: b, alpha: 1), roughness: 1, isMetallic: false) }
+        func box(_ dimensions: SIMD3<Float>, at p: SIMD3<Float>, color: SimpleMaterial, parent: Entity) -> ModelEntity {
+            let model = ModelEntity(mesh: .generateBox(size: dimensions), materials: [color]); model.position = p; parent.addChild(model); return model
+        }
+        let timber = material(0.43, 0.29, 0.19), cream = material(0.93, 0.86, 0.66), roof = material(0.19, 0.35, 0.29)
+        for feature in map.features {
+            if feature.kind == "waterway" {
+                let water = material(0.35, 0.69, 0.79)
+                let inferred = feature.waterwayType == "river" ? 55.0 : 4.0
+                let width = Float(min(100, max(1, feature.widthMeters ?? inferred)) * LobbyMappedWorld.unitsPerMeter)
+                for line in feature.geometry.lines {
+                    let points = line.map(map.project)
+                    for (a, b) in zip(points, points.dropFirst()) {
+                        guard let (start, end) = map.clip(a, b, lower: lower, upper: upper), simd_distance(start, end) > 0.001 else { continue }
+                        let center = (start + end) / 2 - origin, delta = end - start
+                        let segment = box([width, 0.028, simd_length(delta)], at: [center.x, 0.12, center.y], color: water, parent: tile)
+                        segment.name = feature.id
+                        segment.orientation = simd_quatf(angle: atan2(delta.x, delta.y), axis: [0, 1, 0])
+                    }
+                }
+                continue
+            }
+            let center = map.center(feature)
+            guard Int(floor(center.x / size)) == x, Int(floor(center.y / size)) == z,
+                  center.x >= map.minPoint.x && center.x <= map.maxPoint.x && center.y >= map.minPoint.y && center.y <= map.maxPoint.y else { continue }
+            let root = Entity(); root.name = feature.id; root.position = [center.x - origin.x, 0.13, center.y - origin.y]; tile.addChild(root)
+            if feature.kind == "windmill" {
+                let tower = ModelEntity(mesh: .generateCone(height: 2.3, radius: 0.64), materials: [cream]); tower.position.y = 1.15; root.addChild(tower)
+                let cap = ModelEntity(mesh: .generateCone(height: 0.65, radius: 0.65), materials: [roof]); cap.position.y = 2.55; root.addChild(cap)
+                _ = box([0.24, 0.52, 0.035], at: [0, 0.27, 0.6], color: timber, parent: root)
+                let rotor = Entity(); rotor.position = [0, 2.05, 0.72]; root.addChild(rotor)
+                for blade in 0..<4 {
+                    let arm = Entity(); arm.orientation = simd_quatf(angle: Float(blade) * .pi / 2 + .pi / 8, axis: [0, 0, 1]); rotor.addChild(arm)
+                    _ = box([0.11, 1.32, 0.09], at: [0, 0.71, 0], color: timber, parent: arm)
+                    _ = box([0.28, 0.91, 0.045], at: [0.10, 0.93, 0.06], color: cream, parent: arm)
+                }
+            } else {
+                // Mapped playground location; the toy equipment is illustrative.
+                for dx: Float in [-0.8, 0.8] {
+                    _ = box([0.11, 1.15, 0.11], at: [dx, 0.575, -0.2], color: timber, parent: root)
+                }
+                _ = box([1.75, 0.13, 0.13], at: [0, 1.17, -0.2], color: material(0.82, 0.43, 0.31), parent: root)
+                for dx: Float in [-0.3, 0.3] {
+                    _ = box([0.025, 0.7, 0.025], at: [dx, 0.78, -0.2], color: timber, parent: root)
+                }
+                _ = box([0.75, 0.08, 0.3], at: [0, 0.4, -0.2], color: roof, parent: root)
+                let slide = box([0.55, 0.09, 1.25], at: [1.15, 0.5, 0.6], color: material(0.86, 0.68, 0.28), parent: root)
+                slide.orientation = simd_quatf(angle: -0.65, axis: [1, 0, 0])
+            }
+        }
+    }
+
 }
 #endif

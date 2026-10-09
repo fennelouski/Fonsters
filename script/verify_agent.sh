@@ -12,7 +12,7 @@ swiftc -target arm64-apple-macos15.0 -module-cache-path "$ROOT_DIR/.prototype-bu
  Fonsters/Playroom/FonsterAgentModels.swift Fonsters/ProtectedPlayPolicy.swift Fonsters/Playroom/FonsterAgentDirector.swift Fonsters/Playroom/FonsterSocialPresence.swift Fonsters/Playroom/FonsterSocialDirector.swift Fonsters/Playroom/FonsterAgentStudio.swift \
  Fonsters/FonsterInterests.swift Fonsters/FonsterBiography.swift Fonsters/Playroom/CreatureSocialModels.swift Fonsters/Playroom/FriendshipMemoryStore.swift \
  Fonsters/Playroom/CreatureCommandIntent.swift Fonsters/Playroom/CompanionEnvironment.swift Fonsters/Playroom/PlayroomController.swift \
- Fonsters/Playroom/LobbyWorld.swift Fonsters/Playroom/LobbyWorldScene.swift Fonsters/Playroom/LocalLobbySimulation.swift Fonsters/Playroom/LobbyPresentation.swift Fonsters/Playroom/LobbyDanceScene.swift Fonsters/Playroom/LocalLobbyController.swift \
+ Fonsters/Playroom/LobbyWorld.swift Fonsters/Playroom/LobbyWaypoints.swift Fonsters/Playroom/LobbyMappedWorld.swift Fonsters/Playroom/LobbyWorldScene.swift Fonsters/Playroom/LocalLobbySimulation.swift Fonsters/Playroom/LobbyPresentation.swift Fonsters/Playroom/LobbyDanceScene.swift Fonsters/Playroom/LocalLobbyController.swift \
  Fonsters/FonsterChrome.swift Fonsters/Playroom/FonsterVisualControls.swift Fonsters/Playroom/FonsterVisitDocument.swift Fonsters/Playroom/VerificationWindowCapture.swift Fonsters/Playroom/NativeSceneExport.swift Fonsters/Playroom/CreatureSceneLighting.swift \
  script/verify_agent.swift -o .prototype-build/verification/agent
 .prototype-build/verification/agent "$FIXTURE_DIR" --personality-file "$FIXTURE_DIR/personality.json"

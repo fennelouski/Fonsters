@@ -50,6 +50,7 @@ struct ContinuousLobbyView: View {
     @State private var searching = false
     @State private var query = ""
     @State private var gallery = false
+    @State private var waypointsShowing = false
     @State private var sharing = false
     @State private var agents = false
     @State private var profiles = false
@@ -65,7 +66,7 @@ struct ContinuousLobbyView: View {
     private var library: [Fonster] { PersonalFonsterLibrary.canonical(saved) }
     private var roster: [LocalLobbyController.SavedAppearance] { library.map { .init(id: $0.id, name: $0.name, seed: $0.seed, biography: $0.biography) } }
     private var blocked: Bool { !lobby.ready || lobby.paused || lobby.backgrounded || lobby.lowPower || lobby.reviewingControls }
-    private var reviewing: Bool { panelPrivacy || panelGallery || gallery || sharing || agents || profiles || editor != nil || senseEducation != nil || panelEducation != nil || panelInputGate.challenge != nil || needsWelcome || launching || explorationGuide || personalityGuide || privacy || parentGate.challenge != nil || inputParentGate.challenge != nil }
+    private var reviewing: Bool { waypointsShowing || panelPrivacy || panelGallery || gallery || sharing || agents || profiles || editor != nil || senseEducation != nil || panelEducation != nil || panelInputGate.challenge != nil || needsWelcome || launching || explorationGuide || personalityGuide || privacy || parentGate.challenge != nil || inputParentGate.challenge != nil }
     private var inputsSuspended: Bool { blocked || !lobby.inCare || lobby.selectedMember.isVisitor || typing || searchFocused }
 
     var body: some View {
@@ -86,6 +87,16 @@ struct ContinuousLobbyView: View {
                 }
                 .accessibilityIdentifier("continuousStage")
             if !launching {
+                WaypointWorldPins(lobby: lobby)
+                if let map = lobby.mappedArea {
+                    VStack(spacing: 2) {
+                        Text(map.area.name + " · Offline mapped sample").font(.caption.weight(.semibold))
+                        Link(map.source.attribution, destination: URL(string: "https://www.openstreetmap.org/copyright")!).font(.caption2)
+                        Text("Incomplete coverage · Toy equipment and water widths · " + (map.isStale ? "Stale offline snapshot " : "Snapshot ") + String(map.fetchedAt.prefix(10))).font(.caption2).foregroundStyle(FonsterChrome.secondary)
+                    }.foregroundStyle(FonsterChrome.primary).padding(10).background(.regularMaterial, in: RoundedRectangle(cornerRadius: 14))
+                        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top).padding(.top, 70)
+                        .accessibilityElement(children: .contain).accessibilityIdentifier("mappedWorldAttribution")
+                }
                 hud
                 OverheadFonsterName(lobby: lobby, record: library.first(where: { $0.id == lobby.selectedSavedID })) { record in
                     editor = .init(record: record)
@@ -209,7 +220,7 @@ struct ContinuousLobbyView: View {
         .sheet(isPresented: $profiles) { FonsterSocialStudio(lobby: lobby) }
         #endif
         #if os(macOS)
-        .task { await resizeCarePreviewIfRequested(); await verifyCameraKeyboardIfRequested(); await verifyExplorationIfRequested(); await verifyCameraLifecycleIfRequested() }
+        .task { await resizeCarePreviewIfRequested(); await verifyCameraKeyboardIfRequested(); await verifyExplorationIfRequested(); await verifyCameraLifecycleIfRequested(); await verifyWaypointsIfRequested() }
         #endif
         .onDisappear { pauseLiveActivity(); lobby.backgrounded = true; lobby.cancelContact(); lobby.refreshGates(); interpreter.cancel() }
     }
@@ -317,6 +328,47 @@ struct ContinuousLobbyView: View {
         lobby.openCare(0)
         let result: [String: Any] = ["checks": checks, "passed": checks.values.allSatisfy { $0 }, "inputProvenance": "Mouse NSEvents delivered only to this preview's own native window"]
         if let data = try? JSONSerialization.data(withJSONObject: result, options: [.prettyPrinted, .sortedKeys]) { try? data.write(to: URL(fileURLWithPath: args[i + 1]), options: .atomic) }
+    }
+    private func verifyWaypointsIfRequested() async {
+        let args = ProcessInfo.processInfo.arguments
+        guard args.contains("--verify-manual"), args.contains("--personality-file"), let i = args.firstIndex(of: "--waypoint-proof"), i + 1 < args.count else { return }
+        let deadline = Date().addingTimeInterval(30)
+        while !lobby.ready && Date() < deadline { try? await Task.sleep(for: .milliseconds(40)) }
+        guard lobby.ready else { return }
+        var checks: [String: Bool] = [:]
+        // Other app-local proofs can finish in care. Waypoint UI is lobby-only.
+        if lobby.inCare { lobby.returnToLobby() }
+        lobby.search(""); lobby.showOverview()
+        let start = lobby.controls
+        lobby.panCamera([91, 1.1, -37]); lobby.rotateCamera(0.48, vertical: 0.16); lobby.zoomCamera(0.78)
+        let view = lobby.waypointViewpoint
+        let id = lobby.waypoints.save(name: "Hilltop lookout", viewpoint: view)!
+        let saved = lobby.waypoints.waypoints.first { $0.id == id }!
+        let transform = lobby.camera?.transform
+        lobby.visitWaypoint(.home)
+        checks["permanentStartRestoresInitialView"] = lobby.controls == start
+        lobby.visitWaypoint(saved)
+        checks["savedViewRestoresPositionAngleZoom"] = lobby.camera?.transform == transform
+        let beforeDrag = lobby.controls
+        lobby.beginCameraGesture(); lobby.dragCamera(CGSize(width: 70, height: 45), pan: true); lobby.endCameraGesture()
+        lobby.restoreControls(beforeDrag)
+        checks["dragAndUndoRestoreView"] = lobby.controls == beforeDrag
+        if let map = lobby.mappedDemo, let mill = map.features.first(where: { $0.name == "De Kat" }) {
+            lobby.visitMappedFeature(mill)
+            checks["mappedWorldLoadsWithNineTiles"] = lobby.mappedAreaID == map.area.id && lobby.streamedWorld?.root.children.count == 9
+            checks["mappedModeHidesGeneratedScenery"] = lobby.generatedScenery?.isEnabled == false
+            let near = map.near(lobby.waypointViewpoint.position)
+            lobby.waypoints.save(name: "De Kat · Mill walk", viewpoint: lobby.waypointViewpoint, landmarkNames: near.prefix(3).map(\.name), areaName: map.area.name, landmarkSymbol: map.symbol("windmill"))
+            for index in 0..<5 { lobby.waypoints.save(name: "Trail \(index + 1)", viewpoint: .init(x: Float(index + 1) * 33, z: Float(index) * -21)) }
+            checks["sevenSavedPlacesEnableSorting"] = lobby.waypoints.canSort
+            let mapState = lobby.controls
+            lobby.visitWaypoint(.home)
+            checks["startReturnsToGeneratedWorld"] = lobby.mappedArea == nil && lobby.generatedScenery?.isEnabled == true
+            lobby.restoreControls(mapState)
+            checks["undoRestoresMappedWorld"] = lobby.mappedAreaID == map.area.id && lobby.generatedScenery?.isEnabled == false
+        } else { checks["mappedSnapshotAvailable"] = false }
+        if let data = try? JSONSerialization.data(withJSONObject: checks, options: [.prettyPrinted, .sortedKeys]) { try? data.write(to: URL(fileURLWithPath: args[i + 1]), options: .atomic) }
+        if args.contains("--waypoint-panel-preview") { waypointsShowing = true }
     }
     private func verifyCameraLifecycleIfRequested() async {
         let args = ProcessInfo.processInfo.arguments
@@ -491,6 +543,15 @@ struct ContinuousLobbyView: View {
                         carePanel
                         liveSenseButtons(horizontal: true)
                     } else { privacyButton }
+                    if !lobby.inCare {
+                        FonsterIconButton(title: "Saved places", symbol: "mappin.and.ellipse", tone: .world, detail: "Save this place, name a waypoint, or return to a saved place. Session start is always pinned.") { waypointsShowing = true }
+                            .accessibilityIdentifier("savedPlacesButton")
+                            .sheet(isPresented: $waypointsShowing) {
+                                LobbyWaypointsView(lobby: lobby) { query = ""; searching = false; waypointsShowing = false }
+                            }
+                        FonsterIconButton(title: "Return to session start", symbol: "house.fill", tone: .world, detail: "Return to where this session began. Use Undo to return to your previous view.") { query = ""; searching = false; lobby.visitWaypoint(.home) }
+                            .accessibilityIdentifier("returnToSessionStart")
+                    }
                     FonsterControlPanel(title: "World and camera", symbol: "rotate.3d", tone: .world) {
                         cameraControls
                         if lobby.inCare && compact {
@@ -857,10 +918,10 @@ struct ContinuousLobbyView: View {
                         FonsterIconButton(title: "Lower camera", symbol: "arrow.down.to.line", tone: .world) { lobby.panCamera([0, -0.3, 0]) }
                     }
                     HStack {
-                        FonsterIconButton(title: "Pan left", symbol: "arrow.left", tone: .world) { lobby.panCamera([-0.3, 0, 0]) }
-                        FonsterIconButton(title: "Pan right", symbol: "arrow.right", tone: .world) { lobby.panCamera([0.3, 0, 0]) }
-                        FonsterIconButton(title: "Pan forward", symbol: "arrow.up.forward", tone: .world) { lobby.panCamera([0, 0, -0.3]) }
-                        FonsterIconButton(title: "Pan backward", symbol: "arrow.down.backward", tone: .world) { lobby.panCamera([0, 0, 0.3]) }
+                        FonsterIconButton(title: "Pan left", symbol: "arrow.left", tone: .world) { lobby.moveCamera([-1, 0]) }
+                        FonsterIconButton(title: "Pan right", symbol: "arrow.right", tone: .world) { lobby.moveCamera([1, 0]) }
+                        FonsterIconButton(title: "Pan forward", symbol: "arrow.up.forward", tone: .world) { lobby.moveCamera([0, -1]) }
+                        FonsterIconButton(title: "Pan backward", symbol: "arrow.down.backward", tone: .world) { lobby.moveCamera([0, 1]) }
                     }
                 }
             }

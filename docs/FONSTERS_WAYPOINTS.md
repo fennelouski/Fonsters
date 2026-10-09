@@ -1,0 +1,25 @@
+# Saved places and mapped exploration
+
+The lobby’s pin button opens Saved places. Pin the current view, name it, save, and use its arrow to return. The house button and permanent first row return to the generated lobby where this session began. Saved places keep exact pan, a frozen focus position, angle, pitch, zoom, and world identity. Visiting a place can be undone using the existing control history. Name edits offer cancel before committing. No user records or old links are migrated or deleted.
+
+Names and waypoint coordinates are private, local JSON in the existing Playroom support directory (`waypoints-v1.json`), or alongside an explicit verification `--personality-file`. These are toy-world coordinates, never GPS. Waypoint IDs are random UUIDs; the permanent start pin has a non-personal constant identity and is not stored among saved pins. Files are written atomically. Invalid/future files remain untouched; a visible warning explains temporary session-only pins. There is no waypoint sharing or CloudKit sync yet.
+
+Saved rows show illustrated tile previews derived from their scenery and positions. Mapped previews draw the same clipped geographic waterway vertices used by the 3D renderer. Rows include terrain/tile metadata or a public mapped area and up to three nearby source names. Names can be edited. A compact in-world pin appears for up to eight nearby, visible saved locations. The permanent home control remains available even far from home. The sort control is absent below **seven saved places** (the start pin does not count), then offers newest, nearest, and name. Nearest prioritizes the current world because generated and geographic coordinate spaces are different.
+
+Horizontal navigation is five times faster: held W/A/S/D reach 12 world units/second, Shift reaches 36. Velocity has the existing smooth acceleration and release easing. Horizontal drag gain and camera pan buttons likewise increase fivefold; the buttons now move relative to camera heading. Rotation, pitch, zoom, vertical speed, and movement bounds are unchanged. Native held-key movement remains delta-time based and stops while editing, reviewing, or backgrounded. Actual creature walking speed is unchanged.
+
+## Mapped sample
+
+Saved places also offers a deliberate choice of real mapped landmarks in **Zaanse Schans and Zaandijk**. This is a public offline sample, not the user’s location. It bundles 14 mapped windmills, 8 playgrounds, and 30 waterways imported on 2026-10-09. The backend and app use the same versioned OpenStreetMap snapshot; see [backend details](../server/landmarks/README.md).
+
+Selecting an object suppresses generated buildings/paths and renders original native windmill/playground models at mapped positions. Waterway ribbons follow actual recorded vertices, with centerlines clipped to the imported bounds and individual tile bounds. River widths without source measurements and playground equipment are illustrative, not surveyed. Nine tiles remain resident during exploration. Coverage is explicitly incomplete; unlabeled terrain does not establish that nothing exists there. Long waterways navigate to a visible clipped section, rather than their potentially distant full-geometry center. Unknown/unavailable snapshots are not substituted with fabricated mapped landmarks.
+
+The mapped scene names the area, shows the snapshot date, incomplete-coverage and illustrative-width/equipment disclosures, and credits **© OpenStreetMap contributors** with the ODbL copyright link. The supplied geographic database retains source object IDs, public source URLs and source/license metadata. The app currently accepts only the checked bundled sample. It does not enable GPS, external accounts, automatic location transmission, or third-party network requests. The local read-only backend is implemented and verified; hosted production is disabled pending coordinated deployment/access and a reviewed geographic ingestion catalog.
+
+## Verification
+
+Run `bash script/verify_waypoints.sh` for persistence, sorting thresholds, invalid/future archive preservation, snapshot geometry and waterway destinations, and frame-independent navigation speeds. Run `bash script/verify_world.sh --camera-only` for actual RealityKit object coverage, nine-tile memory, map/home switching, camera transforms, drag/undo, bounds and invalid input. `FonstersUITests/WaypointTests` exercises the real save/name/visit and public mapped area UI on iPhone Simulator.
+
+Mac proof flags require `--prototype --verify-manual --personality-file <isolated-path> --waypoint-proof <json-path>`; optional `--waypoint-panel-preview` opens the saved panel after the checks. Normal launches do not add test pins or run this sequence. Reduce Motion uses instant/static panel transitions, and ordinary background/input suspension applies to this panel.
+
+Physical iPhone execution, manual VoiceOver, and worldwide map coverage are outside this local verification. The separate unfinished Mac window/omnibar work remains in its original dirty worktree and is not overwritten by this feature.

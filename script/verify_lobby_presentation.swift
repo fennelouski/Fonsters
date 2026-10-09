@@ -32,9 +32,21 @@ import simd
         var camera = LobbyCameraMotion()
         camera.press("w", down: true, fast: false)
         let first = camera.advance(dt: 0.016).translation
-        precondition(simd_length(first) > 0 && simd_length(first) < 0.01)
+        precondition(simd_length(first) > 0 && simd_length(first) < 0.03)
         for _ in 0..<60 { _ = camera.advance(dt: 1/60) }
         let normal = simd_length(camera.translation)
+        precondition(abs(normal - 12) < 0.02)
+        var rotation = LobbyCameraMotion(); rotation.press("right", down: true, fast: false)
+        var elevation = LobbyCameraMotion(); elevation.press("e", down: true, fast: false)
+        for _ in 0..<120 { _ = rotation.advance(dt: 1/60); _ = elevation.advance(dt: 1/60) }
+        precondition(abs(rotation.turn.x - 0.85) < 0.001 && abs(elevation.translation.y - 2.4) < 0.001)
+        for hz: Float in [30, 60, 120] {
+            var steady = LobbyCameraMotion(); steady.press("w", down: true, fast: false)
+            for _ in 0..<Int(hz * 2) { _ = steady.advance(dt: 1/hz) }
+            let step = steady.advance(dt: 1/hz)
+            precondition(abs(step.translation.z * hz + 12) < 0.001)
+        }
+        print("PASS: horizontal steady speed 12 units/s (5x); elevation 2.4 and rotation 0.85 unchanged; 30/60/120 Hz velocity agrees; smooth onset and Shift 3x boost")
         camera.fast = true
         for _ in 0..<60 { _ = camera.advance(dt: 1/60) }
         precondition(simd_length(camera.translation) > normal * 2.8)

@@ -200,8 +200,10 @@ struct LobbyStageView: View {
         }
         roots.append(lobby.mirrorGuestsRoot)
         let stream = LobbyWorldStream(); lobby.streamedWorld = stream
+        stream.mappedWorld = lobby.mappedArea
         stream.update(center: lobby.cameraPan); roots.append(stream.root)
         let neighborhood = try LobbyWorldScene.make(lobby.world)
+        lobby.generatedScenery = neighborhood.root; neighborhood.root.isEnabled = lobby.mappedArea == nil
         roots.append(neighborhood.root); lobby.fountainDrops = neighborhood.fountainDrops
         var markerMaterial = UnlitMaterial(color: FonsterPlatformColor(srgbRed: 0.30, green: 0.75, blue: 0.58, alpha: 1))
         markerMaterial.blending = .transparent(opacity: .init(floatLiteral: 0.8))

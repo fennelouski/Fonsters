@@ -14,6 +14,19 @@ import simd
         stream.update(center: .zero)
         precondition(Set(stream.root.children.map(\.name)) == homeNames)
         print("PASS: 100 streamed neighborhoods retain nine tiles; Home regenerates the same deterministic terrain")
+        let mapData = try Data(contentsOf: URL(fileURLWithPath: "Fonsters/Playroom/Resources/MappedWorldDemo.json"))
+        let map = try LobbyMappedWorld.load(data: mapData)
+        stream.mappedWorld = map
+        var rendered: Set<String> = []
+        for feature in map.features {
+            let p = map.center(feature); stream.update(center: [p.x, 0, p.y])
+            precondition(stream.root.children.count == 9)
+            for tile in stream.root.children { for entity in tile.children where entity.name.hasPrefix("osm:") { rendered.insert(entity.name) } }
+        }
+        precondition(rendered.count == 52, "Every mapped object must render in its visible neighborhood")
+        stream.mappedWorld = nil; stream.update(center: .zero)
+        precondition(stream.root.children.count == 9 && Set(stream.root.children.map(\.name)) == homeNames)
+        print("PASS: actual RealityKit geometry renders all 52 mapped objects with nine-tile bounds; generated home restores without mapped leftovers")
         if CommandLine.arguments.contains("--camera-only") {
             let lobby = LocalLobbyController(), camera = PerspectiveCamera()
             camera.camera.fieldOfViewInDegrees = 42; lobby.camera = camera
