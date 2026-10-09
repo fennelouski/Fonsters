@@ -282,8 +282,8 @@ final class CreatureRig {
         _ = ball(FonsterPlatformColor(srgbRed: 0.05, green: 0.035, blue: 0.07, alpha: 1), scale: [w * 0.21, h * 0.31, 0.045], at: [0, 0, 0.046], parent: pupil)
         _ = ball(.white, scale: [0.028, 0.028, 0.015], at: [-0.025, 0.034, 0.09], parent: pupil)
         eye.addChild(pupil); head.addChild(eye); eyes.append(eye); pupils.append(pupil); pupilTravel.append([w * 0.22, h * 0.20])
-        let lid = ball(color(skinIndex), scale: [w * 0.76, h * 0.32, 0.095], at: [0, -h * 0.78, 0.12], parent: eye)
-        lid.name = "smiling-lower-lid"; lid.isEnabled = false; smilingLids.append((lid, h))
+        let lid = ball(color(skinIndex), scale: [w * 0.76, h * 0.24, 0.095], at: [0, h * 0.96, 0.12], parent: eye)
+        lid.name = "smiling-upper-lid"; lid.isEnabled = false; smilingLids.append((lid, h))
         touchSurfaces.append(.init(entity: eye, center: [0, 0, 0.035], radii: [w * 0.74, h * 0.74, 0.18], zone: .eye))
     }
     struct SmileLayout {
@@ -337,14 +337,26 @@ final class CreatureRig {
         let lift = min(1, max(0, smilingEyes))
         for (lid, height) in smilingLids {
             lid.isEnabled = lift > 0.03
-            lid.position.y = -height * 0.78 + height * 0.48 * lift
+            lid.position.y = height * 0.96 - height * 0.14 * lift
         }
     }
     func addBrow(_ part: CreatureAppearanceDescriptor.Part) {
         let (w, h) = extent(part)
         let brow = ModelEntity(mesh: .generateBox(size: [w, h, 0.05], cornerRadius: min(0.04, h * 0.25)),
                                materials: [material(color(Int(part.paletteIndices.first ?? 3)))])
-        brow.position = facePosition(part)
+        // The legacy raster's fixed brow band can overlap an enlarged 3D eye.
+        // Resolve the nearest eye and leave room above its full expressive outline.
+        if let eye = descriptor.parts.filter({ $0.kind == "eye" }).min(by: {
+            abs($0.centerX - part.centerX) < abs($1.centerX - part.centerX)
+        }) {
+            let (_, eyeHeight) = extent(eye)
+            let clearance = eyeHeight * 1.20 + h / 2 + 0.06
+            let y = min(part.centerY, eye.centerY - Double(clearance / pixel))
+            brow.position = point(eye.centerX, y, z: faceDepth(eye.centerX, y) + 0.04) - baseHead
+        } else {
+            brow.position = facePosition(part)
+        }
+        brow.name = part.id
         head.addChild(brow); brows.append(brow)
     }
     func addNose(_ part: CreatureAppearanceDescriptor.Part) {
