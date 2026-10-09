@@ -54,6 +54,7 @@ final class PlayroomController {
     @ObservationIgnored private var pose: Pose = .init()
     @ObservationIgnored private var mirror = CreatureMirrorDynamics()
     @ObservationIgnored private var mirrorTime: Double = 0
+    @ObservationIgnored private var handDynamics = CreatureHandDynamics()
     @ObservationIgnored private var mirrorHoldUntil: Float = 0
     @ObservationIgnored private var face = CreatureFaceDynamics()
     @ObservationIgnored private var attention: CreatureAttention.Target?
@@ -205,12 +206,16 @@ final class PlayroomController {
     }
     func silence() { soundBank.stop() }
     func receiveMirror(_ sample: CreatureMirrorSample, time: Double) {
-        guard shouldAnimate, !touch.active, sample.valid, elapsed >= mirrorHoldUntil, reaction != .rest else { return }
+        guard shouldAnimate, !touch.active, sample.valid, elapsed >= mirrorHoldUntil else { return }
         let waving = mirror.receive(sample, time: time); mirrorTime = time
+        if let handReaction = handDynamics.receive(sample.found ? sample.hands : [], time: time),
+           let reaction = Reaction(rawValue: handReaction.rawValue) {
+            perform(reaction, name: companionName, learn: false)
+        }
         if waving { viewerAttentionUntil = elapsed + 2 }
         gaze = mirror.sample.gaze
     }
-    func clearMirror() { mirror.reset(); face.reset(to: expressionBaseline(moving: shouldAnimate)); gaze = .zero }
+    func clearMirror() { handDynamics.reset(); mirror.reset(); face.reset(to: expressionBaseline(moving: shouldAnimate)); gaze = .zero }
     func setAttention(_ target: CreatureAttention.Target) {
         guard target.point.x.isFinite, target.point.y.isFinite, target.point.z.isFinite else { return }
         attention = target
@@ -509,11 +514,14 @@ final class PlayroomController {
         return result
     }
     private func updateAttention(rig: CreatureRig, pose: Pose, dt: Float) {
-        guard !paused && !backgrounded && !lowPower && !touch.active && !followingPointer else { return }
+        guard !paused && !backgrounded && !lowPower && !touch.active && (!followingPointer || mirror.sample.found) else { return }
         let origin = rig.head.position(relativeTo: nil)
-        let target = attention ?? .init(mode: .viewer, point: touchCamera?.position(relativeTo: nil) ?? origin + SIMD3<Float>(0, 0.5, 4))
+        var target = attention ?? .init(mode: .viewer, point: touchCamera?.position(relativeTo: nil) ?? origin + SIMD3<Float>(0, 0.5, 4))
+        if mirror.sample.found, let camera = touchCamera {
+            target = .init(mode: .viewer, point: camera.position(relativeTo: nil), cameraUp: target.cameraUp)
+        }
         var direction = target.point - origin
-        if target.mode == .viewer {
+        if target.mode == .viewer && !mirror.sample.found {
             let degrees: Float = 9 + (shouldAnimate ? sin(elapsed * 0.33 + rig.expressionPhase) * 6 : 0)
             direction = CreatureAttention.viewerDirection(from: origin, camera: target.point, up: target.cameraUp, degrees: degrees)
         }
@@ -547,7 +555,7 @@ final class PlayroomController {
             simd_quatf(angle: pose.tilt, axis: [0, 0, 1])
         rig.root.scale = [1 - pose.squash * 0.5, 1 + pose.squash, 1 - pose.squash * 0.5]
         updateAttention(rig: rig, pose: pose, dt: dt)
-        let contact = touch.active || followingPointer
+        let contact = touch.active || (followingPointer && !mirror.sample.found)
         rig.head.orientation = simd_quatf(angle: contact ? actualGaze.x * 0.14 : headAttention.x, axis: [0, 1, 0]) *
             simd_quatf(angle: pose.nod - (contact ? 0 : headAttention.y), axis: [1, 0, 0]) *
             simd_quatf(angle: pose.tilt * 0.45, axis: [0, 0, 1])

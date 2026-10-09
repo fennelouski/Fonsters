@@ -4,7 +4,7 @@ final class WelcomeAndSensesTests: XCTestCase {
     override func setUpWithError() throws { continueAfterFailure = false }
     @MainActor func testFirstFriendExploreAndVisibleSenseEducation() {
         let app = XCUIApplication()
-        app.launchArguments = ["--prototype", "--verify-live-inputs", "--verify-reduce-motion", "--personality-file", "/tmp/welcome-\(UUID().uuidString).json"]
+        app.launchArguments = ["--prototype", "--camera-history-suite", "fonsters.ui.camera." + UUID().uuidString, "--verify-live-inputs", "--verify-reduce-motion", "--personality-file", "/tmp/welcome-\(UUID().uuidString).json"]
         app.launch()
         XCTAssertTrue(app.buttons["welcomeShuffle"].waitForExistence(timeout: 30))
         app.buttons["welcomeShuffle"].tap(); app.buttons["welcomeChoose"].tap()
@@ -27,6 +27,41 @@ final class WelcomeAndSensesTests: XCTestCase {
         attach(app, "microphone-education")
         app.buttons["Cancel"].tap()
         XCTAssertFalse(app.textFields["parentAnswer"].exists)
+    }
+    @MainActor func testCameraResumeAndRecentReviewSkipsEducation() {
+        let app = XCUIApplication()
+        app.launchArguments = ["--prototype", "--verify-manual", "--verify-live-inputs", "--verify-reduce-motion",
+            "--camera-history-suite", "fonsters.ui.camera." + UUID().uuidString,
+            "--personality-file", "/tmp/camera-lifecycle-\(UUID().uuidString).json"]
+        app.launch()
+        XCTAssertTrue(app.buttons["searchFonsters"].waitForExistence(timeout: 30))
+        app.buttons["searchFonsters"].tap(); app.textFields["lobbySearchField"].typeText("coral\n")
+        XCTAssertTrue(app.buttons["careCamera"].waitForExistence(timeout: 10))
+        app.buttons["careCamera"].tap()
+        XCTAssertTrue(app.buttons["senseEducationContinue"].waitForExistence(timeout: 5))
+        attach(app, "camera-first-education")
+        app.buttons["senseEducationContinue"].tap()
+        XCTAssertTrue(app.staticTexts["parentQuestion"].waitForExistence(timeout: 5))
+        attach(app, "camera-easy-parent-check")
+        approveParentAction(in: app)
+        XCTAssertTrue(app.buttons["Turn camera off"].waitForExistence(timeout: 5))
+        app.buttons["backToLobby"].tap()
+        let search = app.textFields["lobbySearchField"]
+        if !search.exists { app.buttons["searchFonsters"].tap() }
+        XCTAssertTrue(search.waitForExistence(timeout: 10)); search.tap(); search.typeText("\n")
+        XCTAssertTrue(app.buttons["Turn camera off"].waitForExistence(timeout: 10))
+        XCTAssertFalse(app.buttons["senseEducationContinue"].exists)
+        app.buttons["careCamera"].tap()
+        XCTAssertTrue(app.buttons["Mirror me"].waitForExistence(timeout: 5))
+        app.buttons["backToLobby"].tap()
+        if !search.exists { app.buttons["searchFonsters"].tap() }
+        XCTAssertTrue(search.waitForExistence(timeout: 10)); search.tap(); search.typeText("\n")
+        XCTAssertTrue(app.buttons["Mirror me"].waitForExistence(timeout: 10))
+        app.buttons["careCamera"].tap()
+        XCTAssertTrue(app.buttons["Turn camera off"].waitForExistence(timeout: 5))
+        XCTAssertFalse(app.buttons["senseEducationContinue"].exists)
+        XCTAssertFalse(app.textFields["parentAnswer"].exists)
+        attach(app, "camera-recent-review-resume")
     }
     @MainActor func testPersonalityChoicesAndReturningLibrary() {
         let app = XCUIApplication()

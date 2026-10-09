@@ -112,6 +112,28 @@ import simd
             controller.receiveMirror(sample, time: 100); for _ in 0..<120 { controller.advance(dt: 1 / 30) }
             precondition(rig.head.transform == pose && controller.renderedExpression == expression)
         }
+        controller.paused = false; controller.staticMode = false; controller.systemReduceMotion = false
+        controller.backgrounded = false; controller.lowPower = false
+        controller.followingPointer = true // Camera tracking supersedes an old pointer-follow selection.
+        controller.touchCamera = PerspectiveCamera()
+        controller.touchCamera!.position = rig.head.position(relativeTo: nil) + [0, 0, 5]
+        controller.setAttention(.init(mode: .peer, point: origin + [-3, 0, 2]))
+        for i in 0..<120 {
+            controller.receiveMirror(.init(gaze: .zero), time: 1000 + Double(i) / 30)
+            controller.advance(dt: 1 / 30)
+        }
+        precondition(abs(controller.renderedHeadAngles.x) < 0.06 && abs(controller.renderedHeadAngles.y) < 0.06, "camera eye contact replaces peer gaze and upward idle offset")
+        var horizontal: [Float] = []
+        for x in [Float(-0.65), Float(0.65)] {
+            for i in 0..<90 {
+                controller.receiveMirror(.init(gaze: [x, 0]), time: 1100 + Double(i) / 30)
+                controller.advance(dt: 1 / 30)
+            }
+            horizontal.append(rig.head.orientation.imag.y)
+        }
+        precondition(horizontal[0] < -0.04 && horizontal[1] > 0.04, "camera gaze follows both horizontal directions")
+        controller.followingPointer = false; controller.clearMirror()
+        print("PASS: real rig camera gaze faces forward, follows both directions, and overrides stale pointer/peer attention")
         print("PASS: actual RealityKit head/pupils look upward and at peers, every static action respects low, twenty-second idle varies, mesh resource reused, appearance bytes unchanged and five motion gates freeze live face updates")
 
         let lobby = LocalLobbyController(); lobby.lowPower = false; lobby.wander = false; lobby.ready = true
@@ -123,14 +145,17 @@ import simd
             member.controller.lowPower = false; member.controller.orbit = 0; member.controller.install(r, name: member.name)
         }
         lobby.applyLayout()
+        // Initial/return staging now eases over multiple seconds. Test travel
+        // after the world owns placement again, rather than mid-transition.
+        for _ in 0..<240 { lobby.advance(dt: 1 / 30) }
         precondition(lobby.members.allSatisfy { $0.controller.attentionMode == .peer })
-        lobby.walk(to: lobby.world.destination(in: .plaza, slot: 0))
+        precondition(lobby.walk(to: lobby.world.destination(in: .plaza, slot: 0)))
         lobby.advance(dt: 1 / 30)
         precondition(lobby.selectedMember.controller.attentionMode == .travel)
         lobby.openCare(0)
         for _ in 0..<40 { lobby.advance(dt: 1 / 30) }
         precondition(lobby.inCare && lobby.selectedMember.controller.attentionMode == .viewer)
-        lobby.returnToLobby(); for _ in 0..<40 { lobby.advance(dt: 1 / 30) }
+        lobby.returnToLobby(); for _ in 0..<240 { lobby.advance(dt: 1 / 30) }
         lobby.stopActivity(); lobby.playTogether(); lobby.applyLayout()
         precondition(lobby.members.allSatisfy { $0.controller.attentionMode == .viewer })
         print("PASS: real lobby assigns peer gaze, a deliberate walk looks ahead, care hides peers and looks at viewer, whole-room play turns toward viewer")
