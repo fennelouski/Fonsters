@@ -50,6 +50,53 @@ final class ContinuousLobbyTests: XCTestCase {
         XCTAssertTrue(app.buttons["searchFonsters"].waitForExistence(timeout: 5))
         attach(app, "adaptive-landscape-lobby")
     }
+    @MainActor func testExploreWalkPanFocusAndReturn() throws {
+        let app = launch()
+        XCTAssertTrue(app.buttons["searchFonsters"].waitForExistence(timeout: 30))
+        app.buttons["searchFonsters"].tap(); app.textFields["lobbySearchField"].typeText("moss\n")
+        waitEnabled(app.buttons["exploreWithFonster"])
+        XCTAssertEqual(app.staticTexts["careName"].label, "Moss")
+        app.buttons["exploreWithFonster"].tap()
+        let landscape = XCTNSPredicateExpectation(predicate: NSPredicate { _, _ in
+            let frame = app.windows.firstMatch.frame
+            return frame.width > frame.height
+        }, object: nil)
+        XCTAssertEqual(XCTWaiter.wait(for: [landscape], timeout: 10), .completed)
+        let clear = app.otherElements["careClearArea"]
+        XCTAssertTrue(clear.waitForExistence(timeout: 5)); XCTAssertGreaterThan(clear.frame.height, 90)
+        for id in ["careCamera", "careMicrophone", "exploreWithFonster", "panel_More interactions", "focusExploringFonster", "panel_Care", "backToLobby"] {
+            let button = app.buttons[id]; XCTAssertTrue(button.isHittable, id)
+            XCTAssertFalse(clear.frame.intersects(button.frame), id)
+        }
+        attachDevice("explore-01-landscape-with-name-tag")
+        let stage = app.otherElements["continuousStage"]
+        // Reachable garden ground in the existing authored world, through the
+        // same native gesture used by the person playing with the app.
+        stage.coordinate(withNormalizedOffset: CGVector(dx: 0.56, dy: 0.55)).tap()
+        if !(stage.value as? String ?? "").contains("Walking to") {
+            stage.coordinate(withNormalizedOffset: CGVector(dx: 0.42, dy: 0.54)).tap()
+        }
+        XCTAssertTrue((stage.value as? String ?? "").contains("Walking to"), stage.value as? String ?? "")
+        attachDevice("explore-02-tapped-ground")
+        let beforePan = stage.value as? String ?? ""
+        stage.coordinate(withNormalizedOffset: CGVector(dx: 0.25, dy: 0.35)).press(forDuration: 0.1,
+            thenDragTo: stage.coordinate(withNormalizedOffset: CGVector(dx: 0.38, dy: 0.45)))
+        XCTAssertNotEqual(stage.value as? String ?? "", beforePan)
+        app.buttons["focusExploringFonster"].tap()
+        XCTAssertTrue((stage.value as? String ?? "").contains("position 0.0, 0.0, 0.0"))
+        XCTAssertEqual(app.staticTexts["careName"].label, "Moss")
+        attachDevice("explore-03-follow-restored")
+        app.buttons["exploreWithFonster"].tap()
+        XCTAssertTrue(app.buttons["care_greet"].waitForExistence(timeout: 5))
+        let portrait = XCTNSPredicateExpectation(predicate: NSPredicate { _, _ in
+            let frame = app.windows.firstMatch.frame
+            return frame.height > frame.width
+        }, object: nil)
+        XCTAssertEqual(XCTWaiter.wait(for: [portrait], timeout: 10), .completed)
+        app.buttons["care_greet"].tap(); attach(app, "explore-04-portrait-care")
+        app.buttons["backToLobby"].tap()
+        XCTAssertTrue(app.buttons["searchFonsters"].waitForExistence(timeout: 5))
+    }
     @MainActor func testSpatialSearchCareTouchAndReturn() throws {
         let app = launch()
         let stage = app.otherElements["continuousStage"]
@@ -155,6 +202,10 @@ final class ContinuousLobbyTests: XCTestCase {
     @MainActor private func waitEnabled(_ element: XCUIElement) {
         XCTAssertTrue(element.waitForExistence(timeout: 20))
         XCTAssertEqual(XCTWaiter.wait(for: [XCTNSPredicateExpectation(predicate: NSPredicate(format: "enabled == true"), object: element)], timeout: 20), .completed)
+    }
+    @MainActor private func attachDevice(_ name: String) {
+        let attachment = XCTAttachment(screenshot: XCUIScreen.main.screenshot())
+        attachment.name = name; attachment.lifetime = .keepAlways; add(attachment)
     }
     @MainActor private func attach(_ app: XCUIApplication, _ name: String) {
         let shot = XCTAttachment(screenshot: app.screenshot()); shot.name = name; shot.lifetime = .keepAlways; add(shot)

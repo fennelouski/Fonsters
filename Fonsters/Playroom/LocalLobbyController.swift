@@ -103,6 +103,9 @@ final class LocalLobbyController {
     var shouldAnimate: Bool { ready && !paused && !still && !reduceMotion && !backgrounded && !lowPower && !reviewingControls }
     var continuousGallery = false
     @ObservationIgnored private(set) var presentation = LobbyPresentation()
+    private(set) var exploring = false
+    private(set) var walkDestination: SIMD2<Float>?
+    @ObservationIgnored var destinationMarker: ModelEntity?
     private(set) var careFocus: Int?
     var inCare: Bool { careFocus != nil }
     private(set) var searchQuery = ""
@@ -127,20 +130,36 @@ final class LocalLobbyController {
     }
     func openCare(_ index: Int) {
         guard continuousGallery, members.indices.contains(index), ready else { return }
-        if inCare && selected == index { return }
+        if inCare && selected == index && !exploring { return }
         takeOwnerControl()
         if !inCare { careReturnCamera = controls }
-        selected = index; careFocus = index; resetPresentationCamera()
+        selected = index; careFocus = index; exploring = false; resetPresentationCamera()
         presentation.change(query: searchQuery, care: index, names: names, natural: naturalPoses, immediate: immediatePresentation)
         selectedMember.controller.perform(.greet, name: selectedMember.name, learn: !selectedMember.isVisitor)
         applyLayout()
     }
     func returnToLobby() {
         guard inCare else { return }
-        takeOwnerControl(); selectedMember.controller.stopActivity(); careFocus = nil
+        takeOwnerControl(); selectedMember.controller.stopActivity(); careFocus = nil; exploring = false
         presentation.change(query: searchQuery, care: nil, names: names, natural: naturalPoses, immediate: immediatePresentation)
         if let state = careReturnCamera { restoreCamera(state); careReturnCamera = nil }
         applyLayout()
+    }
+    func toggleExploration() {
+        guard continuousGallery, inCare, ready, !reviewingControls, !backgrounded else { return }
+        takeOwnerControl(); exploring.toggle(); cancelContact()
+        presentation.change(query: exploring ? "" : searchQuery, care: exploring ? nil : selected,
+            names: names, natural: naturalPoses, immediate: immediatePresentation)
+        resetPresentationCamera()
+        if exploring { followSelected = true }
+        message = exploring ? "Explore with \(selectedMember.name). Tap clear ground to walk; drag empty space to pan." : "Back with \(selectedMember.name)."
+        applyLayout(); writeProbe()
+    }
+    func walkStep(_ direction: SIMD2<Float>) {
+        if continuousGallery && inCare && !exploring { toggleExploration() }
+        let right = SIMD2<Float>(cos(cameraOrbit), -sin(cameraOrbit))
+        let forward = SIMD2<Float>(sin(cameraOrbit), cos(cameraOrbit))
+        _ = walk(to: simulation.agents[selected].position + (right * direction.x + forward * direction.y) * 1.2)
     }
     private func resetPresentationCamera() { cameraOrbit = 0; cameraPitch = 0; cameraPan = .zero; cameraZoom = 1; followSelected = false; focusArea = nil }
     private func restoreCamera(_ state: ControlState) { cameraOrbit = state.orbit; cameraPitch = state.pitch; cameraPan = state.pan; cameraZoom = state.zoom; followSelected = state.follow; focusArea = state.area }
@@ -150,6 +169,11 @@ final class LocalLobbyController {
     var peerIndex: Int { buddy != selected && members.indices.contains(buddy) ? buddy : (selected + 1) % members.count }
     var selectedFriendship: CreatureFriendship { social.friendship(selectedMember.id, members[peerIndex].id) }
     var hasVisitor: Bool { members.contains(where: \.isVisitor) }
+    var explorationStatus: String {
+        guard exploring else { return "" }
+        if let goal = walkDestination { return "Exploring with \(selectedMember.name). Walking to \(String(format: "%.1f, %.1f", goal.x, goal.y))." }
+        return "Exploring with \(selectedMember.name). Tap clear ground to walk."
+    }
     var motionStatus: String {
         if backgrounded { return "Paused in background" }; if lowPower { return "Low Power · still" }
         if reduceMotion { return "Reduce Motion · still" }; if still { return "Still mode" }
@@ -239,7 +263,7 @@ final class LocalLobbyController {
             return
         }
         let selectedRecord = selectedSavedID
-        let returningToCare = inCare
+        let returningToCare = inCare, returningToExploration = exploring
         cancelContact(); agent.takeOver(lobby: self); presence.ownerTookOver()
         let memories = PersonalityMemoryStore.localPreview()
         members = records.map { record in
@@ -263,11 +287,11 @@ final class LocalLobbyController {
         }
         selected = 0; buddy = members.count > 1 ? 1 : 0
         socialAttention.removeAll(); gazePeers.removeAll()
-        simulation = .init(names: names); presentation = .init(); browsingCamera = nil; careReturnCamera = nil; careFocus = nil; searchQuery = ""; searchMatches = Array(members.indices)
+        simulation = .init(names: names); presentation = .init(); browsingCamera = nil; careReturnCamera = nil; careFocus = nil; exploring = false; walkDestination = nil; searchQuery = ""; searchMatches = Array(members.indices)
         for (i, member) in members.enumerated() { simulation.setFeeling(member.controller.feeling, actor: i) }
         if returningToCare, let selectedRecord, let publicID = savedIdentities[selectedRecord], let index = members.firstIndex(where: { $0.id == publicID }) {
-            selected = index; careFocus = index
-            presentation.change(query: "", care: index, names: names, natural: naturalPoses, immediate: true)
+            selected = index; careFocus = index; exploring = returningToExploration; followSelected = exploring
+            presentation.change(query: "", care: exploring ? nil : index, names: names, natural: naturalPoses, immediate: true)
         }
         containers = []; camera = nil; ready = false; roomRevision += 1
     }
@@ -286,12 +310,13 @@ final class LocalLobbyController {
         var sounds: Bool
         var feeling: CreatureFeeling
         var careFocus: Int?
+        var exploring: Bool
         var query: String
         var dance: FonsterDanceMode
     }
     var controls: ControlState {
         .init(selected: selected, buddy: buddy, area: focusArea, follow: followSelected, zoom: cameraZoom, orbit: cameraOrbit, pitch: cameraPitch, pan: cameraPan,
-              paused: paused, still: still, wander: wander, sounds: sounds, feeling: selectedMember.controller.feeling, careFocus: careFocus, query: searchQuery, dance: danceMode)
+              paused: paused, still: still, wander: wander, sounds: sounds, feeling: selectedMember.controller.feeling, careFocus: careFocus, exploring: exploring, query: searchQuery, dance: danceMode)
     }
     func restoreControls(_ state: ControlState) {
         guard members.indices.contains(state.selected), members.indices.contains(state.buddy) else { return }
@@ -302,6 +327,7 @@ final class LocalLobbyController {
                 if let focus = state.careFocus { openCare(focus) }
             }
         }
+        if state.exploring != exploring && inCare { toggleExploration() }
         takeOwnerControl(); selected = state.selected; buddy = state.buddy
         focusArea = state.area; followSelected = state.follow; cameraZoom = state.zoom; cameraOrbit = state.orbit; cameraPitch = state.pitch; cameraPan = state.pan
         paused = state.paused; still = state.still; setWander(state.wander); sounds = state.sounds
@@ -311,7 +337,11 @@ final class LocalLobbyController {
         updateCamera(); refreshGates()
     }
     func stopActivity() {
-        if continuousGallery && inCare { ownerActed(); selectedMember.controller.stopActivity(); message = selectedMember.controller.message; return }
+        if continuousGallery && inCare {
+            ownerActed(); selectedMember.controller.stopActivity()
+            if exploring { simulation.stopAgentMotion(actor: selected); walkDestination = nil; applyLayout() }
+            message = selectedMember.controller.message; return
+        }
         interruptPair(); ownerActed()
         for i in members.indices {
             simulation.stopAgentMotion(actor: i); members[i].controller.stopActivity()
@@ -507,61 +537,74 @@ final class LocalLobbyController {
         streamedWorld?.update(center: cameraPan)
         guard let camera else { return }
         defer { updateAttention() }
-        if continuousGallery && (inCare || !searchQuery.isEmpty) {
+        let clear = careClearFrame.intersection(careViewportFrame)
+        let useClear = inCare && !clear.isNull && clear.width > 80 && clear.height > 80 && careViewportFrame.height > 0
+        let clearFit: Float = useClear ? max(1, 0.86 / Float(clear.height / careViewportFrame.height), 0.8 / Float(clear.width / careViewportFrame.width)) : 1
+        func framed(_ target: SIMD3<Float>, offset: SIMD3<Float>, radius: Float) -> SIMD3<Float> {
+            guard useClear else { return target }
+            let forward = -simd_normalize(offset)
+            let right = simd_normalize(simd_cross(forward, SIMD3<Float>(0, 1, 0)))
+            let up = simd_cross(right, forward)
+            let x = Float((clear.midX - careViewportFrame.minX) / careViewportFrame.width * 2 - 1)
+            let y = Float(1 - (clear.midY - careViewportFrame.minY) / careViewportFrame.height * 2)
+            let halfHeight = radius * tan(Float(camera.camera.fieldOfViewInDegrees) * .pi / 360)
+            return target - right * x * halfHeight * viewportAspect - up * y * halfHeight
+        }
+        if continuousGallery && !exploring && (inCare || !searchQuery.isEmpty) {
             var target: SIMD3<Float> = [0, inCare ? 1.15 : 0.8, 2.7] + cameraPan
-            var fit = max(1, 0.62 / max(0.25, viewportAspect))
-            let clear = careClearFrame.intersection(careViewportFrame)
-            let useClear = inCare && !clear.isNull && clear.width > 80 && clear.height > 80 && careViewportFrame.height > 0
-            if useClear {
-                fit *= max(1, 0.86 / Float(clear.height / careViewportFrame.height), 0.8 / Float(clear.width / careViewportFrame.width))
-            }
+            let fit = max(1, 0.62 / max(0.25, viewportAspect)) * clearFit
             let radius: Float = (inCare ? 4.8 : 9.8) * cameraZoom * fit
             if !inCare { target.y -= (1 - min(1, max(0.25, visibleStageFraction))) * radius * tan(Float.pi * 42 / 360) }
             let pitch = min(1.4, max(0.17, (inCare ? 0.22 : 0.40) + cameraPitch))
             let offset: SIMD3<Float> = [sin(cameraOrbit) * radius * cos(pitch), radius * sin(pitch), cos(cameraOrbit) * radius * cos(pitch)]
-            if useClear {
-                // Frame the creature in the open space between controls while keeping
-                // the world renderer edge to edge and preserving orbit/pan/zoom.
-                let forward = -simd_normalize(offset)
-                let right = simd_normalize(simd_cross(forward, SIMD3<Float>(0, 1, 0)))
-                let up = simd_cross(right, forward)
-                let x = Float((clear.midX - careViewportFrame.minX) / careViewportFrame.width * 2 - 1)
-                let y = Float(1 - (clear.midY - careViewportFrame.minY) / careViewportFrame.height * 2)
-                let halfHeight = radius * tan(Float(camera.camera.fieldOfViewInDegrees) * .pi / 360)
-                target -= right * x * halfHeight * viewportAspect + up * y * halfHeight
-            }
+            target = framed(target, offset: offset, radius: radius)
             camera.look(at: target, from: target + offset, relativeTo: nil); return
         }
         let overview = focusArea == nil && !followSelected
-        let target2 = followSelected ? simulation.agents[selected].position : (focusArea?.center ?? SIMD2<Float>(0, -0.25))
-        let target: SIMD3<Float> = [target2.x, overview ? 0.10 : 0.50, target2.y] + cameraPan
-        let fit = overview ? max(1.25, 1.45 / max(0.35, viewportAspect)) : 1
+        let visible = exploring && presentation.poses.indices.contains(selected) ? presentation.poses[selected].position : naturalPoses[selected].position
+        let target2 = followSelected ? SIMD2<Float>(visible.x, visible.z) : (focusArea?.center ?? SIMD2<Float>(0, -0.25))
+        var target: SIMD3<Float> = [target2.x, overview ? 0.10 : 0.50, target2.y] + cameraPan
+        let fit = (overview ? max(1.25, 1.45 / max(0.35, viewportAspect)) : 1) * clearFit
         let distance = (overview ? world.radius * 1.68 : 5.9) * cameraZoom * fit
         let height = (overview ? world.radius * 1.15 : 4.1) * cameraZoom * fit
         let radius = hypot(distance, height)
         let pitch = min(1.40, max(0.17, atan2(height, distance) + cameraPitch))
         let offset: SIMD3<Float> = [sin(cameraOrbit) * radius * cos(pitch), radius * sin(pitch), cos(cameraOrbit) * radius * cos(pitch)]
+        target = framed(target, offset: offset, radius: radius)
         camera.look(at: target, from: target + offset, relativeTo: nil)
     }
-    func walk(at point: CGPoint, size: CGSize) {
-        guard let camera, ready, !paused, !backgrounded, !lowPower, size.width > 0, size.height > 0 else { return }
+    @discardableResult func walk(at point: CGPoint, size: CGSize) -> Bool {
+        guard let camera, ready, !paused, !backgrounded, !lowPower, !reviewingControls,
+            point.x.isFinite, point.y.isFinite, size.width.isFinite, size.height.isFinite,
+            size.width > 0, size.height > 0, (0...size.width).contains(point.x), (0...size.height).contains(point.y) else { return false }
         let x = Float(point.x / size.width * 2 - 1), y = Float(1 - point.y / size.height * 2)
         let tangent = tan(Float(camera.camera.fieldOfViewInDegrees) * .pi / 360)
         let local: SIMD3<Float> = [x * Float(size.width / size.height) * tangent, y * tangent, -1]
         let ray = camera.orientation.act(simd_normalize(local))
-        guard ray.y < -0.001 else { return }
+        guard ray.y < -0.001 else { return false }
         let intersection = camera.position + ray * (-camera.position.y / ray.y)
         // Clicking beyond the world doesn't draw a long unintended route.
-        guard simd_length(SIMD2<Float>(intersection.x, intersection.z)) <= world.radius else { return }
-        walk(to: [intersection.x, intersection.z])
+        guard simd_length(SIMD2<Float>(intersection.x, intersection.z)) <= world.radius else { return false }
+        return walk(to: [intersection.x, intersection.z])
     }
-    func walk(to destination: SIMD2<Float>) {
-        guard destination.x.isFinite, destination.y.isFinite, ready, !paused, !backgrounded, !lowPower else { return }
-        interruptPair(); ownerActed()
-        simulation.walk(to: destination, actor: selected, instant: still || reduceMotion)
+    @discardableResult func walk(to destination: SIMD2<Float>) -> Bool {
+        guard destination.x.isFinite, destination.y.isFinite, ready, !paused, !backgrounded, !lowPower, !reviewingControls else { return false }
+        if continuousGallery && !exploring && (inCare || !searchQuery.isEmpty) { return false }
+        guard world.walkable(destination, clearance: 0.46) else {
+            message = "Choose clear ground inside this neighborhood."; return false
+        }
+        // Validate on a value copy so unreachable taps cannot replace a good route.
+        var candidate = simulation
+        candidate.walk(to: destination, actor: selected, instant: still || reduceMotion)
+        let traveler = candidate.agents[selected]
+        guard !traveler.route.isEmpty || simd_distance(traveler.position, traveler.goal) < 0.08 else {
+            message = "That path is blocked. Try nearby clear ground."; return false
+        }
+        interruptPair(); ownerActed(); simulation = candidate
+        walkDestination = traveler.route.isEmpty ? nil : traveler.goal
         selectedMember.controller.perform(.idle, name: selectedMember.name, learn: false, audible: false)
-        message = "\(selectedMember.name) takes a little walk."
-        applyLayout(); writeProbe()
+        message = still || reduceMotion ? "\(selectedMember.name) is at the chosen spot." : "\(selectedMember.name) takes a little walk."
+        applyLayout(); writeProbe(); return true
     }
     func refreshGates() {
         if !shouldAnimate { cancelContact(); if continuousGallery { presentation.advance(dt: 0, natural: naturalPoses, immediate: true); applyLayout() } }
@@ -603,12 +646,13 @@ final class LocalLobbyController {
     func perform(_ action: PlayroomController.Reaction, actor: Int? = nil) {
         let index = actor ?? selected
         guard members.indices.contains(index) else { return }
-        if continuousGallery && inCare {
+        if continuousGallery && inCare && !exploring {
             ownerActed(); members[index].controller.perform(action, name: members[index].name, learn: !members[index].isVisitor)
             message = members[index].controller.message
         } else {
             interruptPair(); ownerActed(); dispatch(simulation.act(action.rawValue, actor: index), deliberate: true)
         }
+        if index == selected { walkDestination = nil }
         if !members[index].isVisitor { presence.ownerMoment(reaction: action.rawValue, id: members[index].id) }
     }
     func waveToFriend() {
@@ -664,7 +708,7 @@ final class LocalLobbyController {
         if continuousGallery { presentation.sideDistance = max(1.5, min(5.5, viewportAspect * 3.3)); presentation.advance(dt: dt, natural: naturalPoses) }
         for (i, member) in members.enumerated() {
             member.controller.worldWalking = continuousGallery && presentation.borrowingStage ? (presentation.poses.indices.contains(i) && presentation.poses[i].walking) : simulation.agents[i].walking
-            if !continuousGallery || !inCare || presentation.transitioning || i == selected { member.controller.advance(dt: dt) }
+            if !continuousGallery || !inCare || exploring || presentation.transitioning || i == selected { member.controller.advance(dt: dt) }
         }
         if ProcessInfo.processInfo.systemUptime - guestSeen > 0.8 { clearGroup() }
         for guest in mirrorGuests { guest.advance(dt: dt) }
@@ -711,7 +755,7 @@ final class LocalLobbyController {
         guard ready, !paused, !backgrounded, !lowPower, !reviewingControls, let camera,
               let ray = CreatureRig.touchRay(at: point, size: size, camera: camera) else { return false }
         let hits = members.enumerated().compactMap { index, member -> (Int, CreatureRig.TouchHit)? in
-            guard !continuousGallery || !inCare || index == selected else { return nil }
+            guard !continuousGallery || !inCare || exploring || index == selected else { return nil }
             if let hit = member.controller.rig?.touchHit(origin: ray.origin, direction: ray.direction) { return (index, hit) }
             if !member.descriptor.supported, containers.indices.contains(index) {
                 let container = containers[index], inverse = container.transformMatrix(relativeTo: nil).inverse
@@ -723,10 +767,10 @@ final class LocalLobbyController {
             return nil
         }
         guard let (index, hit) = hits.min(by: { $0.1.distance < $1.1.distance }) else { return false }
-        if continuousGallery && !inCare { openCare(index); return true }
+        if continuousGallery && (!inCare || (exploring && index != selected)) { openCare(index); return true }
         if !continuousGallery { interruptPair() }
         if selected != index { selected = index } else { ownerActed() }
-        if !continuousGallery || !inCare { simulation.stopAgentMotion(actor: index) }
+        if !continuousGallery || !inCare || exploring { simulation.stopAgentMotion(actor: index); walkDestination = nil }
         let member = members[index]
         guard member.controller.beginTouch(hit.sample(at: ProcessInfo.processInfo.systemUptime)) else { return false }
         contactID = member.id; message = member.controller.message
@@ -796,7 +840,14 @@ final class LocalLobbyController {
             container.position = pose.position; container.scale = .init(repeating: pose.scale)
             container.orientation = simd_quatf(angle: pose.heading, axis: [0, 1, 0])
         }
-        ball?.isEnabled = !inCare
+        if let destination = walkDestination, simulation.agents[selected].route.isEmpty && simd_distance(simulation.agents[selected].position, destination) < 0.35 { walkDestination = nil }
+        destinationMarker?.isEnabled = walkDestination != nil && (!inCare || exploring)
+        if let destination = walkDestination {
+            destinationMarker?.position = [destination.x, 0.015, destination.y]
+            let pulse: Float = shouldAnimate ? 1 + sin(Float(activeSeconds) * 3) * 0.12 : 1
+            destinationMarker?.scale = [pulse, 1, pulse]
+        }
+        ball?.isEnabled = !inCare || exploring
         ball?.position = simulation.ballPosition
         updateCamera()
     }
@@ -805,7 +856,7 @@ final class LocalLobbyController {
         let positions = members.enumerated().map { i, member in member.controller.rig?.head.position(relativeTo: nil) ?? containers[i].position(relativeTo: nil) }
         let cameraMatrix = camera.transformMatrix(relativeTo: nil)
         let visible = positions.enumerated().map { i, point in
-            (!inCare || i == selected) && CreatureAttention.visible(point, camera: cameraMatrix, aspect: viewportAspect)
+            (!inCare || exploring || i == selected) && CreatureAttention.visible(point, camera: cameraMatrix, aspect: viewportAspect)
         }
         let up = camera.orientation(relativeTo: nil).act(SIMD3<Float>(0, 1, 0))
         for (i, member) in members.enumerated() {
@@ -813,7 +864,7 @@ final class LocalLobbyController {
             let agent = simulation.agents[i]
             let walking = continuousGallery && presentation.borrowingStage ? member.controller.worldWalking : agent.walking
             let explicitPeer = socialAttention[i].flatMap { $0.until > activeSeconds ? $0.peer : nil }
-            let force = inCare || !searchQuery.isEmpty || danceMode != .daylight || (member.controller.prefersViewerAttention && explicitPeer == nil)
+            let force = (inCare && !exploring) || (!searchQuery.isEmpty && !exploring) || danceMode != .daylight || (member.controller.prefersViewerAttention && explicitPeer == nil)
             let cached = gazePeers[i].flatMap { peer -> Int? in
                 guard positions.indices.contains(peer), visible[peer] else { return nil }
                 let others = positions.indices.filter { $0 != i && visible[$0] }
@@ -838,7 +889,7 @@ final class LocalLobbyController {
         else if args.contains("--world-camera-diagnostics") { probePath = NSTemporaryDirectory() + "fonsters-world-camera.json" }
         else { return }
         let state: [String: Any] = ["frames": frames, "animating": shouldAnimate, "paused": paused,
-            "roomRevision": roomRevision, "care": inCare, "query": searchQuery, "matches": searchMatches.map { names[$0] }, "selectedName": selectedMember.name, "rendererReady": ready, "rendererError": error ?? "",
+            "roomRevision": roomRevision, "care": inCare, "exploring": exploring, "query": searchQuery, "matches": searchMatches.map { names[$0] }, "selectedName": selectedMember.name, "rendererReady": ready, "rendererError": error ?? "",
             "still": still, "reduceMotion": reduceMotion, "background": backgrounded, "lowPower": lowPower,
             "worldRadius": world.radius, "worldAreas": world.areas.map(\.rawValue), "focusArea": focusArea?.rawValue ?? "overview",
             "walking": simulation.agents.map(\.walking), "seated": simulation.agents.map(\.seated),
