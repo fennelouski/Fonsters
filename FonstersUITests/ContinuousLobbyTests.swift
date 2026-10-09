@@ -63,6 +63,20 @@ final class ContinuousLobbyTests: XCTestCase {
         XCTAssertLessThan(abs(name.frame.midX - clear.frame.midX), clear.frame.width * 0.25)
         XCTAssertFalse(name.frame.intersects(app.buttons["backToLobby"].frame))
         attach(app, largeText ? "adaptive-large-text-care" : "adaptive-portrait-care")
+        app.buttons["panel_Care"].tap()
+        let carePanel = app.descendants(matching: .any).matching(identifier: "controlPanel_Care").firstMatch
+        XCTAssertTrue(carePanel.waitForExistence(timeout: 5))
+        for title in ["Mirror and voice", "Shared interests", "Appearance and personality", "Feelings"] {
+            XCTAssertTrue(app.buttons["panel_" + title].isHittable, title)
+        }
+        XCTAssertLessThan(carePanel.frame.height, 360, "Care should fit its compact controls")
+        XCTAssertEqual(app.buttons["panel_Mirror and voice"].frame.midY,
+                       app.buttons["panel_Appearance and personality"].frame.midY, accuracy: 2)
+        attach(app, largeText ? "compact-care-panel-large-text" : "compact-care-panel")
+        app.buttons["helpPanel_Care"].tap()
+        XCTAssertTrue(app.buttons["Close help"].waitForExistence(timeout: 5))
+        app.buttons["Close help"].tap()
+        app.buttons["Close panel"].tap()
         openCareControlPanel("Feelings", in: app)
         XCTAssertTrue(app.buttons["A little low"].waitForExistence(timeout: 5))
         app.buttons["A little low"].tap()

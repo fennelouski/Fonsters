@@ -599,7 +599,7 @@ struct ContinuousLobbyView: View {
             .accessibilityIdentifier("familyPrivacyButton")
     }
     private var carePanel: some View {
-        FonsterControlPanel(title: "Care", symbol: "slider.horizontal.3", tone: .company) { aspects }
+        FonsterControlPanel(title: "Care", symbol: "slider.horizontal.3", tone: .company, compact: true) { aspects }
     }
     private var careRail: some View {
         VStack(spacing: 10) {
@@ -644,7 +644,7 @@ struct ContinuousLobbyView: View {
         }
     }
     private var aspects: some View {
-        VStack(spacing: 10) {
+        LazyVGrid(columns: [GridItem(.adaptive(minimum: 52, maximum: 60), spacing: 8)], spacing: 8) {
             LobbyPortrait(appearance: lobby.selectedMember.descriptor).frame(width: 48, height: 48)
                 .padding(6).background(FonsterTone.company.wash, in: RoundedRectangle(cornerRadius: 14))
                 .accessibilityElement().accessibilityLabel("Original portrait of " + lobby.selectedMember.name)
@@ -689,7 +689,7 @@ struct ContinuousLobbyView: View {
             }
             #endif
             FonsterInfo(title: "Care aspects", detail: "Tap your Fonster’s name tag to edit its name, backstory and favorites. The portrait opens appearance and learned personality. The feeling icon changes the emotion you choose. Your backstory stays private unless you include it when sharing.")
-        }.padding(6).background(.regularMaterial, in: RoundedRectangle(cornerRadius: 22))
+        }.padding(8).background(FonsterTone.company.wash.opacity(0.5), in: RoundedRectangle(cornerRadius: 16))
     }
     private var reactions: some View {
         VStack(spacing: 10) {

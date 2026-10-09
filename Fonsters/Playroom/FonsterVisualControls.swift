@@ -179,11 +179,13 @@ struct FonsterControlPanel<Content: View>: View {
     let title: String
     let symbol: String
     var tone: FonsterTone = .quiet
+    var compact = false
     @ViewBuilder let content: Content
     @State private var showing = false
     @State private var showingHelp = false
     @State private var items: [FonsterHelpItem] = []
     @State private var groupedItems: [FonsterHelpItem] = []
+    @State private var contentHeight: CGFloat = 180
     private var guideItems: [FonsterHelpItem] {
         (items + groupedItems).reduce(into: []) { result, item in
             if !result.contains(item) { result.append(item) }
@@ -194,13 +196,18 @@ struct FonsterControlPanel<Content: View>: View {
             .accessibilityIdentifier("panel_" + title)
             #if os(macOS)
             .popover(isPresented: $showing) { panel }
+            .task {
+                let args = ProcessInfo.processInfo.arguments
+                if args.contains("--verify-manual"), let index = args.firstIndex(of: "--panel-preview"),
+                   index + 1 < args.count, args[index + 1] == title { showing = true }
+            }
             #else
             .sheet(isPresented: $showing) { panel }
             #endif
     }
     private var panel: some View {
         ScrollView {
-            VStack(alignment: .leading, spacing: 16) {
+            VStack(alignment: .leading, spacing: compact ? 10 : 16) {
                 HStack {
                     Label(title, systemImage: symbol).font(.headline)
                     Spacer()
@@ -216,20 +223,27 @@ struct FonsterControlPanel<Content: View>: View {
                     .accessibilityLabel("Panel help: " + title).accessibilityIdentifier("helpPanel_" + title)
                     FonsterIconButton(title: "Close panel", symbol: "xmark") { showing = false }
                 }
-                VStack(alignment: .leading, spacing: 16) { content }
+                VStack(alignment: .leading, spacing: compact ? 8 : 16) { content }
                     .onPreferenceChange(FonsterHelpPreference.self) { items = $0 }
                     .onPreferenceChange(FonsterPanelHelpPreference.self) { groupedItems = $0 }
-            }.padding(20)
+            }.padding(compact ? 14 : 20)
+                .onGeometryChange(for: CGFloat.self) { $0.size.height } action: { height in
+                    if compact && abs(contentHeight - height) > 1 { contentHeight = ceil(height) }
+                }
         }
         #if os(macOS)
-        .frame(minWidth: 360, maxWidth: 520, minHeight: 140, maxHeight: 600)
+        .frame(minWidth: compact ? 320 : 360, maxWidth: compact ? 320 : 520,
+               minHeight: compact ? nil : 140, maxHeight: compact ? nil : 600)
+        .frame(height: compact ? max(140, min(contentHeight, 600)) : nil)
         #elseif os(tvOS)
-        .frame(width: 1000, height: 680)
+        .frame(width: compact ? 640 : 1000, height: compact ? max(240, min(contentHeight, 680)) : 680)
         #elseif os(visionOS)
         .frame(width: 600, height: 600)
         #else
-        .presentationDetents([.medium, .large]).presentationDragIndicator(.visible)
+        .presentationDetents(compact ? [.height(max(180, min(contentHeight + 20, 480))), .large] : [.medium, .large])
+        .presentationDragIndicator(.visible)
         #endif
+        .accessibilityElement(children: .contain).accessibilityIdentifier("controlPanel_" + title)
         .modifier(FonsterGuidePresentation(showing: $showingHelp, title: title, items: guideItems))
     }
 }
