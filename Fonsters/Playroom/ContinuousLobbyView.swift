@@ -85,7 +85,12 @@ struct ContinuousLobbyView: View {
                     lobby.careViewportFrame = frame; lobby.updateCamera()
                 }
                 .accessibilityIdentifier("continuousStage")
-            if !launching { hud }
+            if !launching {
+                hud
+                OverheadFonsterName(lobby: lobby, record: library.first(where: { $0.id == lobby.selectedSavedID })) { record in
+                    editor = .init(record: record)
+                }.ignoresSafeArea()
+            }
             if explorationGuide {
                 VStack(spacing: 24) {
                     HStack(spacing: 28) { Image(systemName: "hand.draw"); Image(systemName: "arrow.up.and.down.and.arrow.left.and.right"); Image(systemName: "person.crop.circle") }.font(.largeTitle)
@@ -271,6 +276,7 @@ struct ContinuousLobbyView: View {
             if let event = NSEvent.mouseEvent(with: kind, location: point, modifierFlags: [], timestamp: ProcessInfo.processInfo.systemUptime, windowNumber: window.windowNumber, context: nil, eventNumber: 0, clickCount: 1, pressure: kind == .leftMouseUp ? 0 : 1) { window.sendEvent(event) }
         }
         var checks: [String: Bool] = ["explorationReady": lobby.exploring && !lobby.presentation.borrowingStage]
+        checks["nameAppearsAboveCreature"] = lobby.overheadNameAnchor.map { $0.y < 0.5 } ?? false
         let before = lobby.simulation.agents[lobby.selected].position
         if let point = projected([0.2, 0, 2.2]) {
             send(.leftMouseDown, at: point); try? await Task.sleep(for: .milliseconds(80)); send(.leftMouseUp, at: point)
@@ -281,12 +287,14 @@ struct ContinuousLobbyView: View {
         try? await Task.sleep(for: .seconds(2))
         checks["routeActuallyMoves"] = simd_distance(before, lobby.simulation.agents[lobby.selected].position) > 0.1
         let panBefore = lobby.cameraPan
+        let nameBeforePan = lobby.overheadNameAnchor
         if let point = projected([-2, 0, 2.5]) {
             send(.leftMouseDown, at: point); try? await Task.sleep(for: .milliseconds(80))
             send(.leftMouseDragged, at: NSPoint(x: point.x + 80, y: point.y + 30)); try? await Task.sleep(for: .milliseconds(100))
             send(.leftMouseUp, at: NSPoint(x: point.x + 80, y: point.y + 30))
         }
         try? await Task.sleep(for: .milliseconds(200))
+        checks["nameTracksCameraPan"] = nameBeforePan != nil && lobby.overheadNameAnchor != nil && lobby.overheadNameAnchor != nameBeforePan
         checks["emptyDragPans"] = simd_distance(panBefore, lobby.cameraPan) > 0.01
         checks["dragPreservesDestination"] = lobby.simulation.agents[lobby.selected].goal == accepted
         lobby.lookAtSelected(); checks["focusRestored"] = lobby.followSelected && lobby.cameraPan == .zero
@@ -298,6 +306,8 @@ struct ContinuousLobbyView: View {
         }
         try? await Task.sleep(for: .milliseconds(200))
         checks["pettingStopsWalkWithoutPanning"] = lobby.simulation.agents[lobby.selected].route.isEmpty && lobby.cameraPan == .zero
+        lobby.returnToLobby(); checks["nameHidesOnReturn"] = lobby.overheadNameAnchor == nil
+        lobby.openCare(0)
         let result: [String: Any] = ["checks": checks, "passed": checks.values.allSatisfy { $0 }, "inputProvenance": "Mouse NSEvents delivered only to this preview's own native window"]
         if let data = try? JSONSerialization.data(withJSONObject: result, options: [.prettyPrinted, .sortedKeys]) { try? data.write(to: URL(fileURLWithPath: args[i + 1]), options: .atomic) }
     }
@@ -423,7 +433,6 @@ struct ContinuousLobbyView: View {
                             else { reactions }
                         }
                     }.frame(maxHeight: .infinity)
-                    if !short { careNameTag }
                     if compact {
                         HStack(spacing: 12) {
                             reaction(.greet, "hand.wave", .company)
@@ -440,7 +449,7 @@ struct ContinuousLobbyView: View {
                         onFocusChange: { typing = $0; if $0 { lobby.clearCameraKeys(); lobby.takeOwnerControl() } })
                 }
                 HStack(alignment: .bottom, spacing: 8) {
-                    if lobby.inCare && short { carePanel; careNameTag }
+                    if lobby.inCare && short { carePanel }
                     if lobby.inCare && compact {
                         carePanel
                         liveSenseButtons(horizontal: true)
@@ -494,30 +503,6 @@ struct ContinuousLobbyView: View {
             liveSenseButtons(horizontal: false)
         }.padding(6).background(.regularMaterial, in: RoundedRectangle(cornerRadius: 22))
     }
-    private var careNameTag: some View {
-        Group {
-            if let id = lobby.selectedSavedID, let record = library.first(where: { $0.id == id }) {
-                Button { editor = .init(record: record) } label: { nameTagContents }
-                    .buttonStyle(.plain)
-                    .fonsterHoverHelp("Edit name, backstory and interests")
-                    .accessibilityLabel("Name and backstory").accessibilityValue(lobby.selectedMember.name)
-                    .accessibilityHint("Edit this Fonster’s name and private interests")
-                    .accessibilityIdentifier("editFonsterProfile")
-            } else { nameTagContents }
-        }
-    }
-    private var nameTagContents: some View {
-        VStack(spacing: 3) {
-            Capsule().fill(FonsterTone.company.ink.opacity(0.45)).frame(width: 16, height: 3).accessibilityHidden(true)
-            Text(lobby.selectedMember.name).font(.headline).foregroundStyle(FonsterChrome.primary)
-                .multilineTextAlignment(.center).lineLimit(2).accessibilityIdentifier("careName")
-        }.padding(.horizontal, 20).padding(.vertical, 10).frame(maxWidth: 240).fixedSize(horizontal: true, vertical: false).frame(minHeight: 44)
-            .background(FonsterChrome.surface, in: RoundedRectangle(cornerRadius: 12))
-            .overlay(RoundedRectangle(cornerRadius: 12).stroke(FonsterTone.company.ink.opacity(0.35), lineWidth: 1))
-            .shadow(color: .black.opacity(0.12), radius: 4, y: 2)
-            .rotationEffect(.degrees(reduceMotion || lobby.still ? 0 : -2))
-    }
-
     private var searchControl: some View {
         HStack(spacing: 6) {
             if searching {

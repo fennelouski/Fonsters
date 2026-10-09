@@ -38,7 +38,7 @@ final class InterestEditorTests: XCTestCase {
         attach(app, "editor-04-place-record")
         app.buttons["closeInterestRecords"].tap()
         app.buttons["saveProfile"].tap()
-        XCTAssertTrue(app.staticTexts["careName"].waitForExistence(timeout: 15)); XCTAssertEqual(app.staticTexts["careName"].label, "Luma")
+        XCTAssertTrue(app.buttons["editFonsterProfile"].waitForExistence(timeout: 15)); XCTAssertEqual(app.buttons["editFonsterProfile"].value as? String, "Luma")
         app.buttons["editFonsterProfile"].tap()
         XCTAssertTrue(story.waitForExistence(timeout: 5)); XCTAssertEqual(story.value as? String, "This private story should stay with me.")
         app.buttons["profileTab_screen"].tap(); XCTAssertTrue(app.buttons["interestChip_bluey-official"].exists); XCTAssertTrue(app.buttons["interestChip_bluey-wikipedia"].exists)
