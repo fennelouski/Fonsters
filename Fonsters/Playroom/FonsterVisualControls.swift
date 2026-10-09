@@ -4,6 +4,7 @@ import Observation
 import CryptoKit
 #if os(macOS)
 import AppKit
+import QuartzCore
 #endif
 #if os(iOS) || os(tvOS)
 import UIKit
@@ -263,7 +264,9 @@ private struct FonsterHoverHelp: ViewModifier {
     #endif
     #if os(iOS) || os(tvOS)
     @State private var showing = false
+    @State private var tooltipHovered = false
     @State private var tooltipHeight: CGFloat = 160
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
     #endif
     func body(content: Content) -> some View {
         #if os(macOS)
@@ -275,11 +278,15 @@ private struct FonsterHoverHelp: ViewModifier {
             #else
             .onHover { hovering = $0 }
             #endif
-            .task(id: hovering) {
-                showing = false
-                guard hovering else { return }
+            .task(id: hovering || tooltipHovered) {
+                guard hovering || tooltipHovered else {
+                    do { try await Task.sleep(for: .milliseconds(120)) } catch { return }
+                    withAnimation(.easeInOut(duration: 0.22)) { showing = false }
+                    return
+                }
+                guard !showing else { return }
                 do { try await Task.sleep(for: .milliseconds(450)) } catch { return }
-                showing = hovering
+                withAnimation(.easeInOut(duration: 0.16)) { showing = hovering || tooltipHovered }
             }
             .overlay {
                 if showing {
@@ -297,9 +304,11 @@ private struct FonsterHoverHelp: ViewModifier {
                             .padding(12).frame(width: width, alignment: .leading)
                             .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 12))
                             .fixedSize(horizontal: false, vertical: true)
+                            .onHover { tooltipHovered = $0 }
                             .onGeometryChange(for: CGFloat.self) { $0.size.height } action: { tooltipHeight = $0 }
                             .offset(x: left, y: frame.maxY + tooltipHeight + 12 < screen.height ? geometry.size.height + 8 : -tooltipHeight - 8)
-                    }.allowsHitTesting(false).accessibilityHidden(true)
+                    }.transition(reduceMotion ? .opacity : .scale(scale: 0.015).combined(with: .opacity))
+                        .accessibilityHidden(true)
                 }
             }.zIndex(showing ? 1000 : 0)
         #else
@@ -328,6 +337,11 @@ private struct FonsterMacTooltip: NSViewRepresentable {
         private var monitor: Any?
         private var observer: NSObjectProtocol?
         private var panel: TipPanel?
+        private var pointerTimer: Timer?
+        private var dismissal: DispatchWorkItem?
+        private var animationID = UUID()
+        private var hiding = false
+        var pointerLocation: () -> NSPoint = { NSEvent.mouseLocation }
         override func hitTest(_ point: NSPoint) -> NSView? { nil }
         override func updateTrackingAreas() {
             super.updateTrackingAreas()
@@ -342,21 +356,43 @@ private struct FonsterMacTooltip: NSViewRepresentable {
                 Task { @MainActor [weak self] in
                     guard let self else { return }
                     if flags { if self.hovering && option { self.show() } }
-                    else { self.suppressed = true; self.hide() }
+                    else { self.suppressed = true; self.hide(animated: false) }
                 }
                 return event
             }
             observer = NotificationCenter.default.addObserver(forName: NSWindow.didResignKeyNotification, object: window, queue: .main) { [weak self] _ in
-                Task { @MainActor [weak self] in self?.hovering = false; self?.hide() }
+                Task { @MainActor [weak self] in self?.hovering = false; self?.hide(animated: false) }
             }
         }
         override func mouseEntered(with event: NSEvent) {
             hovering = true; suppressed = false
+            dismissal?.cancel(); dismissal = nil
+            if panel?.isVisible == true { restoreTip(); return }
             if event.modifierFlags.contains(.option) { show(); return }
             let task = DispatchWorkItem { [weak self] in self?.show() }
             pending = task; DispatchQueue.main.asyncAfter(deadline: .now() + 0.6, execute: task)
         }
-        override func mouseExited(with event: NSEvent) { hovering = false; suppressed = false; hide() }
+        override func mouseExited(with event: NSEvent) {
+            hovering = false; suppressed = false
+            pending?.cancel(); pending = nil
+            checkPointer()
+        }
+        private func checkPointer() {
+            guard let panel, panel.isVisible else { return }
+            if hovering || panel.frame.contains(pointerLocation()) {
+                dismissal?.cancel(); dismissal = nil
+                if hiding { restoreTip() }
+            } else if dismissal == nil && !hiding {
+                let task = DispatchWorkItem { [weak self] in self?.hide() }
+                dismissal = task
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.12, execute: task)
+            }
+        }
+        private func restoreTip() {
+            animationID = UUID(); hiding = false
+            panel?.contentView?.layer?.removeAllAnimations()
+            panel?.hasShadow = true
+        }
         private func show() {
             pending?.cancel(); pending = nil
             guard hovering, !suppressed, let window, window.isKeyWindow, !text.isEmpty else { return }
@@ -379,10 +415,49 @@ private struct FonsterMacTooltip: NSViewRepresentable {
             let y = rect.minY - height - 8 >= screen.minY ? rect.minY - height - 8 : rect.maxY + 8
             tip.setFrame(NSRect(x: x, y: min(screen.maxY - height - 8, y), width: width, height: height), display: true)
             tip.orderFront(nil)
+            restoreTip()
+            pointerTimer?.invalidate()
+            let timer = Timer(timeInterval: 0.05, repeats: true) { [weak self] _ in
+                Task { @MainActor [weak self] in self?.checkPointer() }
+            }
+            pointerTimer = timer; RunLoop.main.add(timer, forMode: .common)
         }
-        private func hide() { pending?.cancel(); pending = nil; panel?.orderOut(nil) }
+        private func hide(animated: Bool = true) {
+            pending?.cancel(); pending = nil
+            dismissal?.cancel(); dismissal = nil
+            guard let panel else { return }
+            animationID = UUID(); let id = animationID
+            guard animated, panel.isVisible, let layer = panel.contentView?.layer else {
+                pointerTimer?.invalidate(); pointerTimer = nil
+                layerReset(); panel.orderOut(nil); return
+            }
+            hiding = true; panel.hasShadow = false
+            let animation = CAAnimationGroup()
+            var animations: [CAAnimation] = []
+            if !NSWorkspace.shared.accessibilityDisplayShouldReduceMotion {
+                let size = panel.contentView!.bounds.size
+                var transform = CATransform3DMakeTranslation(size.width / 2, size.height / 2, 0)
+                transform = CATransform3DScale(transform, 0.015, 0.015, 1)
+                transform = CATransform3DTranslate(transform, -size.width / 2, -size.height / 2, 0)
+                let shrink = CABasicAnimation(keyPath: "transform")
+                shrink.fromValue = CATransform3DIdentity; shrink.toValue = transform
+                animations.append(shrink)
+            }
+            let fade = CABasicAnimation(keyPath: "opacity")
+            fade.fromValue = 1; fade.toValue = 0; animations.append(fade)
+            animation.animations = animations; animation.duration = 0.22
+            animation.timingFunction = CAMediaTimingFunction(name: .easeInEaseOut)
+            animation.fillMode = .forwards; animation.isRemovedOnCompletion = false
+            layer.add(animation, forKey: "fonsterTooltipDismiss")
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.22) { [weak self] in
+                guard let self, self.animationID == id else { return }
+                self.pointerTimer?.invalidate(); self.pointerTimer = nil
+                self.layerReset(); panel.orderOut(nil)
+            }
+        }
+        private func layerReset() { panel?.contentView?.layer?.removeAllAnimations(); hiding = false }
         func detach() {
-            hovering = false; hide()
+            hovering = false; hide(animated: false)
             if let monitor { NSEvent.removeMonitor(monitor) }; monitor = nil
             if let observer { NotificationCenter.default.removeObserver(observer) }; observer = nil
         }

@@ -1,0 +1,5 @@
+# Tooltip pointer behavior
+
+Shared button tooltips remain visible over either their button or the tooltip. Leaving both allows 120 milliseconds to cross the gap, then shrinks and fades the tooltip over 220 milliseconds with ease-in/ease-out. Reentering interrupts dismissal and restores the tooltip. Mac tooltips remain nonactivating and do not intercept clicks. Clicking or changing windows clears them immediately. The existing 600-millisecond Mac appearance delay and immediate Option hover are preserved. Reduce Motion uses a fade without shrinking; iPad pointer and TV focus tooltips use the same dismissal timing and accessibility hints.
+
+Run `bash script/verify_tooltips.sh` on macOS. It compiles the actual native implementation in a temporary AppKit host, supplies pointer coordinates without moving the system cursor, and checks delay, tooltip hover, exit animation, interruption, Option appearance and detach cleanup. The host marks itself as key for testing without activating another application. Actual physical-pointer use and iPad-pointer interaction remain manual checks.
