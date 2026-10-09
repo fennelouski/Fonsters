@@ -5,6 +5,8 @@ import CoreTransferable
 import UniformTypeIdentifiers
 #if os(macOS)
 import AppKit
+import RealityKit
+import simd
 #endif
 
 nonisolated struct LobbyVisitExport: Transferable, Sendable {
@@ -72,7 +74,7 @@ struct ContinuousLobbyView: View {
             .parentActions(parentGate)
             .parentActions(inputParentGate)
             #if os(iOS)
-            .phoneOrientation(lobby.inCare || reviewing ? .details : .lobby)
+            .phoneOrientation((lobby.inCare && !lobby.exploring) || reviewing ? .details : .lobby)
             #endif
     }
     private var stageAndKeyboard: some View {
@@ -141,6 +143,7 @@ struct ContinuousLobbyView: View {
                let mode = FonsterDanceMode(rawValue: arguments[index + 1]) {
                 didPreviewDance = true
                 if arguments.contains("--dance-preview-care") { lobby.openCare(0) }
+                if arguments.contains("--exploration-preview") { lobby.toggleExploration() }
                 lobby.setDanceMode(mode)
             }
             if lobby.ready, let id = focusAfterSave,
@@ -194,7 +197,7 @@ struct ContinuousLobbyView: View {
         .sheet(isPresented: $profiles) { FonsterSocialStudio(lobby: lobby) }
         #endif
         #if os(macOS)
-        .task { await resizeCarePreviewIfRequested(); await verifyCameraKeyboardIfRequested() }
+        .task { await resizeCarePreviewIfRequested(); await verifyCameraKeyboardIfRequested(); await verifyExplorationIfRequested() }
         #endif
         .onDisappear { stopLiveActivity(); lobby.backgrounded = true; lobby.cancelContact(); lobby.refreshGates(); interpreter.cancel() }
     }
@@ -232,6 +235,71 @@ struct ContinuousLobbyView: View {
             if Task.isCancelled { return }
             try? await Task.sleep(for: .milliseconds(50))
         }
+    }
+    /// Native events target only this preview's own window; no system input control.
+    private func verifyExplorationIfRequested() async {
+        let args = ProcessInfo.processInfo.arguments
+        guard args.contains("--verify-manual"), let i = args.firstIndex(of: "--exploration-ui-verification-file"), i + 1 < args.count else { return }
+        for _ in 0..<600 {
+            if lobby.ready { break }
+            if Task.isCancelled { return }
+            try? await Task.sleep(for: .milliseconds(50))
+        }
+        guard lobby.ready, let window = NSApplication.shared.windows.first(where: { $0.isVisible && $0.canBecomeKey && $0.contentView != nil }), let content = window.contentView else { return }
+        func stage(_ view: NSView) -> VerificationSceneMarker.MarkerView? {
+            if let marker = view as? VerificationSceneMarker.MarkerView { return marker }
+            for child in view.subviews { if let found = stage(child) { return found } }
+            return nil
+        }
+        guard let viewport = stage(content) else { return }
+        NSApplication.shared.activate(); window.makeKeyAndOrderFront(nil)
+        lobby.openCare(0); lobby.toggleExploration()
+        for _ in 0..<240 {
+            if !lobby.presentation.transitioning { break }
+            try? await Task.sleep(for: .milliseconds(50))
+        }
+        func projected(_ point: SIMD3<Float>) -> NSPoint? {
+            guard let camera = lobby.camera else { return nil }
+            let local = camera.convert(position: point, from: nil)
+            guard local.z < -0.001 else { return nil }
+            let tangent = tan(Float(camera.camera.fieldOfViewInDegrees) * .pi / 360)
+            let x = CGFloat((local.x / -local.z / tangent / lobby.viewportAspect + 1) * 0.5) * viewport.bounds.width
+            let y = CGFloat((1 - local.y / -local.z / tangent) * 0.5) * viewport.bounds.height
+            return viewport.convert(NSPoint(x: x, y: viewport.isFlipped ? y : viewport.bounds.height - y), to: nil)
+        }
+        func send(_ kind: NSEvent.EventType, at point: NSPoint) {
+            if let event = NSEvent.mouseEvent(with: kind, location: point, modifierFlags: [], timestamp: ProcessInfo.processInfo.systemUptime, windowNumber: window.windowNumber, context: nil, eventNumber: 0, clickCount: 1, pressure: kind == .leftMouseUp ? 0 : 1) { window.sendEvent(event) }
+        }
+        var checks: [String: Bool] = ["explorationReady": lobby.exploring && !lobby.presentation.borrowingStage]
+        let before = lobby.simulation.agents[lobby.selected].position
+        if let point = projected([0.2, 0, 2.2]) {
+            send(.leftMouseDown, at: point); try? await Task.sleep(for: .milliseconds(80)); send(.leftMouseUp, at: point)
+        }
+        try? await Task.sleep(for: .milliseconds(300))
+        checks["groundClickStartsRoute"] = lobby.walkDestination != nil
+        let accepted = lobby.simulation.agents[lobby.selected].goal
+        try? await Task.sleep(for: .seconds(2))
+        checks["routeActuallyMoves"] = simd_distance(before, lobby.simulation.agents[lobby.selected].position) > 0.1
+        let panBefore = lobby.cameraPan
+        if let point = projected([-2, 0, 2.5]) {
+            send(.leftMouseDown, at: point); try? await Task.sleep(for: .milliseconds(80))
+            send(.leftMouseDragged, at: NSPoint(x: point.x + 80, y: point.y + 30)); try? await Task.sleep(for: .milliseconds(100))
+            send(.leftMouseUp, at: NSPoint(x: point.x + 80, y: point.y + 30))
+        }
+        try? await Task.sleep(for: .milliseconds(200))
+        checks["emptyDragPans"] = simd_distance(panBefore, lobby.cameraPan) > 0.01
+        checks["dragPreservesDestination"] = lobby.simulation.agents[lobby.selected].goal == accepted
+        lobby.lookAtSelected(); checks["focusRestored"] = lobby.followSelected && lobby.cameraPan == .zero
+        if let rig = lobby.selectedMember.controller.rig, let face = projected(rig.head.convert(position: .zero, to: nil)) {
+            send(.leftMouseDown, at: face); try? await Task.sleep(for: .milliseconds(400))
+            checks["faceCapturesContact"] = lobby.contactID != nil
+            send(.leftMouseDragged, at: NSPoint(x: face.x + 8, y: face.y + 2)); try? await Task.sleep(for: .milliseconds(100))
+            send(.leftMouseUp, at: NSPoint(x: face.x + 8, y: face.y + 2))
+        }
+        try? await Task.sleep(for: .milliseconds(200))
+        checks["pettingStopsWalkWithoutPanning"] = lobby.simulation.agents[lobby.selected].route.isEmpty && lobby.cameraPan == .zero
+        let result: [String: Any] = ["checks": checks, "passed": checks.values.allSatisfy { $0 }, "inputProvenance": "Mouse NSEvents delivered only to this preview's own native window"]
+        if let data = try? JSONSerialization.data(withJSONObject: result, options: [.prettyPrinted, .sortedKeys]) { try? data.write(to: URL(fileURLWithPath: args[i + 1]), options: .atomic) }
     }
     private func verifyCameraKeyboardIfRequested() async {
         let args = ProcessInfo.processInfo.arguments
@@ -293,7 +361,8 @@ struct ContinuousLobbyView: View {
     #endif
     private var hud: some View {
         GeometryReader { geometry in
-            let compact = geometry.size.width < 600 && geometry.size.height >= 500
+            let short = geometry.size.height < 500
+            let compact = geometry.size.width < 600 && !short
             VStack(spacing: 12) {
                 HStack(alignment: .top) {
                     if lobby.inCare {
@@ -324,6 +393,11 @@ struct ContinuousLobbyView: View {
                     }
                     Spacer(minLength: 8)
                     if lobby.inCare {
+                        if lobby.exploring {
+                            FonsterIconButton(title: "Focus on my Fonster", symbol: "scope", tone: .world,
+                                detail: "Bring the camera back to your Fonster and follow its walk. Dragging empty ground pans; the walking button returns to solo care.") { lobby.lookAtSelected() }
+                                .accessibilityIdentifier("focusExploringFonster")
+                        }
                         FonsterIconButton(title: "Share Fonster", symbol: "square.and.arrow.up", tone: .company,
                             detail: "A grown-up reviews the snapshot before sharing. Recipients can keep a copy.") {
                             parentGate.request("Review this Fonster snapshot before sharing. Feelings and source references are optional. Typed drafts and backstory stay private; recipients can keep a copy.") { sharing = true }
@@ -333,7 +407,10 @@ struct ContinuousLobbyView: View {
                 }
                 if lobby.inCare {
                     HStack(alignment: .center) {
-                        if !compact { careRail }
+                        if !compact {
+                            if short { liveSenseButtons(horizontal: false).padding(6).background(.regularMaterial, in: RoundedRectangle(cornerRadius: 22)) }
+                            else { careRail }
+                        }
                         Color.clear.frame(maxWidth: .infinity, maxHeight: .infinity)
                             .allowsHitTesting(false)
                             .onGeometryChange(for: CGRect.self) { $0.frame(in: .global) } action: { frame in
@@ -341,14 +418,18 @@ struct ContinuousLobbyView: View {
                             }
                             .accessibilityElement().accessibilityLabel("Unobstructed Fonster area")
                             .accessibilityIdentifier("careClearArea")
-                        if !compact { reactions }
+                        if !compact {
+                            if short { VStack(spacing: 10) { explorationButton; moreInteractions }.padding(6).background(.regularMaterial, in: RoundedRectangle(cornerRadius: 22)) }
+                            else { reactions }
+                        }
                     }.frame(maxHeight: .infinity)
-                    careNameTag
+                    if !short { careNameTag }
                     if compact {
                         HStack(spacing: 12) {
                             reaction(.greet, "hand.wave", .company)
                             reaction(.play, "sparkles", .play)
                             reaction(.rest, "moon", .quiet)
+                            explorationButton
                             moreInteractions
                         }.padding(6).background(.regularMaterial, in: RoundedRectangle(cornerRadius: 22))
                     }
@@ -359,6 +440,7 @@ struct ContinuousLobbyView: View {
                         onFocusChange: { typing = $0; if $0 { lobby.clearCameraKeys(); lobby.takeOwnerControl() } })
                 }
                 HStack(alignment: .bottom, spacing: 8) {
+                    if lobby.inCare && short { carePanel; careNameTag }
                     if lobby.inCare && compact {
                         carePanel
                         liveSenseButtons(horizontal: true)
@@ -392,6 +474,7 @@ struct ContinuousLobbyView: View {
                     .background { if lobby.inCare && compact { RoundedRectangle(cornerRadius: 22).fill(.regularMaterial) } }
             }.padding(16)
             .animation(reduceMotion || lobby.still ? nil : .spring(response: 0.5, dampingFraction: 0.82), value: lobby.inCare)
+            .animation(reduceMotion || lobby.still ? nil : .spring(response: 0.5, dampingFraction: 0.82), value: lobby.exploring)
         }
     }
 
@@ -522,14 +605,21 @@ struct ContinuousLobbyView: View {
             reaction(.greet, "hand.wave", .company)
             reaction(.play, "sparkles", .play)
             reaction(.rest, "moon", .quiet)
+            explorationButton
             moreInteractions
             FonsterInfo(title: "Interact with your Fonster", detail: "Wave, play or rest. Stroke the face, belly or paws for different responses. More opens other reactions, typed requests and Stop. A new action interrupts the current one. Back brings companions into the lobby again.")
         }.padding(6).background(.regularMaterial, in: RoundedRectangle(cornerRadius: 22))
+    }
+    private var explorationButton: some View {
+        FonsterIconButton(title: lobby.exploring ? "Return to solo care" : "Explore with my Fonster", symbol: "figure.walk", tone: .world, selected: lobby.exploring,
+            detail: "Explore the neighborhood with this Fonster. Tap clear ground to walk, drag empty space to pan, and use the focus icon to find it. Tap again to return to solo care.") { lobby.toggleExploration() }
+            .disabled(blocked).accessibilityIdentifier("exploreWithFonster")
     }
     private var moreInteractions: some View {
         FonsterControlPanel(title: "More interactions", symbol: "ellipsis", tone: .play) {
                 FonsterControlGroup(title: "Reactions", tone: .play) {
                     LazyVGrid(columns: [GridItem(.adaptive(minimum: 48))], spacing: 12) {
+                        reaction(.greet, "hand.wave", .company); reaction(.play, "sparkles", .play); reaction(.rest, "moon", .quiet)
                         reaction(.hop, "arrow.up", .play); reaction(.highFive, "hand.raised", .company)
                         reaction(.rub, "heart", .company); reaction(.spin, "arrow.trianglehead.2.clockwise.rotate.90", .play)
                         reaction(.stretch, "figure.flexibility", .quiet); reaction(.blink, "eye", .quiet)
@@ -742,6 +832,14 @@ struct ContinuousLobbyView: View {
                         FonsterIconButton(title: "Pan forward", symbol: "arrow.up.forward", tone: .world) { lobby.panCamera([0, 0, -0.3]) }
                         FonsterIconButton(title: "Pan backward", symbol: "arrow.down.backward", tone: .world) { lobby.panCamera([0, 0, 0.3]) }
                     }
+                }
+            }
+            if lobby.exploring || !lobby.inCare {
+                FonsterControlGroup(title: "Walk", tone: .world) {
+                    FonsterIconButton(title: "Walk forward", symbol: "arrow.up", tone: .world) { lobby.walkStep([0, -1]) }.disabled(blocked)
+                    FonsterIconButton(title: "Walk backward", symbol: "arrow.down", tone: .world) { lobby.walkStep([0, 1]) }.disabled(blocked)
+                    FonsterIconButton(title: "Walk left", symbol: "arrow.left", tone: .world) { lobby.walkStep([-1, 0]) }.disabled(blocked)
+                    FonsterIconButton(title: "Walk right", symbol: "arrow.right", tone: .world) { lobby.walkStep([1, 0]) }.disabled(blocked)
                 }
             }
             FonsterControlGroup(title: "Sound and motion") {

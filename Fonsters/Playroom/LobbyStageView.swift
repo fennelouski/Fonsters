@@ -26,12 +26,18 @@ struct LobbyStageView: View {
             platformStage(size: geometry.size, cameraState: cameraState)
                 .accessibilityElement(children: .ignore)
                 .accessibilityLabel(Text("Explorable Fonster world with " + lobby.names.joined(separator: ", ")))
-                .accessibilityValue(lobby.ready ? lobby.message + " " + lobby.motionStatus + " " + lobby.cameraDescription : lobby.error ?? "Opening the Fonster world")
+                .accessibilityValue(lobby.ready ? lobby.message + " " + lobby.motionStatus + " " + lobby.cameraDescription + " " + lobby.explorationStatus : lobby.error ?? "Opening the Fonster world")
                 #if os(tvOS)
                 .accessibilityHint("Use the area, companion and camera buttons to explore. Friendship buttons let the selected Fonster greet and play.")
                 #else
-                .accessibilityHint("Stroke a Fonster, tap a path to walk, or drag empty space horizontally or vertically to orbit. Shift-drag pans on Mac; pinch zooms on touch screens. Arrow keys orbit, W A S D pan, Q E move up and down, plus and minus zoom, and zero resets the view. Camera icons offer the same navigation.")
+                .accessibilityHint("Stroke a Fonster, tap a path to walk, or drag empty space to pan the world. In solo care, dragging orbits the Fonster. Shift-drag pans on Mac; pinch zooms on touch screens. Arrow keys orbit, W A S D pan, Q E move up and down, plus and minus zoom, and zero resets the view. Camera icons offer the same navigation.")
                 #endif
+                .accessibilityAction(named: "Explore with this Fonster") { if lobby.inCare && !lobby.exploring { lobby.toggleExploration() } }
+                .accessibilityAction(named: "Walk forward") { lobby.walkStep([0, -1]) }
+                .accessibilityAction(named: "Walk backward") { lobby.walkStep([0, 1]) }
+                .accessibilityAction(named: "Walk left") { lobby.walkStep([-1, 0]) }
+                .accessibilityAction(named: "Walk right") { lobby.walkStep([1, 0]) }
+                .accessibilityAction(named: "Focus on this Fonster") { lobby.lookAtSelected() }
                 .accessibilityAction(named: "Wave to a friend") { lobby.waveToFriend() }
                 .accessibilityAction(named: "Play together") { lobby.playTogether() }
                 .accessibilityAction(named: "Pass ball with chosen friend") { lobby.pair(quiet: false) }
@@ -90,11 +96,11 @@ struct LobbyStageView: View {
         if !gestureStarted {
             gestureStarted = true
             #if os(macOS)
-            panning = NSEvent.modifierFlags.contains(.shift)
+            panning = lobby.exploring || !lobby.inCare || NSEvent.modifierFlags.contains(.shift)
             verticalPanning = panning && NSEvent.modifierFlags.contains(.option)
-            let forceCamera = panning || NSEvent.modifierFlags.contains(.option)
+            let forceCamera = NSEvent.modifierFlags.contains(.shift) || NSEvent.modifierFlags.contains(.option)
             #else
-            panning = false
+            panning = lobby.exploring || !lobby.inCare
             let forceCamera = false
             #endif
             creatureCaptured = !forceCamera && lobby.beginContact(at: value.startLocation, size: size)
@@ -197,6 +203,11 @@ struct LobbyStageView: View {
         stream.update(center: lobby.cameraPan); roots.append(stream.root)
         let neighborhood = try LobbyWorldScene.make(lobby.world)
         roots.append(neighborhood.root); lobby.fountainDrops = neighborhood.fountainDrops
+        var markerMaterial = UnlitMaterial(color: FonsterPlatformColor(srgbRed: 0.30, green: 0.75, blue: 0.58, alpha: 1))
+        markerMaterial.blending = .transparent(opacity: .init(floatLiteral: 0.8))
+        let marker = ModelEntity(mesh: .generateCylinder(height: 0.015, radius: 0.22), materials: [markerMaterial])
+        marker.name = "walking-destination"; marker.isEnabled = false
+        lobby.destinationMarker = marker; roots.append(marker)
         let ball = ModelEntity(mesh: .generateSphere(radius: 0.14), materials: [SimpleMaterial(color: FonsterPlatformColor(srgbRed: 0.96, green: 0.62, blue: 0.42, alpha: 1), roughness: 0.4, isMetallic: false)])
         lobby.ball = ball; roots.append(ball)
         let key = DirectionalLight(); key.light.intensity = 2400

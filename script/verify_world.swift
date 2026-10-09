@@ -84,6 +84,42 @@ import simd
             lobby.reduceMotion = true; lobby.refreshGates(); lobby.openCare(0)
             precondition(lobby.presentation.poses[0].scale == 0.93 && !lobby.presentation.transitioning)
             lobby.returnToLobby(); precondition(lobby.presentation.poses == lobby.naturalPoses)
+            lobby.reduceMotion = false; lobby.wander = false; lobby.refreshGates(); lobby.openCare(0)
+            let focusControls = lobby.controls, positionsBeforeExploration = lobby.simulation.agents.map(\.position)
+            precondition(!lobby.walk(to: [0, 2]), "solo care must not silently queue a hidden walk")
+            lobby.toggleExploration()
+            precondition(lobby.exploring && lobby.inCare && lobby.followSelected)
+            for _ in 0..<300 { lobby.advance(dt: 1.0 / 30) }
+            precondition(!lobby.presentation.borrowingStage)
+            let origin = lobby.simulation.agents[lobby.selected].position
+            precondition(lobby.walk(to: [0, 2.7]))
+            let accepted = lobby.simulation.agents[lobby.selected].goal
+            precondition(lobby.walkDestination == accepted)
+            for invalid in [SIMD2<Float>(10000, 0), [.nan, 0], lobby.world.trees[0], [0, -1.65]] {
+                let goal = lobby.simulation.agents[lobby.selected].goal
+                precondition(!lobby.walk(to: invalid))
+                precondition(lobby.simulation.agents[lobby.selected].goal == goal)
+            }
+            for _ in 0..<120 {
+                lobby.advance(dt: 1.0 / 30)
+                precondition(lobby.world.walkable(lobby.simulation.agents[lobby.selected].position, clearance: 0.43))
+            }
+            precondition(simd_distance(lobby.simulation.agents[lobby.selected].position, origin) > 0.1)
+            precondition(simd_distance(lobby.simulation.agents[lobby.selected].position, accepted) < simd_distance(origin, accepted))
+            for gate in 0..<4 {
+                lobby.paused = gate == 0; lobby.backgrounded = gate == 1; lobby.lowPower = gate == 2; lobby.reviewingControls = gate == 3
+                precondition(!lobby.walk(to: [0, 2.3]))
+            }
+            lobby.paused = false; lobby.backgrounded = false; lobby.lowPower = false; lobby.reviewingControls = false
+            lobby.reduceMotion = true; lobby.refreshGates()
+            precondition(lobby.walk(to: [0, 2.7]))
+            precondition(lobby.simulation.agents[lobby.selected].route.isEmpty && lobby.walkDestination == nil)
+            lobby.restoreControls(focusControls)
+            precondition(lobby.inCare && !lobby.exploring && lobby.presentation.poses[lobby.selected].scale == 0.93)
+            lobby.returnToLobby(); lobby.search("")
+            precondition(lobby.members.map(\.id) == memberIDs && lobby.members.map(\.descriptor) == appearances)
+            precondition(lobby.simulation.agents.dropFirst().map(\.position) == Array(positionsBeforeExploration.dropFirst()))
+            print("PASS: exploration unfreezes routed walking; bounds/obstacles/invalid taps preserve accepted goals; motion gates reject walks; Reduce Motion places statically; care Undo and other companions are preserved")
             let savedID = UUID(); lobby.showSaved([.init(id: savedID, name: "My Moss", seed: "little-fonster-138")])
             let publicID = lobby.selectedMember.id
             lobby.perform(.greet); lobby.chooseFeeling(.cozy)
@@ -101,7 +137,9 @@ import simd
             precondition(lobby.selectedMember.controller.personality == learnedBeforeRename && lobby.selectedMember.controller.feeling == .cozy)
             precondition(lobby.selectedBiography.likes == ["Comets"])
             let included = lobby.card(for: lobby.selectedMember, includeFeeling: false, includeBiography: true)
-            precondition(included.biography?.background == "A tiny moon traveler." && included.version == 2)
+            precondition(included.biography == nil && included.interests == nil && included.version == 1)
+            let includedBytes = try included.encoded()
+            precondition(!String(data: includedBytes, encoding: .utf8)!.contains("A tiny moon traveler."))
             let updatedLearned = lobby.selectedMember.controller.personality!
             lobby.showSaved([.init(id: savedID, name: "My Moss renamed", seed: "little-fonster-233")])
             precondition(lobby.selectedMember.id != publicID && lobby.selectedMember.controller.personality == updatedLearned && lobby.selectedMember.controller.feeling == .cozy)
