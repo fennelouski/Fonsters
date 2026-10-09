@@ -66,7 +66,7 @@ struct ContinuousLobbyView: View {
     private var roster: [LocalLobbyController.SavedAppearance] { library.map { .init(id: $0.id, name: $0.name, seed: $0.seed, biography: $0.biography) } }
     private var blocked: Bool { !lobby.ready || lobby.paused || lobby.backgrounded || lobby.lowPower || lobby.reviewingControls }
     private var reviewing: Bool { panelPrivacy || panelGallery || gallery || sharing || agents || profiles || editor != nil || senseEducation != nil || panelEducation != nil || panelInputGate.challenge != nil || needsWelcome || launching || explorationGuide || personalityGuide || privacy || parentGate.challenge != nil || inputParentGate.challenge != nil }
-    private var inputsSuspended: Bool { blocked || !lobby.inCare || typing || searchFocused }
+    private var inputsSuspended: Bool { blocked || !lobby.inCare || lobby.selectedMember.isVisitor || typing || searchFocused }
 
     var body: some View {
         presentations
@@ -102,7 +102,7 @@ struct ContinuousLobbyView: View {
                 VStack(spacing: 24) {
                     Text("Grow together").font(.title2.bold())
                     HStack(spacing: 18) {
-                        if !inputs.cameraDenied { FonsterIconButton(title: "Learn through movement", symbol: "video", tone: .company) { personalityGuide = false; senseEducation = .camera } }
+                        if !inputs.cameraDenied { FonsterIconButton(title: "Learn through movement", symbol: "video", tone: .company) { personalityGuide = false; activateCamera(panel: false) } }
                         if !inputs.microphoneDenied { FonsterIconButton(title: "Learn through voice", symbol: "mic", tone: .company) { personalityGuide = false; senseEducation = .microphone } }
                         FonsterIconButton(title: "Play together", symbol: "sparkles", tone: .play) { personalityGuide = false; lobby.perform(.play) }
                         FonsterIconButton(title: "Name and interests", symbol: "book.closed", tone: .company) {
@@ -127,7 +127,8 @@ struct ContinuousLobbyView: View {
             // A delayed model observation during rotation must not restore a
             // query the owner just cleared.
             guard value == lobby.searchQuery else { return }
-            if query != value { query = value; searching = !value.isEmpty }
+            // Keep spaces being typed between words; the model trims its query.
+            if query.trimmingCharacters(in: .whitespacesAndNewlines) != value { query = value; searching = !value.isEmpty }
         }
         .focusable().focused($stageFocused)
         .onKeyPress(phases: [.down, .repeat, .up]) { press in
@@ -165,12 +166,18 @@ struct ContinuousLobbyView: View {
     }
     private var inputLifecycle: some View {
         lifecycle
-        .onChange(of: lobby.inCare) { searchFocused = false; stageFocused = true; command = false; interpreter.cancel(); stopLiveActivity() }
-        .onChange(of: lobby.selected) { stopLiveActivity(); canUndoLearning = false }
+        .onChange(of: lobby.inCare) { searchFocused = false; stageFocused = true; command = false; interpreter.cancel(); pauseLiveActivity(); inputs.setSuspended(inputsSuspended) }
+        .onChange(of: lobby.selected) { pauseLiveActivity(); inputs.setSuspended(inputsSuspended); canUndoLearning = false }
         .onChange(of: inputsSuspended, initial: true) { inputs.setSuspended(inputsSuspended); if inputsSuspended { cancelLesson(); lobby.selectedMember.controller.clearMirror() } }
         .onChange(of: inputs.microphoneEnabled) { if inputs.microphoneEnabled { for member in lobby.members { member.controller.silence() } }; lobby.listening = inputs.microphoneEnabled; lobby.refreshGates() }
         .onChange(of: inputs.cameraEnabled) { if !inputs.cameraEnabled { lobby.clearGroup(); lobby.selectedMember.controller.clearMirror(); if lesson?.kind != .voice { cancelLesson() } } }
-        .onAppear { connectInputs() }
+        .onChange(of: inputs.cameraReviewRequired) {
+            if inputs.cameraReviewRequired {
+                inputs.consumeCameraReviewRequest()
+                if !inputs.cameraDenied { senseEducation = .camera }
+            }
+        }
+        .onAppear { connectInputs(); inputs.setSuspended(inputsSuspended) }
         .onChange(of: pendingImportURL.url, initial: true) { if pendingImportURL.url != nil { gallery = true } }
         .onChange(of: reviewing) { _, showing in
             lobby.reviewingControls = showing
@@ -202,9 +209,9 @@ struct ContinuousLobbyView: View {
         .sheet(isPresented: $profiles) { FonsterSocialStudio(lobby: lobby) }
         #endif
         #if os(macOS)
-        .task { await resizeCarePreviewIfRequested(); await verifyCameraKeyboardIfRequested(); await verifyExplorationIfRequested() }
+        .task { await resizeCarePreviewIfRequested(); await verifyCameraKeyboardIfRequested(); await verifyExplorationIfRequested(); await verifyCameraLifecycleIfRequested() }
         #endif
-        .onDisappear { stopLiveActivity(); lobby.backgrounded = true; lobby.cancelContact(); lobby.refreshGates(); interpreter.cancel() }
+        .onDisappear { pauseLiveActivity(); lobby.backgrounded = true; lobby.cancelContact(); lobby.refreshGates(); interpreter.cancel() }
     }
     private var portraitGallery: some View {
         VStack(spacing: 0) {
@@ -310,6 +317,36 @@ struct ContinuousLobbyView: View {
         lobby.openCare(0)
         let result: [String: Any] = ["checks": checks, "passed": checks.values.allSatisfy { $0 }, "inputProvenance": "Mouse NSEvents delivered only to this preview's own native window"]
         if let data = try? JSONSerialization.data(withJSONObject: result, options: [.prettyPrinted, .sortedKeys]) { try? data.write(to: URL(fileURLWithPath: args[i + 1]), options: .atomic) }
+    }
+    private func verifyCameraLifecycleIfRequested() async {
+        let args = ProcessInfo.processInfo.arguments
+        guard args.contains("--verify-manual"), args.contains("--verify-live-inputs"),
+              let i = args.firstIndex(of: "--camera-lifecycle-proof"), i + 1 < args.count else { return }
+        for _ in 0..<600 { if lobby.ready { break }; try? await Task.sleep(for: .milliseconds(50)) }
+        lobby.openCare(0); try? await Task.sleep(for: .seconds(2))
+        inputs.completeCameraReview(); inputs.toggleCamera(parentApproved: true)
+        try? await Task.sleep(for: .milliseconds(400))
+        var checks = ["cameraActiveInOwnedCare": inputs.cameraActive, "recentReviewSkipsEducation": !inputs.needsCameraEducation()]
+        lobby.returnToLobby(); try? await Task.sleep(for: .milliseconds(400))
+        checks["lobbyPausesWithoutRevokingChoice"] = inputs.cameraEnabled && !inputs.cameraActive
+        lobby.openCare(0); try? await Task.sleep(for: .seconds(2))
+        checks["returnAutomaticallyResumes"] = inputs.cameraActive
+        inputs.toggleCamera(); lobby.returnToLobby(); try? await Task.sleep(for: .milliseconds(400))
+        lobby.openCare(0); try? await Task.sleep(for: .seconds(2))
+        checks["manualOffSurvivesReturn"] = !inputs.cameraEnabled && !inputs.cameraActive
+        activateCamera(panel: false); try? await Task.sleep(for: .milliseconds(400))
+        checks["recentEnableHasNoEducationOrParentSheet"] = inputs.cameraActive && senseEducation == nil && inputParentGate.challenge == nil
+        let result: [String: Any] = ["checks": checks, "passed": checks.values.allSatisfy { $0 }, "provenance": "Actual native view lifecycle with numeric synthetic input; no camera hardware opened"]
+        if let data = try? JSONSerialization.data(withJSONObject: result, options: [.prettyPrinted, .sortedKeys]) { try? data.write(to: URL(fileURLWithPath: args[i + 1]), options: .atomic) }
+        guard args.contains("--camera-numeric-demo") else { return }
+        for signs in [[CreatureHandSign.thumbsUp], [.thumbsUp, .thumbsUp], [.peace], [.peace, .peace], [.thumbsDown], [.thumbsDown, .thumbsDown], [.thumbsUp, .peace], [.thumbsUp, .thumbsDown], [.peace, .thumbsDown]] {
+            for frame in 0..<24 {
+                inputs.verifyMirror(.init(gaze: [sin(Float(frame) * 0.12) * 0.4, 0], eyeOpenness: 0.95, facialSmile: 0.6, viewerAttention: 1, hands: signs))
+                try? await Task.sleep(for: .milliseconds(100))
+            }
+            for _ in 0..<5 { inputs.verifyMirror(.init()); try? await Task.sleep(for: .milliseconds(100)) }
+        }
+        inputs.toggleCamera()
     }
     private func verifyCameraKeyboardIfRequested() async {
         let args = ProcessInfo.processInfo.arguments
@@ -617,7 +654,7 @@ struct ContinuousLobbyView: View {
             }
     }
     private func reaction(_ action: PlayroomController.Reaction, _ symbol: String, _ tone: FonsterTone) -> some View {
-        FonsterIconButton(title: action.rawValue.capitalized, symbol: symbol, tone: tone, detail: "Starts this reaction now. Another reaction replaces it; Stop activity ends it.") { stopLiveActivity(); lobby.perform(action) }
+        FonsterIconButton(title: action.rawValue.capitalized, symbol: symbol, tone: tone, detail: "Starts this reaction now. Another reaction replaces it; Stop activity ends it.") { cancelLesson(); lobby.perform(action) }
             .disabled(blocked || !lobby.selectedMember.descriptor.supported).accessibilityIdentifier("care_" + action.rawValue)
     }
     private func connectInputs() {
@@ -639,6 +676,14 @@ struct ContinuousLobbyView: View {
             }
             lobby.spoken(action)
         }
+    }
+    private func pauseLiveActivity() { fixtureTask?.cancel(); fixtureTask = nil; inputs.pauseForNavigation(); cancelLesson(); lobby.selectedMember.controller.clearMirror(); lobby.clearGroup() }
+    private func activateCamera(panel: Bool) {
+        inputs.refreshPermissions()
+        guard !inputs.cameraDenied else { return }
+        if inputs.needsCameraEducation() {
+            if panel { panelEducation = .camera } else { senseEducation = .camera }
+        } else { lobby.takeOwnerControl(); inputs.toggleCamera(parentApproved: true) }
     }
     private func stopLiveActivity() { fixtureTask?.cancel(); fixtureTask = nil; inputs.stopAll(); cancelLesson(); lobby.selectedMember.controller.clearMirror() }
     private func cancelLesson() {
@@ -671,14 +716,14 @@ struct ContinuousLobbyView: View {
     private func requestSense(_ sense: FonsterSenseEducation.Sense, gate: ParentActionGate) {
         gate.request(sense == .camera ? "Enable camera mirroring. Frames stay on this device." : "Enable on-device spoken commands. Audio stays on this device.") {
             lobby.takeOwnerControl()
-            if sense == .camera { inputs.toggleCamera(parentApproved: true) }
+            if sense == .camera { inputs.completeCameraReview(); inputs.toggleCamera(parentApproved: true) }
             else { inputs.toggleMicrophone(parentApproved: true) }
         }
     }
     private func liveSenseButtons(horizontal: Bool) -> some View {
         let layout = horizontal ? AnyLayout(HStackLayout(spacing: 8)) : AnyLayout(VStackLayout(spacing: 10))
         return layout {
-            if !inputs.cameraDenied { FonsterIconButton(title: inputs.cameraEnabled ? "Turn camera off" : "Mirror me", symbol: inputs.cameraEnabled ? "video.fill" : "video", tone: .company, selected: inputs.cameraEnabled) { if inputs.cameraEnabled { inputs.toggleCamera() } else { senseEducation = .camera } }.accessibilityIdentifier("careCamera") }
+            if !inputs.cameraDenied { FonsterIconButton(title: inputs.cameraEnabled ? "Turn camera off" : "Mirror me", symbol: inputs.cameraEnabled ? "video.fill" : "video", tone: .company, selected: inputs.cameraEnabled) { if inputs.cameraEnabled { inputs.toggleCamera() } else { activateCamera(panel: false) } }.accessibilityIdentifier("careCamera") }
             if !inputs.microphoneDenied { FonsterIconButton(title: inputs.microphoneEnabled ? "Turn microphone off" : "Talk to my Fonster", symbol: inputs.microphoneEnabled ? "mic.fill" : "mic", tone: .company, selected: inputs.microphoneEnabled) { if inputs.microphoneEnabled { inputs.toggleMicrophone() } else { senseEducation = .microphone } }.accessibilityIdentifier("careMicrophone") }
         }.disabled(blocked || lobby.selectedMember.isVisitor)
     }
@@ -688,7 +733,7 @@ struct ContinuousLobbyView: View {
                 if !inputs.cameraDenied { FonsterIconButton(title: inputs.cameraEnabled ? "Turn camera off" : "Enable camera mirror", symbol: inputs.cameraEnabled ? "video.fill" : "video", tone: .company, selected: inputs.cameraEnabled,
                     detail: "A grown-up enables this. Mirror blinks, head tilts and raised-hand waves. Camera frames stay on this device. Tap again to turn off.") {
                     if inputs.cameraEnabled { inputs.toggleCamera() }
-                    else { panelEducation = .camera }
+                    else { activateCamera(panel: true) }
                 }
                     .disabled(blocked || lobby.selectedMember.isVisitor).accessibilityIdentifier("liveCamera") }
                 if !inputs.microphoneDenied { FonsterIconButton(title: inputs.microphoneEnabled ? "Turn microphone off" : "Enable spoken commands", symbol: inputs.microphoneEnabled ? "mic.fill" : "mic", tone: .company, selected: inputs.microphoneEnabled,

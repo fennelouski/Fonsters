@@ -18,6 +18,12 @@ final class CreatureInputs {
     }
     private(set) var microphoneEnabled = false
     private(set) var cameraEnabled = false
+    private(set) var cameraReviewRequired = false
+    func consumeCameraReviewRequest() { cameraReviewRequired = false }
+    var cameraActive: Bool { cameraEnabled && !suspended }
+    @ObservationIgnored private let cameraHistory: CameraUseHistory
+    func needsCameraEducation(at date: Date = Date()) -> Bool { cameraHistory.needsEducation(at: date) }
+    func completeCameraReview(at date: Date = Date()) { cameraHistory.reviewed(at: date) }
     private(set) var level: Float = 0
     private(set) var status = "Camera and microphone are off."
     private(set) var lastAction: CreatureSpokenAction?
@@ -46,11 +52,12 @@ final class CreatureInputs {
     @ObservationIgnored private var interruption: NSObjectProtocol?
     private var synthetic: Bool { ProcessInfo.processInfo.arguments.contains("--verify-live-inputs") }
 
-    init() {
+    init(cameraHistory: CameraUseHistory? = nil) {
+        self.cameraHistory = cameraHistory ?? CameraUseHistory()
         refreshPermissions()
         #if os(iOS)
         interruption = NotificationCenter.default.addObserver(forName: AVAudioSession.interruptionNotification, object: nil, queue: .main) { [weak self] _ in
-            Task { @MainActor [weak self] in self?.stopAll() }
+            Task { @MainActor [weak self] in self?.pauseMicrophoneForInterruption() }
         }
         #endif
     }
@@ -79,7 +86,9 @@ final class CreatureInputs {
     func toggleCamera(parentApproved: Bool = false) {
         if cameraEnabled { cameraConsentGeneration += 1; cameraEnabled = false; stopCamera(); status = "Camera off."; return }
         guard parentApproved else { status = "Ask a grown-up to enable camera mirroring."; return }
-        if synthetic { cameraEnabled = true; status = "Synthetic camera fixture · no camera opened."; return }
+        refreshPermissions()
+        guard synthetic || !cameraDenied else { status = "Camera access wasn’t granted."; return }
+        if synthetic { cameraEnabled = true; if !suspended { cameraHistory.used() }; status = "Synthetic camera fixture · no camera opened."; return }
         cameraEnabled = true; cameraConsentGeneration += 1; let generation = cameraConsentGeneration
         Task { @MainActor in
             cameraAllowed = await AVCaptureDevice.requestAccess(for: .video)
@@ -89,16 +98,29 @@ final class CreatureInputs {
             if !suspended { startCamera() }
         }
     }
-    func setSuspended(_ value: Bool) {
+    func setSuspended(_ value: Bool, at date: Date = Date()) {
         guard suspended != value else { return }; suspended = value
+        if !value, cameraEnabled, cameraHistory.needsEducation(at: date) {
+            cameraConsentGeneration += 1; cameraEnabled = false; stopCamera()
+            cameraReviewRequired = true
+        }
         if value { stopMicrophone(); stopCamera(); status = "Inputs paused with the world." }
         else if synthetic {
+            if cameraEnabled { cameraHistory.used() }
             status = microphoneEnabled ? "Synthetic voice fixture · no microphone opened."
                 : cameraEnabled ? "Synthetic camera fixture · no camera opened." : "Camera and microphone are off."
         } else {
             if microphoneEnabled && microphoneAllowed { startMicrophone() }
             if cameraEnabled && cameraAllowed { startCamera() }
         }
+    }
+    /// Temporary navigation must not revoke the explicit camera choice.
+    func pauseForNavigation() {
+        setSuspended(true)
+        microphoneConsentGeneration += 1; microphoneEnabled = false; stopMicrophone()
+    }
+    private func pauseMicrophoneForInterruption() {
+        microphoneConsentGeneration += 1; microphoneEnabled = false; stopMicrophone()
     }
     func stopAll() {
         microphoneConsentGeneration += 1; cameraConsentGeneration += 1
@@ -109,7 +131,7 @@ final class CreatureInputs {
         guard synthetic, microphoneEnabled, !suspended else { return }
         delivered = false; receiveSpeech(text, final: true, generation: microphoneGeneration)
     }
-    func verifyMirror(_ sample: CreatureMirrorSample) { guard synthetic, cameraEnabled, !suspended else { return }; onMirror?(sample) }
+    func verifyMirror(_ sample: CreatureMirrorSample) { guard synthetic, cameraEnabled, !suspended else { return }; if sample.found { cameraHistory.used() }; onMirror?(sample) }
 
     private func startMicrophone() {
         guard engine == nil, microphoneEnabled, !suspended,
@@ -200,7 +222,7 @@ final class CreatureInputs {
         }, onSample: { [weak self] sample in
             Task { @MainActor [weak self] in
                 guard let self, self.cameraGeneration == generation, self.cameraEnabled, !self.suspended else { return }
-                self.onFace?(sample.gaze); self.onMirror?(sample)
+                self.cameraHistory.used(); self.onFace?(sample.gaze); self.onMirror?(sample)
                 self.status = sample.found ? "Camera on · mirroring facial movements, head and raised hands." : "Camera on · step into view."
             }
         }, onFailure: { [weak self] in
@@ -257,8 +279,9 @@ nonisolated final class FaceCaptureWorker: NSObject, AVCaptureVideoDataOutputSam
         guard now - lastFrame > 0.18 else { return }; lastFrame = now
         guard let buffer = CMSampleBufferGetImageBuffer(sampleBuffer) else { return }
         let faceRequest = VNDetectFaceLandmarksRequest(), bodyRequest = VNDetectHumanBodyPoseRequest()
+        let handRequest = VNDetectHumanHandPoseRequest(); handRequest.maximumHandCount = 8
         do {
-            try VNImageRequestHandler(cvPixelBuffer: buffer, orientation: .up).perform([faceRequest, bodyRequest])
+            try VNImageRequestHandler(cvPixelBuffer: buffer, orientation: .up).perform([faceRequest, bodyRequest, handRequest])
             var remaining = Array((faceRequest.results ?? []).filter { $0.confidence >= 0.6 }.sorted { $0.boundingBox.width * $0.boundingBox.height > $1.boundingBox.width * $1.boundingBox.height }.prefix(4))
             var faces: [VNFaceObservation] = []
             for slot in 0..<min(4, remaining.count) {
@@ -326,6 +349,24 @@ nonisolated final class FaceCaptureWorker: NSObject, AVCaptureVideoDataOutputSam
                 let neck = points[.neck], let hip = points[.root], neck.confidence > 0.4, hip.confidence > 0.4 {
                 sample.bodyLean = Float(neck.location.x - hip.location.x) * 2
                 sample.crouch = max(0, min(1, 1 - Float(neck.location.y - hip.location.y) * 5))
+            }
+            // Assign each hand to the nearest visible person, bounded to two.
+            for hand in handRequest.results ?? [] {
+                guard sample.hands.count < 2, let points = try? hand.recognizedPoints(.all) else { continue }
+                func point(_ key: VNHumanHandPoseObservation.JointName) -> SIMD2<Float>? {
+                    guard let p = points[key], p.confidence >= 0.45 else { return nil }
+                    return SIMD2(Float(p.location.x), Float(p.location.y))
+                }
+                guard let wrist = point(.wrist), let thumb = point(.thumbTip), let ip = point(.thumbIP),
+                      let index = point(.indexTip), let indexBase = point(.indexMCP),
+                      let middle = point(.middleTip), let middleBase = point(.middleMCP),
+                      let ring = point(.ringTip), let ringBase = point(.ringMCP),
+                      let little = point(.littleTip), let littleBase = point(.littleMCP) else { continue }
+                let nearest = faces.indices.min { abs(Float(faces[$0].boundingBox.midX) - wrist.x) < abs(Float(faces[$1].boundingBox.midX) - wrist.x) }
+                guard nearest == slot, abs(center.x - wrist.x) < max(0.25, Float(box.width) * 2.5) else { continue }
+                let pose = CreatureHandPose(wrist: wrist, thumbTip: thumb, thumbIP: ip,
+                    fingers: [(index, indexBase), (middle, middleBase), (ring, ringBase), (little, littleBase)])
+                if let sign = pose.sign { sample.hands.append(sign) }
             }
             baselines[slot] = openEyeBaseline
             samples.append(sample)
