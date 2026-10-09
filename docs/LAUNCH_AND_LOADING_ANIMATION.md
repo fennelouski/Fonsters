@@ -1,6 +1,41 @@
 # Current native launch
 
-The macOS/iOS lobby now mounts behind `FonsterLaunch` in `Playroom/FonsterWelcome.swift`. The static iOS launch screen uses the F (`LaunchIcon`) on the adaptive background. The in-app overlay assembles portrait friends alongside the name, tips the F backwards, scatters friends and fades into the already warming lobby. First launches take about 1.75 seconds; subsequent/low-power launches are shorter. Reduce Motion skips the moving sequence. Empty libraries then enter the first-Fonster guide; existing records go straight to their lobby.
+The macOS/iOS lobby mounts behind a transparent `FonsterLaunch` overlay. The
+animation waits for the world renderer to become ready, so procedural scene
+construction cannot consume its visible beats. The F is the original flat logo,
+the largest letter. Seven smaller 3D mascots emerge from behind it, morph their
+connected furry bodies into ONSTERS, then scatter when the F falls backwards.
+The body mesh and tapered fur fibres share matching morph topology; no portraits
+or separate typeset letters are placed on the creatures. Native transparent
+SceneKit surfaces preserve the actual world behind the animation.
+
+The word is centered and fitted to the window. Mascots use 42% scale while
+retaining their spacing; the F is more than twice their height. After readiness,
+the first sequence takes about 3.3 seconds and returning launches about 2.5
+seconds. Reduce Motion and low-power mode skip scene creation/movement and hand
+off after a brief static logo. Backgrounding stops the launch actions. Empty
+libraries then enter the existing first-Fonster guide; existing records enter
+their lobby. Legacy portraits, seed identity, exports and records are unchanged.
+
+Verification on the MacBook Air (2026-10-09): native Mac build/run and actual
+window capture; three iPhone simulator tests covering first/returning/Reduce
+Motion handoff and interactive search; signed generic iPhone build. No physical
+phone install was performed. Physical-device haptics, iPad layout and manual
+VoiceOver remain untested. Evidence is kept locally in ignored
+`evidence/launch-fix`, including xcresults, build logs and actual window footage.
+The `--launch-hold` evidence flag deliberately holds the completed word for six
+seconds; it applies only with `--verify-manual`.
+
+Replay without changing the user's launch-seen marker or private library:
+
+```sh
+script/build_and_run.sh --verify --verify-manual --verify-launch --launch-first
+# --launch-returning previews the faster sequence.
+# --verify-reduce-motion previews the static handoff.
+```
+
+Morph targets follow Apple's equal-topology requirement:
+[SCNMorpher targets](https://developer.apple.com/documentation/scenekit/scnmorpher/targets).
 
 The following spec remains for the original gallery and the watch/TV/visionOS loading path.
 

@@ -130,6 +130,7 @@
 				Playroom/ContinuousLobbyView.swift,
                 Playroom/FonsterProfileEditor.swift,
                 Playroom/FonsterWelcome.swift,
+                Playroom/FonsterLaunchScene.swift,
                 Playroom/FonsterSenseEducation.swift,
 				Playroom/MobilePlayroomView.swift,
 				Playroom/TelevisionPlayroomView.swift,
