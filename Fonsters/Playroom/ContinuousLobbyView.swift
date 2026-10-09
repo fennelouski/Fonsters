@@ -445,7 +445,8 @@ struct ContinuousLobbyView: View {
                 try? await Task.sleep(for: .milliseconds(100)); checks["tooltipDelay"] = !tipVisible()
                 try? await Task.sleep(for: .milliseconds(600)); checks["tooltipShown"] = tipVisible()
                 checks["tooltipDoesNotStealFocus"] = NSApplication.shared.keyWindow == window
-                anchor.mouseExited(with: event); checks["tooltipDismisses"] = !tipVisible()
+                anchor.mouseExited(with: event)
+                try? await Task.sleep(for: .milliseconds(400)); checks["tooltipDismisses"] = !tipVisible()
                 anchor.mouseEntered(with: event)
                 if let option = NSEvent.keyEvent(with: .flagsChanged, location: .zero, modifierFlags: [.option], timestamp: ProcessInfo.processInfo.systemUptime, windowNumber: window.windowNumber, context: nil, characters: "", charactersIgnoringModifiers: "", isARepeat: false, keyCode: 58) { NSApplication.shared.sendEvent(option) }
                 try? await Task.sleep(for: .milliseconds(50)); checks["tooltipOptionImmediate"] = tipVisible()
