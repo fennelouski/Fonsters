@@ -31,6 +31,17 @@ person or agent. Parent must forward this handoff to that existing owner and
 obtain acknowledgement before Browser client edits. No competing writer was
 created; the archived Studio continuation remains closed.
 
+Follow-up verification: Browser's owner has **not** been contacted by this
+worker. There is no callable cross-conversation `cloud_threads` discovery/send
+tool in this worker's tool set. In-tree collaboration tools cannot address an
+unknown external task. The supported route here is the automatic final-result
+handoff to coordinating source thread `01a11871-18e7-770a-acf9-aea54cc1b0c1`;
+that parent can resolve the Browser task in its own authorized internal registry
+and forward the contract through its existing task channel. That source ID is
+the coordinator, **not** a verified Browser task ID. No Slack/email fallback was
+used. Reinspection found additional Browser UI/unit test edits, confirming the
+checkout is still active; all were preserved.
+
 ## Contract for the existing Browser owner
 
 After activation approval, the existing coordinator should own one authenticated
@@ -57,10 +68,40 @@ durable weather/lease store, WeatherKit credential or usage reconciler is
 configured. Preview Basic auth is not a production account boundary. No approved
 shared-weather deployment was established; no new service was invented.
 
-`docs/backend/hosting-status.md` records incomplete AWS parity and historical
-missing `fishbowl-head`/invalid default credentials. These were not freshly
-retested. No AWS authentication/deployment was attempted. Original dirty Fonsters
-worktrees and active Browser work were preserved.
+The existing Lambda/router could host a weather handler without a new compute
+service, but cannot provide the complete shared engine as configured: there is
+no durable atomic store or account-session boundary. Its ten-second Lambda
+timeout also needs review against ten-second waiter/eight-second provider
+deadlines. No already authorized external store was established from local
+configuration; cloud inventory remains unverified. Therefore hosting the full
+service **without adding services is unproven**, not an approved architecture.
+
+Fresh read-only credential checks found profiles `default`, `paparazzo-cognito`
+and `picturegrid-bootstrap`; `fishbowl-head` is absent. Default-profile
+`sts get-caller-identity` returned `InvalidClientTokenId`. This establishes a
+local credential/session problem, not a need to grant new permissions. No login,
+credential creation, role assumption, secret storage, or deployment occurred;
+unrelated profiles were not used. Existing WeatherKit credential location is
+still unknown, rather than proven nonexistent. New roles/policies, long-lived
+keys, secrets stored in the backend, or attaching a persistent store would be
+separate persistent-access/configuration changes needing explicit approval.
+Original dirty Fonsters worktrees and active Browser work were preserved.
+
+## Smallest activation decisions for the coordinator
+
+1. Resolve/acknowledge the existing Browser owner and confirm whether its daily
+   and past-hourly data are required; v2 currently supports upcoming hourly only.
+2. Identify an already authorized backend account-session route and atomic store.
+   Reuse the existing Lambda/router if appropriate. If no authorized store/auth
+   exists, keep networking off and return a concrete provisioning proposal for
+   later approval rather than inventing services.
+3. Identify existing WeatherKit credential location and actual membership
+   cycle/aggregate usage. Restore the existing AWS session through its current
+   authorized login when available; creating durable credentials or expanding
+   access is a separate decision.
+4. Approve the revised location destination disclosure, protected Fonsters
+   eligibility, temporary cache policy, and a bounded live test/deployment scope.
+   None is activated by accepting this offline code review.
 
 ## Exact activation requirements
 
