@@ -25,6 +25,13 @@ final class LocalLobbyController {
     let presence: FonsterSocialDirector
     var activeTime: Double { activeSeconds }
     @ObservationIgnored private var worldMemory: LobbyWorldMemory
+    let mappedDemo = LobbyMappedWorld.bundled()
+    var mappedAreaID: String?
+    @ObservationIgnored var generatedScenery: Entity?
+    var mappedArea: LobbyMappedWorld? { mappedAreaID == mappedDemo?.area.id ? mappedDemo : nil }
+    var waypoints = LobbyWaypointMemory()
+    var waypointOrder = LobbyWaypointMemory.Order.newest
+    var cameraPlaceFocus: SIMD2<Float>?
     var focusArea: LobbyWorld.Area?
     var followSelected = false
     var cameraZoom: Float = 1
@@ -162,8 +169,8 @@ final class LocalLobbyController {
         let forward = SIMD2<Float>(sin(cameraOrbit), cos(cameraOrbit))
         _ = walk(to: simulation.agents[selected].position + (right * direction.x + forward * direction.y) * 1.2)
     }
-    private func resetPresentationCamera() { cameraOrbit = 0; cameraPitch = 0; cameraPan = .zero; cameraZoom = 1; followSelected = false; focusArea = nil }
-    private func restoreCamera(_ state: ControlState) { cameraOrbit = state.orbit; cameraPitch = state.pitch; cameraPan = state.pan; cameraZoom = state.zoom; followSelected = state.follow; focusArea = state.area }
+    private func resetPresentationCamera() { cameraOrbit = 0; cameraPitch = 0; cameraPan = .zero; cameraPlaceFocus = nil; cameraZoom = 1; followSelected = false; focusArea = nil }
+    private func restoreCamera(_ state: ControlState) { cameraOrbit = state.orbit; cameraPitch = state.pitch; cameraPan = state.pan; cameraPlaceFocus = state.placeFocus; setMappedArea(state.worldID); cameraZoom = state.zoom; followSelected = state.follow; focusArea = state.area }
     var selectedSavedID: UUID? { savedIdentities.first(where: { $0.value == selectedMember.id })?.key }
     var selectedMember: Member { members[selected] }
     var names: [String] { members.map(\.name) }
@@ -305,6 +312,8 @@ final class LocalLobbyController {
         var orbit: Float
         var pitch: Float
         var pan: SIMD3<Float>
+        var worldID: String?
+        var placeFocus: SIMD2<Float>?
         var paused: Bool
         var still: Bool
         var wander: Bool
@@ -316,7 +325,7 @@ final class LocalLobbyController {
         var dance: FonsterDanceMode
     }
     var controls: ControlState {
-        .init(selected: selected, buddy: buddy, area: focusArea, follow: followSelected, zoom: cameraZoom, orbit: cameraOrbit, pitch: cameraPitch, pan: cameraPan,
+        .init(selected: selected, buddy: buddy, area: focusArea, follow: followSelected, zoom: cameraZoom, orbit: cameraOrbit, pitch: cameraPitch, pan: cameraPan, worldID: mappedAreaID, placeFocus: cameraPlaceFocus,
               paused: paused, still: still, wander: wander, sounds: sounds, feeling: selectedMember.controller.feeling, careFocus: careFocus, exploring: exploring, query: searchQuery, dance: danceMode)
     }
     func restoreControls(_ state: ControlState) {
@@ -330,7 +339,7 @@ final class LocalLobbyController {
         }
         if state.exploring != exploring && inCare { toggleExploration() }
         takeOwnerControl(); selected = state.selected; buddy = state.buddy
-        focusArea = state.area; followSelected = state.follow; cameraZoom = state.zoom; cameraOrbit = state.orbit; cameraPitch = state.pitch; cameraPan = state.pan
+        focusArea = state.area; followSelected = state.follow; cameraZoom = state.zoom; cameraOrbit = state.orbit; cameraPitch = state.pitch; cameraPan = state.pan; cameraPlaceFocus = state.placeFocus; setMappedArea(state.worldID)
         paused = state.paused; still = state.still; setWander(state.wander); sounds = state.sounds
         if selectedMember.controller.feeling != state.feeling { chooseFeeling(state.feeling) }
         if danceMode != state.dance { setDanceMode(state.dance) }
@@ -418,7 +427,7 @@ final class LocalLobbyController {
     }
     func explore(_ area: LobbyWorld.Area) {
         guard world.areas.contains(area), ready, !paused, !backgrounded, !lowPower else { return }
-        interruptPair(); ownerActed(); focusArea = area; followSelected = false; cameraZoom = 1; cameraOrbit = area == .neighborhood ? -0.5 : 0; cameraPitch = 0; cameraPan = .zero
+        interruptPair(); ownerActed(); focusArea = area; followSelected = false; cameraZoom = 1; cameraOrbit = area == .neighborhood ? -0.5 : 0; cameraPitch = 0; cameraPan = .zero; cameraPlaceFocus = nil
         simulation.travel(to: area, actor: selected, peer: peerIndex, instant: still || reduceMotion)
         for i in [selected, peerIndex] { members[i].controller.perform(.idle, name: names[i], learn: false, audible: false) }
         message = "\(selectedMember.name) and \(names[peerIndex]) explore \(area.title.lowercased())."
@@ -433,8 +442,8 @@ final class LocalLobbyController {
         message = "\(selectedMember.name) finds a soft afternoon on the bench."
         applyLayout(); writeProbe()
     }
-    func showOverview() { focusArea = nil; followSelected = false; cameraZoom = 1; cameraOrbit = 0; cameraPitch = 0; cameraPan = .zero; updateCamera(); writeProbe() }
-    func lookAtSelected() { followSelected = true; cameraZoom = 1; cameraPan = .zero; updateCamera(); writeProbe() }
+    func showOverview() { focusArea = nil; followSelected = false; cameraZoom = 1; cameraOrbit = 0; cameraPitch = 0; cameraPan = .zero; cameraPlaceFocus = nil; updateCamera(); writeProbe() }
+    func lookAtSelected() { followSelected = true; cameraZoom = 1; cameraPan = .zero; cameraPlaceFocus = nil; updateCamera(); writeProbe() }
     func rotateCamera(_ angle: Float, vertical: Float = 0) {
         guard angle.isFinite, vertical.isFinite else { return }
         cameraOrbit = (cameraOrbit + angle).remainder(dividingBy: 2 * .pi)
@@ -464,7 +473,9 @@ final class LocalLobbyController {
             let forward = SIMD3<Float>(sin(origin.orbit), 0, cos(origin.orbit))
             cameraPan = origin.pan
             let vertical = verticalPan ? SIMD3<Float>(0, 1, 0) : forward
-            panCamera(right * Float(-translation.width) * amount + vertical * Float(-translation.height) * amount)
+            let horizontal: SIMD3<Float> = right * (Float(-translation.width) * amount * 5)
+            let depth: SIMD3<Float> = vertical * (Float(-translation.height) * amount * (verticalPan ? Float(1) : Float(5)))
+            panCamera(horizontal + depth)
         } else {
             cameraOrbit = origin.orbit; cameraPitch = origin.pitch
             rotateCamera(Float(-translation.width) * 0.008, vertical: Float(translation.height) * 0.006)
@@ -472,7 +483,7 @@ final class LocalLobbyController {
     }
     func endCameraGesture() { cameraGestureActive = false }
     func cameraKey(_ key: KeyEquivalent, modifiers: EventModifiers, held: Bool? = nil) -> Bool {
-        guard ready, !backgrounded, !modifiers.contains(.command), !modifiers.contains(.control) else { return false }
+        guard ready, !backgrounded, !reviewingControls, !modifiers.contains(.command), !modifiers.contains(.control) else { return false }
         if let held {
             let token: String
             switch key {
@@ -488,7 +499,8 @@ final class LocalLobbyController {
             cameraNavigationActive = cameraNavigation.active
             return true
         }
-        let speed: Float = modifiers.contains(.shift) ? 0.6 : 0.2
+        let elevationSpeed: Float = modifiers.contains(.shift) ? 0.6 : 0.2
+        let speed = elevationSpeed * 5
         let right = SIMD3<Float>(cos(cameraOrbit), 0, -sin(cameraOrbit))
         let forward = SIMD3<Float>(sin(cameraOrbit), 0, cos(cameraOrbit))
         switch key {
@@ -500,8 +512,8 @@ final class LocalLobbyController {
         case "d": panCamera(right * speed)
         case "w": panCamera(-forward * speed)
         case "s": panCamera(forward * speed)
-        case "q": panCamera([0, -speed, 0])
-        case "e": panCamera([0, speed, 0])
+        case "q": panCamera([0, -elevationSpeed, 0])
+        case "e": panCamera([0, elevationSpeed, 0])
         case "-": zoomCamera(1.08)
         case "+", "=": zoomCamera(1 / 1.08)
         case "0": showOverview()
@@ -534,6 +546,57 @@ final class LocalLobbyController {
     var cameraDescription: String {
         "Camera angle \(Int(cameraOrbit * 180 / .pi)) degrees, elevation \(Int(cameraPitch * 180 / .pi)) degrees, zoom \(Int(100 / cameraZoom)) percent, position \(String(format: "%.1f, %.1f, %.1f", cameraPan.x, cameraPan.y, cameraPan.z))."
     }
+    var waypointViewpoint: LobbyWaypoint.Viewpoint {
+        let visible = exploring && presentation.poses.indices.contains(selected) ? presentation.poses[selected].position : naturalPoses[selected].position
+        let focus = cameraPlaceFocus ?? (followSelected ? SIMD2<Float>(visible.x, visible.z) : focusArea?.center)
+        return .init(x: cameraPan.x, y: cameraPan.y, z: cameraPan.z, orbit: cameraOrbit, pitch: cameraPitch, zoom: cameraZoom, worldID: mappedAreaID, focusX: focus?.x, focusZ: focus?.y)
+    }
+    var sortedWaypoints: [LobbyWaypoint] { waypoints.sorted(waypointOrder, from: waypointViewpoint.position, worldID: mappedAreaID) }
+    func visitWaypoint(_ waypoint: LobbyWaypoint) {
+        guard ready, waypoint.viewpoint.valid else { return }
+        guard waypoint.viewpoint.worldID == nil || waypoint.viewpoint.worldID == mappedDemo?.area.id else { error = "This saved area isn’t available offline."; return }
+        clearCameraKeys(); endCameraGesture(); takeOwnerControl()
+        if inCare { returnToLobby() }
+        if !searchQuery.isEmpty { search("") }
+        let view = waypoint.viewpoint
+        setMappedArea(view.worldID)
+        focusArea = nil; followSelected = false
+        cameraPlaceFocus = view.focusX.map { SIMD2<Float>($0, view.focusZ!) }
+        cameraPan = [view.x, view.y, view.z]; cameraZoom = view.zoom; cameraOrbit = view.orbit; cameraPitch = view.pitch
+        updateCamera(); writeProbe()
+    }
+    func setMappedArea(_ id: String?) {
+        guard id != mappedAreaID else { return }
+        mappedAreaID = id == mappedDemo?.area.id ? id : nil
+        streamedWorld?.mappedWorld = mappedArea
+        generatedScenery?.isEnabled = mappedArea == nil
+    }
+    func visitMappedFeature(_ feature: LobbyMappedWorld.Feature) {
+        guard let map = mappedDemo else { return }
+        let center = map.center(feature)
+        let view = LobbyWaypoint.Viewpoint(x: center.x, z: center.y, zoom: 1.4, worldID: map.area.id)
+        visitWaypoint(.init(id: UUID(), name: feature.name, createdAt: .now, viewpoint: view))
+    }
+    func moveCamera(_ direction: SIMD2<Float>) {
+        let right = SIMD3<Float>(cos(cameraOrbit), 0, -sin(cameraOrbit))
+        let forward = SIMD3<Float>(sin(cameraOrbit), 0, cos(cameraOrbit))
+        panCamera((right * direction.x + forward * direction.y) * 1.5)
+    }
+    struct WaypointMarker: Identifiable { let waypoint: LobbyWaypoint; let point: SIMD2<Float>; var id: UUID { waypoint.id } }
+    var waypointMarkers: [WaypointMarker] {
+        guard ready, !inCare, searchQuery.isEmpty, let camera else { return [] }
+        let candidates = ([LobbyWaypoint.home] + waypoints.sorted(.nearest, from: waypointViewpoint.position, worldID: mappedAreaID)).filter { $0.viewpoint.worldID == mappedAreaID }.prefix(8)
+        let tangent = tan(Float(camera.camera.fieldOfViewInDegrees) * .pi / 360)
+        return candidates.compactMap { waypoint in
+            let p = waypoint.viewpoint.position
+            guard simd_distance(p, waypointViewpoint.position) < 42 else { return nil }
+            let local = camera.convert(position: [p.x, 1.2, p.y], from: nil)
+            guard local.z < -0.01 else { return nil }
+            let point = SIMD2<Float>((local.x / -local.z / tangent / viewportAspect + 1) / 2, (1 - local.y / -local.z / tangent) / 2)
+            guard point.x.isFinite, point.y.isFinite, (0.08...0.92).contains(point.x), (0.12...0.78).contains(point.y) else { return nil }
+            return .init(waypoint: waypoint, point: point)
+        }
+    }
     func updateCamera() {
         streamedWorld?.update(center: cameraPan)
         guard let camera else { return }
@@ -561,9 +624,9 @@ final class LocalLobbyController {
             target = framed(target, offset: offset, radius: radius)
             camera.look(at: target, from: target + offset, relativeTo: nil); return
         }
-        let overview = focusArea == nil && !followSelected
+        let overview = focusArea == nil && !followSelected && cameraPlaceFocus == nil
         let visible = exploring && presentation.poses.indices.contains(selected) ? presentation.poses[selected].position : naturalPoses[selected].position
-        let target2 = followSelected ? SIMD2<Float>(visible.x, visible.z) : (focusArea?.center ?? SIMD2<Float>(0, -0.25))
+        let target2 = cameraPlaceFocus ?? (followSelected ? SIMD2<Float>(visible.x, visible.z) : (focusArea?.center ?? SIMD2<Float>(0, -0.25)))
         var target: SIMD3<Float> = [target2.x, overview ? 0.10 : 0.50, target2.y] + cameraPan
         let fit = (overview ? max(1.25, 1.45 / max(0.35, viewportAspect)) : 1) * clearFit
         let distance = (overview ? world.radius * 1.68 : 5.9) * cameraZoom * fit

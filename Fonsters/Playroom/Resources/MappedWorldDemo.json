@@ -1,0 +1,1976 @@
+{
+  "schemaVersion": 1,
+  "area": {
+    "id": "zaanse-schans",
+    "name": "Zaanse Schans and Zaandijk",
+    "bounds": {
+      "south": 52.469,
+      "west": 4.8,
+      "north": 52.48,
+      "east": 4.827
+    },
+    "anchor": {
+      "latitude": 52.4745,
+      "longitude": 4.8134999999999994
+    }
+  },
+  "fetchedAt": "2026-10-09T09:37:29.315Z",
+  "source": {
+    "name": "OpenStreetMap",
+    "attribution": "© OpenStreetMap contributors",
+    "license": "ODbL-1.0",
+    "licenseURL": "https://www.openstreetmap.org/copyright",
+    "dataURL": "https://www.openstreetmap.org",
+    "endpoint": "https://overpass-api.de/api/interpreter"
+  },
+  "coverage": {
+    "status": "mapped_partial",
+    "exhaustive": false,
+    "surveyedAbsence": false,
+    "note": "Only mapped windmills, playgrounds and waterway ways in this area. Missing objects may be unmapped; empty results do not prove absence."
+  },
+  "features": [
+    {
+      "id": "osm:node:2281860574",
+      "kind": "windmill",
+      "name": "Weidemolen",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          4.8195491,
+          52.4750879
+        ]
+      },
+      "sourceURL": "https://www.openstreetmap.org/node/2281860574"
+    },
+    {
+      "id": "osm:node:2530936632",
+      "kind": "windmill",
+      "name": "Poldermolen",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          4.8256821,
+          52.4732631
+        ]
+      },
+      "sourceURL": "https://www.openstreetmap.org/node/2530936632"
+    },
+    {
+      "id": "osm:node:2530965103",
+      "kind": "windmill",
+      "name": "De Os",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          4.81558,
+          52.4768337
+        ]
+      },
+      "sourceURL": "https://www.openstreetmap.org/node/2530965103"
+    },
+    {
+      "id": "osm:node:2772886360",
+      "kind": "playground",
+      "name": "playground",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          4.8027492,
+          52.4759429
+        ]
+      },
+      "sourceURL": "https://www.openstreetmap.org/node/2772886360"
+    },
+    {
+      "id": "osm:node:3946208271",
+      "kind": "windmill",
+      "name": "Wipmolen Het Klaverblad",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          4.8137864,
+          52.4775984
+        ]
+      },
+      "sourceURL": "https://www.openstreetmap.org/node/3946208271"
+    },
+    {
+      "id": "osm:node:564121677",
+      "kind": "windmill",
+      "name": "De Hadel",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          4.8189187,
+          52.473339
+        ]
+      },
+      "sourceURL": "https://www.openstreetmap.org/node/564121677"
+    },
+    {
+      "id": "osm:way:105277160",
+      "kind": "waterway",
+      "name": "Watering",
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            4.7858046,
+            52.4717719
+          ],
+          [
+            4.7929493,
+            52.4731646
+          ],
+          [
+            4.7951494,
+            52.473573
+          ],
+          [
+            4.795621,
+            52.4736524
+          ],
+          [
+            4.7974618,
+            52.4740241
+          ],
+          [
+            4.7993005,
+            52.4743471
+          ],
+          [
+            4.8007961,
+            52.4746549
+          ],
+          [
+            4.8016053,
+            52.4748629
+          ],
+          [
+            4.8029475,
+            52.4751913
+          ],
+          [
+            4.8044871,
+            52.475655
+          ],
+          [
+            4.8046517,
+            52.4756838
+          ]
+        ]
+      },
+      "sourceURL": "https://www.openstreetmap.org/way/105277160",
+      "waterwayType": "canal"
+    },
+    {
+      "id": "osm:way:1067004932",
+      "kind": "waterway",
+      "name": "ditch",
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            4.8050089,
+            52.4797563
+          ],
+          [
+            4.8050702,
+            52.4797725
+          ]
+        ]
+      },
+      "sourceURL": "https://www.openstreetmap.org/way/1067004932",
+      "waterwayType": "ditch"
+    },
+    {
+      "id": "osm:way:1067004933",
+      "kind": "waterway",
+      "name": "ditch",
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            4.8049751,
+            52.4798363
+          ],
+          [
+            4.8050459,
+            52.4798581
+          ]
+        ]
+      },
+      "sourceURL": "https://www.openstreetmap.org/way/1067004933",
+      "waterwayType": "ditch"
+    },
+    {
+      "id": "osm:way:1136139923",
+      "kind": "playground",
+      "name": "playground",
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [
+              4.8014433,
+              52.4750581
+            ],
+            [
+              4.8014608,
+              52.4750542
+            ],
+            [
+              4.8014715,
+              52.4750469
+            ],
+            [
+              4.801474,
+              52.4750408
+            ],
+            [
+              4.8014649,
+              52.4750348
+            ],
+            [
+              4.8013522,
+              52.4750049
+            ],
+            [
+              4.8012727,
+              52.4749847
+            ],
+            [
+              4.801194,
+              52.4749584
+            ],
+            [
+              4.8011014,
+              52.4749233
+            ],
+            [
+              4.8009109,
+              52.4748473
+            ],
+            [
+              4.8008325,
+              52.4748216
+            ],
+            [
+              4.8007701,
+              52.4748105
+            ],
+            [
+              4.8006828,
+              52.4748058
+            ],
+            [
+              4.800576,
+              52.4748105
+            ],
+            [
+              4.8005186,
+              52.4748183
+            ],
+            [
+              4.8004536,
+              52.4748289
+            ],
+            [
+              4.8003912,
+              52.4748436
+            ],
+            [
+              4.8003161,
+              52.4748587
+            ],
+            [
+              4.8002692,
+              52.4748669
+            ],
+            [
+              4.8002605,
+              52.4748779
+            ],
+            [
+              4.8014433,
+              52.4750581
+            ]
+          ]
+        ]
+      },
+      "sourceURL": "https://www.openstreetmap.org/way/1136139923"
+    },
+    {
+      "id": "osm:way:1193373855",
+      "kind": "playground",
+      "name": "playground",
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [
+              4.8184663,
+              52.4724948
+            ],
+            [
+              4.8184775,
+              52.4724243
+            ],
+            [
+              4.8182041,
+              52.4724082
+            ],
+            [
+              4.8181928,
+              52.4724786
+            ],
+            [
+              4.8184663,
+              52.4724948
+            ]
+          ]
+        ]
+      },
+      "sourceURL": "https://www.openstreetmap.org/way/1193373855"
+    },
+    {
+      "id": "osm:way:266238022",
+      "kind": "waterway",
+      "name": "ditch",
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            4.8027973,
+            52.4729076
+          ],
+          [
+            4.8027531,
+            52.4729833
+          ]
+        ]
+      },
+      "sourceURL": "https://www.openstreetmap.org/way/266238022",
+      "waterwayType": "ditch"
+    },
+    {
+      "id": "osm:way:272189612",
+      "kind": "playground",
+      "name": "playground",
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [
+              4.8032923,
+              52.4790623
+            ],
+            [
+              4.8037426,
+              52.4791692
+            ],
+            [
+              4.8038401,
+              52.4790326
+            ],
+            [
+              4.8035407,
+              52.4789572
+            ],
+            [
+              4.8035029,
+              52.4789229
+            ],
+            [
+              4.8034122,
+              52.4788954
+            ],
+            [
+              4.8032923,
+              52.4790623
+            ]
+          ]
+        ]
+      },
+      "sourceURL": "https://www.openstreetmap.org/way/272189612"
+    },
+    {
+      "id": "osm:way:272437807",
+      "kind": "waterway",
+      "name": "ditch",
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            4.8020612,
+            52.4792087
+          ],
+          [
+            4.8001904,
+            52.4787316
+          ]
+        ]
+      },
+      "sourceURL": "https://www.openstreetmap.org/way/272437807",
+      "waterwayType": "ditch"
+    },
+    {
+      "id": "osm:way:272437809",
+      "kind": "waterway",
+      "name": "ditch",
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            4.8016394,
+            52.4800142
+          ],
+          [
+            4.8002652,
+            52.4796725
+          ]
+        ]
+      },
+      "sourceURL": "https://www.openstreetmap.org/way/272437809",
+      "waterwayType": "ditch"
+    },
+    {
+      "id": "osm:way:272437820",
+      "kind": "waterway",
+      "name": "ditch",
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            4.8021802,
+            52.479102
+          ],
+          [
+            4.8002516,
+            52.4785967
+          ]
+        ]
+      },
+      "sourceURL": "https://www.openstreetmap.org/way/272437820",
+      "waterwayType": "ditch"
+    },
+    {
+      "id": "osm:way:272437821",
+      "kind": "waterway",
+      "name": "ditch",
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            4.8017376,
+            52.4799259
+          ],
+          [
+            4.8004194,
+            52.4796099
+          ]
+        ]
+      },
+      "sourceURL": "https://www.openstreetmap.org/way/272437821",
+      "waterwayType": "ditch"
+    },
+    {
+      "id": "osm:way:272437824",
+      "kind": "waterway",
+      "name": "ditch",
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            4.8019818,
+            52.4793083
+          ],
+          [
+            4.7999656,
+            52.4787758
+          ]
+        ]
+      },
+      "sourceURL": "https://www.openstreetmap.org/way/272437824",
+      "waterwayType": "ditch"
+    },
+    {
+      "id": "osm:way:285317878",
+      "kind": "windmill",
+      "name": "De Gekroonde Poelenburg",
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [
+              4.8176158,
+              52.4742863
+            ],
+            [
+              4.8176492,
+              52.4742514
+            ],
+            [
+              4.8176729,
+              52.4742549
+            ],
+            [
+              4.8177167,
+              52.4741983
+            ],
+            [
+              4.8176909,
+              52.4741922
+            ],
+            [
+              4.8177041,
+              52.4741753
+            ],
+            [
+              4.8175927,
+              52.4741407
+            ],
+            [
+              4.817571,
+              52.4741622
+            ],
+            [
+              4.8175383,
+              52.4741525
+            ],
+            [
+              4.8175044,
+              52.4742042
+            ],
+            [
+              4.8175486,
+              52.4742176
+            ],
+            [
+              4.8175294,
+              52.4742485
+            ],
+            [
+              4.8175399,
+              52.4742506
+            ],
+            [
+              4.8175301,
+              52.4742625
+            ],
+            [
+              4.8176158,
+              52.4742863
+            ]
+          ]
+        ]
+      },
+      "sourceURL": "https://www.openstreetmap.org/way/285317878"
+    },
+    {
+      "id": "osm:way:285317879",
+      "kind": "windmill",
+      "name": "De Kat",
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [
+              4.8176945,
+              52.4750478
+            ],
+            [
+              4.817898,
+              52.4751056
+            ],
+            [
+              4.8180259,
+              52.4749309
+            ],
+            [
+              4.817821,
+              52.4748749
+            ],
+            [
+              4.8176945,
+              52.4750478
+            ]
+          ]
+        ]
+      },
+      "sourceURL": "https://www.openstreetmap.org/way/285317879"
+    },
+    {
+      "id": "osm:way:285317884",
+      "kind": "windmill",
+      "name": "Het Jonge Schaap",
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [
+              4.816639,
+              52.4762145
+            ],
+            [
+              4.8166897,
+              52.4761306
+            ],
+            [
+              4.8166257,
+              52.4761162
+            ],
+            [
+              4.816657,
+              52.476066
+            ],
+            [
+              4.8165473,
+              52.4760405
+            ],
+            [
+              4.8164347,
+              52.4762252
+            ],
+            [
+              4.8165449,
+              52.47625
+            ],
+            [
+              4.8165751,
+              52.4762001
+            ],
+            [
+              4.816639,
+              52.4762145
+            ]
+          ]
+        ]
+      },
+      "sourceURL": "https://www.openstreetmap.org/way/285317884"
+    },
+    {
+      "id": "osm:way:285320061",
+      "kind": "windmill",
+      "name": "De Windhond",
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [
+              4.8192728,
+              52.4725525
+            ],
+            [
+              4.8193072,
+              52.4725539
+            ],
+            [
+              4.8193412,
+              52.4725554
+            ],
+            [
+              4.81934,
+              52.4725365
+            ],
+            [
+              4.8193093,
+              52.4725352
+            ],
+            [
+              4.819275,
+              52.4725337
+            ],
+            [
+              4.8192728,
+              52.4725525
+            ]
+          ]
+        ]
+      },
+      "sourceURL": "https://www.openstreetmap.org/way/285320061"
+    },
+    {
+      "id": "osm:way:285321223",
+      "kind": "windmill",
+      "name": "Mosterdmolen De Huisman",
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [
+              4.8165937,
+              52.4732594
+            ],
+            [
+              4.8166229,
+              52.4733058
+            ],
+            [
+              4.8167413,
+              52.4732774
+            ],
+            [
+              4.8167106,
+              52.4732249
+            ],
+            [
+              4.8166992,
+              52.473213
+            ],
+            [
+              4.8166038,
+              52.4731136
+            ],
+            [
+              4.8164922,
+              52.4731519
+            ],
+            [
+              4.8165937,
+              52.4732594
+            ]
+          ]
+        ]
+      },
+      "sourceURL": "https://www.openstreetmap.org/way/285321223"
+    },
+    {
+      "id": "osm:way:293275383",
+      "kind": "playground",
+      "name": "playground",
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [
+              4.8095029,
+              52.4766432
+            ],
+            [
+              4.8093742,
+              52.4766128
+            ],
+            [
+              4.80941,
+              52.4765566
+            ],
+            [
+              4.8095386,
+              52.476587
+            ],
+            [
+              4.8095029,
+              52.4766432
+            ]
+          ]
+        ]
+      },
+      "sourceURL": "https://www.openstreetmap.org/way/293275383"
+    },
+    {
+      "id": "osm:way:30869348",
+      "kind": "waterway",
+      "name": "ditch",
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            4.8183055,
+            52.4747917
+          ],
+          [
+            4.8183025,
+            52.4747169
+          ]
+        ]
+      },
+      "sourceURL": "https://www.openstreetmap.org/way/30869348",
+      "waterwayType": "ditch"
+    },
+    {
+      "id": "osm:way:314933068",
+      "kind": "waterway",
+      "name": "ditch",
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            4.8004808,
+            52.4696339
+          ],
+          [
+            4.8004924,
+            52.4696079
+          ]
+        ]
+      },
+      "sourceURL": "https://www.openstreetmap.org/way/314933068",
+      "waterwayType": "ditch"
+    },
+    {
+      "id": "osm:way:319156189",
+      "kind": "playground",
+      "name": "Speeltuin Dominee Jacobus Borstiusstraat",
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [
+              4.8006903,
+              52.4709146
+            ],
+            [
+              4.8005732,
+              52.4708968
+            ],
+            [
+              4.8006779,
+              52.4706495
+            ],
+            [
+              4.8007938,
+              52.4706683
+            ],
+            [
+              4.8006903,
+              52.4709146
+            ]
+          ]
+        ]
+      },
+      "sourceURL": "https://www.openstreetmap.org/way/319156189"
+    },
+    {
+      "id": "osm:way:321813768",
+      "kind": "playground",
+      "name": "playground",
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [
+              4.8074424,
+              52.4782635
+            ],
+            [
+              4.8076592,
+              52.4783131
+            ],
+            [
+              4.8077731,
+              52.4781277
+            ],
+            [
+              4.8075393,
+              52.4780714
+            ],
+            [
+              4.8074424,
+              52.4782635
+            ]
+          ]
+        ]
+      },
+      "sourceURL": "https://www.openstreetmap.org/way/321813768"
+    },
+    {
+      "id": "osm:way:339147780",
+      "kind": "playground",
+      "name": "playground",
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [
+              4.8066952,
+              52.4744974
+            ],
+            [
+              4.8068906,
+              52.4745329
+            ],
+            [
+              4.8068539,
+              52.4746078
+            ],
+            [
+              4.8066585,
+              52.4745723
+            ],
+            [
+              4.8066952,
+              52.4744974
+            ]
+          ]
+        ]
+      },
+      "sourceURL": "https://www.openstreetmap.org/way/339147780"
+    },
+    {
+      "id": "osm:way:391395746",
+      "kind": "waterway",
+      "name": "Watermolensloot",
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            4.7835666,
+            52.4756543
+          ],
+          [
+            4.784012,
+            52.4757465
+          ],
+          [
+            4.7849574,
+            52.4758896
+          ],
+          [
+            4.7880224,
+            52.4765445
+          ],
+          [
+            4.7956724,
+            52.4781328
+          ],
+          [
+            4.7971864,
+            52.4784715
+          ],
+          [
+            4.8022226,
+            52.4797022
+          ],
+          [
+            4.8029765,
+            52.479879
+          ],
+          [
+            4.803324,
+            52.4799901
+          ],
+          [
+            4.8042025,
+            52.480236
+          ],
+          [
+            4.8043699,
+            52.480263
+          ]
+        ]
+      },
+      "sourceURL": "https://www.openstreetmap.org/way/391395746",
+      "waterwayType": "canal"
+    },
+    {
+      "id": "osm:way:391420404",
+      "kind": "waterway",
+      "name": "ditch",
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            4.803757,
+            52.4706256
+          ],
+          [
+            4.8038959,
+            52.4702915
+          ]
+        ]
+      },
+      "sourceURL": "https://www.openstreetmap.org/way/391420404",
+      "waterwayType": "ditch"
+    },
+    {
+      "id": "osm:way:46489610",
+      "kind": "windmill",
+      "name": "De Bleeke Dood",
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [
+              4.8112927,
+              52.471314
+            ],
+            [
+              4.8113396,
+              52.4714109
+            ],
+            [
+              4.8113587,
+              52.4714469
+            ],
+            [
+              4.8115386,
+              52.4714168
+            ],
+            [
+              4.8115388,
+              52.4714131
+            ],
+            [
+              4.8115024,
+              52.4714087
+            ],
+            [
+              4.8115193,
+              52.4713103
+            ],
+            [
+              4.8114247,
+              52.4713042
+            ],
+            [
+              4.8112927,
+              52.471314
+            ]
+          ]
+        ]
+      },
+      "sourceURL": "https://www.openstreetmap.org/way/46489610"
+    },
+    {
+      "id": "osm:way:482831183",
+      "kind": "waterway",
+      "name": "De Poel",
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            4.8282124,
+            52.4703668
+          ],
+          [
+            4.8149542,
+            52.4686794
+          ]
+        ]
+      },
+      "sourceURL": "https://www.openstreetmap.org/way/482831183",
+      "waterwayType": "canal"
+    },
+    {
+      "id": "osm:way:497435500",
+      "kind": "waterway",
+      "name": "Watering",
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            4.8052944,
+            52.4757344
+          ],
+          [
+            4.8055884,
+            52.4758687
+          ],
+          [
+            4.8059803,
+            52.4759832
+          ],
+          [
+            4.8075465,
+            52.4763683
+          ],
+          [
+            4.8086314,
+            52.4766326
+          ],
+          [
+            4.8099383,
+            52.4769531
+          ],
+          [
+            4.8100514,
+            52.4769913
+          ]
+        ]
+      },
+      "sourceURL": "https://www.openstreetmap.org/way/497435500",
+      "waterwayType": "canal"
+    },
+    {
+      "id": "osm:way:497435508",
+      "kind": "waterway",
+      "name": "canal",
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            4.8046517,
+            52.4756838
+          ],
+          [
+            4.8048632,
+            52.4756901
+          ],
+          [
+            4.8052804,
+            52.4757326
+          ],
+          [
+            4.8052944,
+            52.4757344
+          ]
+        ]
+      },
+      "sourceURL": "https://www.openstreetmap.org/way/497435508",
+      "waterwayType": "canal"
+    },
+    {
+      "id": "osm:way:758253256",
+      "kind": "waterway",
+      "name": "canal",
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            4.7858046,
+            52.4717719
+          ],
+          [
+            4.7863694,
+            52.470733
+          ],
+          [
+            4.7867675,
+            52.4703857
+          ],
+          [
+            4.7878851,
+            52.4699737
+          ],
+          [
+            4.7879688,
+            52.4699566
+          ],
+          [
+            4.7880631,
+            52.4699652
+          ],
+          [
+            4.7891672,
+            52.47015
+          ],
+          [
+            4.7903611,
+            52.4703331
+          ],
+          [
+            4.791847,
+            52.4705801
+          ],
+          [
+            4.7928754,
+            52.4707825
+          ],
+          [
+            4.7930067,
+            52.4707918
+          ],
+          [
+            4.793141,
+            52.4707938
+          ],
+          [
+            4.7937316,
+            52.4707625
+          ],
+          [
+            4.7939072,
+            52.4707647
+          ],
+          [
+            4.7953936,
+            52.4710988
+          ],
+          [
+            4.7968829,
+            52.4714374
+          ],
+          [
+            4.7981924,
+            52.4717011
+          ],
+          [
+            4.7996695,
+            52.4719928
+          ],
+          [
+            4.8023751,
+            52.4724701
+          ],
+          [
+            4.8042983,
+            52.4728015
+          ],
+          [
+            4.8046152,
+            52.4729072
+          ],
+          [
+            4.8048551,
+            52.4729243
+          ],
+          [
+            4.8049253,
+            52.4729342
+          ],
+          [
+            4.8050702,
+            52.4729604
+          ],
+          [
+            4.8051935,
+            52.4729832
+          ],
+          [
+            4.8053665,
+            52.4730102
+          ],
+          [
+            4.8054698,
+            52.4730241
+          ],
+          [
+            4.8055637,
+            52.4730323
+          ],
+          [
+            4.8087099,
+            52.4736188
+          ],
+          [
+            4.8088896,
+            52.4736711
+          ],
+          [
+            4.8088118,
+            52.4741776
+          ],
+          [
+            4.8087314,
+            52.4747641
+          ],
+          [
+            4.8087094,
+            52.4750914
+          ],
+          [
+            4.8088494,
+            52.4763096
+          ],
+          [
+            4.8086885,
+            52.4765612
+          ],
+          [
+            4.8086314,
+            52.4766326
+          ]
+        ]
+      },
+      "sourceURL": "https://www.openstreetmap.org/way/758253256",
+      "waterwayType": "canal"
+    },
+    {
+      "id": "osm:way:837530379",
+      "kind": "waterway",
+      "name": "Zaan",
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            4.7942606,
+            52.5029941
+          ],
+          [
+            4.794443,
+            52.5027513
+          ],
+          [
+            4.7945591,
+            52.5023071
+          ],
+          [
+            4.7947537,
+            52.5004083
+          ],
+          [
+            4.7946752,
+            52.4984804
+          ],
+          [
+            4.7950235,
+            52.4966932
+          ],
+          [
+            4.7950235,
+            52.4958753
+          ],
+          [
+            4.794642,
+            52.4951785
+          ],
+          [
+            4.7917727,
+            52.4924318
+          ],
+          [
+            4.7916234,
+            52.4921693
+          ],
+          [
+            4.7916068,
+            52.4919067
+          ],
+          [
+            4.791839,
+            52.4915936
+          ],
+          [
+            4.7922868,
+            52.4911594
+          ],
+          [
+            4.792801,
+            52.4909574
+          ],
+          [
+            4.7934479,
+            52.4908766
+          ],
+          [
+            4.7961692,
+            52.4913028
+          ],
+          [
+            4.7974037,
+            52.4913382
+          ],
+          [
+            4.7985144,
+            52.4912196
+          ],
+          [
+            4.7987375,
+            52.491177
+          ],
+          [
+            4.7992085,
+            52.4910712
+          ],
+          [
+            4.8021409,
+            52.4896675
+          ],
+          [
+            4.8043079,
+            52.4890386
+          ],
+          [
+            4.8087945,
+            52.4866159
+          ],
+          [
+            4.811334,
+            52.4860283
+          ],
+          [
+            4.8119604,
+            52.4852447
+          ],
+          [
+            4.8124853,
+            52.4831105
+          ],
+          [
+            4.812299,
+            52.481997
+          ],
+          [
+            4.8112155,
+            52.4810999
+          ],
+          [
+            4.8106229,
+            52.4800585
+          ],
+          [
+            4.8107922,
+            52.4788521
+          ],
+          [
+            4.8117885,
+            52.477626
+          ]
+        ]
+      },
+      "sourceURL": "https://www.openstreetmap.org/way/837530379",
+      "waterwayType": "river"
+    },
+    {
+      "id": "osm:way:837530380",
+      "kind": "windmill",
+      "name": "De Ooijevaar",
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [
+              4.8149922,
+              52.4706962
+            ],
+            [
+              4.8150334,
+              52.4706952
+            ],
+            [
+              4.8150857,
+              52.4706925
+            ],
+            [
+              4.8151481,
+              52.4706509
+            ],
+            [
+              4.8151506,
+              52.4705929
+            ],
+            [
+              4.8150865,
+              52.4705549
+            ],
+            [
+              4.8149778,
+              52.470555
+            ],
+            [
+              4.81497,
+              52.4705601
+            ],
+            [
+              4.8149144,
+              52.4705968
+            ],
+            [
+              4.814924,
+              52.470658
+            ],
+            [
+              4.8149922,
+              52.4706962
+            ]
+          ]
+        ]
+      },
+      "sourceURL": "https://www.openstreetmap.org/way/837530380"
+    },
+    {
+      "id": "osm:way:837530397",
+      "kind": "waterway",
+      "name": "canal",
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            4.8169186,
+            52.4732451
+          ],
+          [
+            4.8168635,
+            52.4732286
+          ],
+          [
+            4.8167918,
+            52.4730674
+          ],
+          [
+            4.8166704,
+            52.4728631
+          ],
+          [
+            4.8165406,
+            52.4726864
+          ],
+          [
+            4.8165138,
+            52.4726598
+          ],
+          [
+            4.816286,
+            52.4724338
+          ],
+          [
+            4.8162162,
+            52.4723862
+          ],
+          [
+            4.8159311,
+            52.472209
+          ],
+          [
+            4.8159076,
+            52.4721916
+          ],
+          [
+            4.8158758,
+            52.4721542
+          ]
+        ]
+      },
+      "sourceURL": "https://www.openstreetmap.org/way/837530397",
+      "waterwayType": "canal"
+    },
+    {
+      "id": "osm:way:837530398",
+      "kind": "waterway",
+      "name": "canal",
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            4.8180463,
+            52.4724707
+          ],
+          [
+            4.8174931,
+            52.4724242
+          ],
+          [
+            4.8169998,
+            52.4723836
+          ],
+          [
+            4.8169757,
+            52.4723816
+          ],
+          [
+            4.8166666,
+            52.472356
+          ],
+          [
+            4.8165872,
+            52.4723508
+          ],
+          [
+            4.8165731,
+            52.4723335
+          ],
+          [
+            4.8165731,
+            52.4722825
+          ],
+          [
+            4.816556,
+            52.4722661
+          ],
+          [
+            4.8164979,
+            52.4722584
+          ],
+          [
+            4.8159311,
+            52.472209
+          ]
+        ]
+      },
+      "sourceURL": "https://www.openstreetmap.org/way/837530398",
+      "waterwayType": "canal"
+    },
+    {
+      "id": "osm:way:837530399",
+      "kind": "waterway",
+      "name": "canal",
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            4.8169757,
+            52.4723816
+          ],
+          [
+            4.8169828,
+            52.4722825
+          ],
+          [
+            4.8170196,
+            52.4721513
+          ],
+          [
+            4.8170441,
+            52.4720779
+          ]
+        ]
+      },
+      "sourceURL": "https://www.openstreetmap.org/way/837530399",
+      "waterwayType": "canal"
+    },
+    {
+      "id": "osm:way:837530402",
+      "kind": "waterway",
+      "name": "canal",
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            4.8165911,
+            52.4726655
+          ],
+          [
+            4.8165138,
+            52.4726598
+          ]
+        ]
+      },
+      "sourceURL": "https://www.openstreetmap.org/way/837530402",
+      "waterwayType": "canal"
+    },
+    {
+      "id": "osm:way:837530403",
+      "kind": "waterway",
+      "name": "canal",
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            4.8187373,
+            52.4726054
+          ],
+          [
+            4.818518,
+            52.4726089
+          ],
+          [
+            4.8183696,
+            52.4726038
+          ],
+          [
+            4.8178792,
+            52.47255
+          ],
+          [
+            4.8172367,
+            52.472484
+          ],
+          [
+            4.8162162,
+            52.4723862
+          ]
+        ]
+      },
+      "sourceURL": "https://www.openstreetmap.org/way/837530403",
+      "waterwayType": "canal"
+    },
+    {
+      "id": "osm:way:837552408",
+      "kind": "waterway",
+      "name": "canal",
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            4.8209131,
+            52.4727955
+          ],
+          [
+            4.8208829,
+            52.4728137
+          ],
+          [
+            4.8204203,
+            52.4727449
+          ],
+          [
+            4.8202893,
+            52.4727251
+          ],
+          [
+            4.8198042,
+            52.4726689
+          ]
+        ]
+      },
+      "sourceURL": "https://www.openstreetmap.org/way/837552408",
+      "waterwayType": "canal"
+    },
+    {
+      "id": "osm:way:837552409",
+      "kind": "waterway",
+      "name": "canal",
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            4.8200108,
+            52.4735121
+          ],
+          [
+            4.8201493,
+            52.4733324
+          ],
+          [
+            4.8202031,
+            52.4732307
+          ],
+          [
+            4.820242,
+            52.4731532
+          ],
+          [
+            4.8204203,
+            52.4727449
+          ]
+        ]
+      },
+      "sourceURL": "https://www.openstreetmap.org/way/837552409",
+      "waterwayType": "canal"
+    },
+    {
+      "id": "osm:way:837624418",
+      "kind": "windmill",
+      "name": "De Zoeker",
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [
+              4.8175217,
+              52.4760874
+            ],
+            [
+              4.817449,
+              52.4760526
+            ],
+            [
+              4.8174239,
+              52.4759938
+            ],
+            [
+              4.8174788,
+              52.4759408
+            ],
+            [
+              4.8175959,
+              52.4759274
+            ],
+            [
+              4.8176701,
+              52.4759592
+            ],
+            [
+              4.8176886,
+              52.4760308
+            ],
+            [
+              4.8176338,
+              52.4760802
+            ],
+            [
+              4.8175217,
+              52.4760874
+            ]
+          ]
+        ]
+      },
+      "sourceURL": "https://www.openstreetmap.org/way/837624418"
+    },
+    {
+      "id": "osm:way:837941450",
+      "kind": "windmill",
+      "name": "Oliemolen De Bonte Hen",
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [
+              4.8131952,
+              52.4781031
+            ],
+            [
+              4.8131558,
+              52.4780497
+            ],
+            [
+              4.813203,
+              52.477985
+            ],
+            [
+              4.8132922,
+              52.4779665
+            ],
+            [
+              4.8133892,
+              52.4779924
+            ],
+            [
+              4.8134255,
+              52.4780491
+            ],
+            [
+              4.8133834,
+              52.4781065
+            ],
+            [
+              4.8132882,
+              52.4781279
+            ],
+            [
+              4.8132474,
+              52.478117
+            ],
+            [
+              4.8131952,
+              52.4781031
+            ]
+          ]
+        ]
+      },
+      "sourceURL": "https://www.openstreetmap.org/way/837941450"
+    },
+    {
+      "id": "osm:way:879770805",
+      "kind": "waterway",
+      "name": "Zaan",
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            4.8136259,
+            52.4717492
+          ],
+          [
+            4.8134503,
+            52.4714819
+          ],
+          [
+            4.8133106,
+            52.4712692
+          ],
+          [
+            4.8133126,
+            52.4703027
+          ],
+          [
+            4.8140027,
+            52.4693153
+          ],
+          [
+            4.8149542,
+            52.4686794
+          ]
+        ]
+      },
+      "sourceURL": "https://www.openstreetmap.org/way/879770805",
+      "waterwayType": "river"
+    },
+    {
+      "id": "osm:way:879770807",
+      "kind": "waterway",
+      "name": "Zaan",
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            4.8117885,
+            52.477626
+          ],
+          [
+            4.8136873,
+            52.4764392
+          ],
+          [
+            4.8153973,
+            52.4759132
+          ],
+          [
+            4.8162946,
+            52.4753048
+          ],
+          [
+            4.8165147,
+            52.474748
+          ],
+          [
+            4.8162607,
+            52.4741498
+          ]
+        ]
+      },
+      "sourceURL": "https://www.openstreetmap.org/way/879770807",
+      "waterwayType": "river"
+    },
+    {
+      "id": "osm:way:879770808",
+      "kind": "waterway",
+      "name": "Watering",
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            4.8103406,
+            52.4770868
+          ],
+          [
+            4.8117885,
+            52.477626
+          ]
+        ]
+      },
+      "sourceURL": "https://www.openstreetmap.org/way/879770808",
+      "waterwayType": "canal"
+    },
+    {
+      "id": "osm:way:879770809",
+      "kind": "waterway",
+      "name": "Watering",
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            4.8100514,
+            52.4769913
+          ],
+          [
+            4.8103406,
+            52.4770868
+          ]
+        ]
+      },
+      "sourceURL": "https://www.openstreetmap.org/way/879770809",
+      "waterwayType": "canal"
+    },
+    {
+      "id": "osm:way:887848567",
+      "kind": "waterway",
+      "name": "Zaan",
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            4.8162607,
+            52.4741498
+          ],
+          [
+            4.8154868,
+            52.4734926
+          ],
+          [
+            4.8138677,
+            52.4721175
+          ],
+          [
+            4.8136259,
+            52.4717492
+          ]
+        ]
+      },
+      "sourceURL": "https://www.openstreetmap.org/way/887848567",
+      "waterwayType": "river"
+    }
+  ]
+}

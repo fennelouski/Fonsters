@@ -113,7 +113,9 @@ struct LobbyCameraMotion {
         if simd_length(rotation) > 1 { rotation = simd_normalize(rotation) }
         let boost: Float = fast ? 3 : 1
         let blend = 1 - exp(-dt * (keys.isEmpty ? 18 : 10))
-        translation += (direction * 2.4 * boost - translation) * blend
+        // Explore large neighborhoods faster; elevation and rotation retain their rates.
+        let velocity = direction * SIMD3<Float>(12, 2.4, 12) * boost
+        translation += (velocity - translation) * blend
         turn += (rotation * 0.85 * boost - turn) * blend
         zoom += ((on("-") - max(on("+"), on("="))) * 0.7 * boost - zoom) * blend
         if keys.isEmpty && !active { reset() }
