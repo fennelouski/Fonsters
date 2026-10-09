@@ -19,7 +19,7 @@ import ScreenCaptureKit
         }
         let available = try await SCShareableContent.excludingDesktopWindows(true, onScreenWindowsOnly: true)
         guard let window = available.windows.filter({
-            $0.owningApplication?.processID == app.processIdentifier && $0.frame.width > 600 && $0.frame.height > 400
+            $0.owningApplication?.processID == app.processIdentifier && $0.frame.width >= 320 && $0.frame.height >= 300
         }).max(by: { $0.frame.width * $0.frame.height < $1.frame.width * $1.frame.height }) else {
             throw NSError(domain: "FonstersCapture", code: 3, userInfo: [NSLocalizedDescriptionKey: "The preview window is not visible."])
         }

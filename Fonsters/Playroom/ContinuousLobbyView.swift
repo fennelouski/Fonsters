@@ -38,6 +38,8 @@ struct ContinuousLobbyView: View {
     @State private var personalityGuide = false
     @State private var buttonDiscovery = FonsterButtonDiscovery()
     @State private var privacy = false
+    @State private var panelPrivacy = false
+    @State private var panelGallery = false
     @State private var lesson: CreatureImitationLesson?
     @State private var learnedUndo: CreatureMovementStyle?
     @State private var canUndoLearning = false
@@ -61,7 +63,7 @@ struct ContinuousLobbyView: View {
     private var library: [Fonster] { PersonalFonsterLibrary.canonical(saved) }
     private var roster: [LocalLobbyController.SavedAppearance] { library.map { .init(id: $0.id, name: $0.name, seed: $0.seed, biography: $0.biography) } }
     private var blocked: Bool { !lobby.ready || lobby.paused || lobby.backgrounded || lobby.lowPower || lobby.reviewingControls }
-    private var reviewing: Bool { gallery || sharing || agents || profiles || editor != nil || senseEducation != nil || panelEducation != nil || panelInputGate.challenge != nil || needsWelcome || launching || explorationGuide || personalityGuide || privacy || parentGate.challenge != nil || inputParentGate.challenge != nil }
+    private var reviewing: Bool { panelPrivacy || panelGallery || gallery || sharing || agents || profiles || editor != nil || senseEducation != nil || panelEducation != nil || panelInputGate.challenge != nil || needsWelcome || launching || explorationGuide || personalityGuide || privacy || parentGate.challenge != nil || inputParentGate.challenge != nil }
     private var inputsSuspended: Bool { blocked || !lobby.inCare || typing || searchFocused }
 
     var body: some View {
@@ -77,6 +79,9 @@ struct ContinuousLobbyView: View {
         ZStack {
             (lobby.danceMode == .daylight ? Color(red: 0.91, green: 0.94, blue: 0.87) : Color(red: 0.075, green: 0.07, blue: 0.14)).ignoresSafeArea()
             LobbyStageView(lobby: lobby).id(lobby.roomRevision).ignoresSafeArea()
+                .onGeometryChange(for: CGRect.self) { $0.frame(in: .global) } action: { frame in
+                    lobby.careViewportFrame = frame; lobby.updateCamera()
+                }
                 .accessibilityIdentifier("continuousStage")
             hud
             if explorationGuide {
@@ -173,17 +178,7 @@ struct ContinuousLobbyView: View {
                 .phoneOrientation(.details)
                 #endif
         }
-        .sheet(isPresented: $gallery) {
-            VStack(spacing: 0) {
-                HStack { Spacer(); FonsterIconButton(title: "Back to lobby", symbol: "xmark") { gallery = false } }.padding(12)
-                ParentOnlyArea(purpose: "Review original seed links, imports and portrait exports before sharing outside Fonsters.") {
-                    ContentView(initialSelectionID: lobby.inCare ? lobby.selectedSavedID : nil)
-                }
-            }
-            #if os(macOS)
-            .frame(minWidth: 800, minHeight: 600)
-            #endif
-        }
+        .sheet(isPresented: $gallery) { portraitGallery }
         .sheet(isPresented: $sharing) {
             LobbyVisitShare(lobby: lobby)
                 #if os(iOS)
@@ -199,9 +194,20 @@ struct ContinuousLobbyView: View {
         .sheet(isPresented: $profiles) { FonsterSocialStudio(lobby: lobby) }
         #endif
         #if os(macOS)
-        .task { await verifyCameraKeyboardIfRequested() }
+        .task { await resizeCarePreviewIfRequested(); await verifyCameraKeyboardIfRequested() }
         #endif
         .onDisappear { stopLiveActivity(); lobby.backgrounded = true; lobby.cancelContact(); lobby.refreshGates(); interpreter.cancel() }
+    }
+    private var portraitGallery: some View {
+        VStack(spacing: 0) {
+            HStack { Spacer(); FonsterIconButton(title: "Back to lobby", symbol: "xmark") { gallery = false; panelGallery = false } }.padding(12)
+            ParentOnlyArea(purpose: "Review original seed links, imports and portrait exports before sharing outside Fonsters.") {
+                ContentView(initialSelectionID: lobby.inCare ? lobby.selectedSavedID : nil)
+            }
+        }
+        #if os(macOS)
+        .frame(minWidth: 800, minHeight: 600)
+        #endif
     }
     private func openPersonalLibrary() async {
         do {
@@ -213,6 +219,20 @@ struct ContinuousLobbyView: View {
     }
 
     #if os(macOS)
+    /// Verification changes only this app's preview window, never device orientation.
+    private func resizeCarePreviewIfRequested() async {
+        let args = ProcessInfo.processInfo.arguments
+        guard args.contains("--verify-manual"), let index = args.firstIndex(of: "--care-preview-size"), index + 1 < args.count else { return }
+        let dimensions = args[index + 1].split(separator: "x").compactMap { Double($0) }
+        guard dimensions.count == 2, dimensions.allSatisfy({ $0 >= 320 && $0 <= 1600 }) else { return }
+        for _ in 0..<600 {
+            if lobby.ready, let window = NSApplication.shared.windows.first(where: { $0.canBecomeKey && $0.contentView != nil }) {
+                window.setContentSize(NSSize(width: dimensions[0], height: dimensions[1])); return
+            }
+            if Task.isCancelled { return }
+            try? await Task.sleep(for: .milliseconds(50))
+        }
+    }
     private func verifyCameraKeyboardIfRequested() async {
         let args = ProcessInfo.processInfo.arguments
         guard let i = args.firstIndex(of: "--camera-ui-verification-file"), i + 1 < args.count else { return }
@@ -272,79 +292,147 @@ struct ContinuousLobbyView: View {
     }
     #endif
     private var hud: some View {
-        VStack(spacing: 12) {
-            HStack(alignment: .top) {
-                if lobby.inCare {
-                    FonsterIconButton(title: "Back to lobby", symbol: "chevron.left", tone: .world,
-                        detail: "Bring everyone back and resume their previous activities in this same world.") { lobby.returnToLobby() }
-                        .accessibilityIdentifier("backToLobby")
-                } else {
-                    HStack(spacing: 10) {
-                    FonsterIconButton(title: "Create a Fonster", symbol: "plus", tone: .company, detail: "Choose a fuzzy appearance and a name. Save adds it to your library; X cancels.") { editor = .init(record: nil) }
-                        .accessibilityIdentifier("createFonster")
-                    FonsterControlPanel(title: "Lobby", symbol: "person.3", tone: .company) {
-                        companionChoices
-                        FonsterControlGroup(title: "Library and company", tone: .company) {
-                            FonsterIconButton(title: "Original portrait gallery and exports", symbol: "square.grid.2x2") { gallery = true }
-                            FonsterIconButton(title: "Play together", symbol: "tennisball", tone: .play) { lobby.playTogether() }.disabled(blocked)
-                            #if os(macOS)
-                            if ProtectedPlayPolicy.allowsPublicSocialProfiles {
-                                FonsterIconButton(title: "Local profiles", symbol: "sparkles.rectangle.stack", tone: .company) { profiles = true }
+        GeometryReader { geometry in
+            let compact = geometry.size.width < 600 && geometry.size.height >= 500
+            VStack(spacing: 12) {
+                HStack(alignment: .top) {
+                    if lobby.inCare {
+                        FonsterIconButton(title: "Back to lobby", symbol: "chevron.left", tone: .world,
+                            detail: "Bring everyone back and resume their previous activities in this same world.") { lobby.returnToLobby() }
+                            .accessibilityIdentifier("backToLobby")
+                    } else {
+                        HStack(spacing: 10) {
+                        FonsterIconButton(title: "Create a Fonster", symbol: "plus", tone: .company, detail: "Choose a fuzzy appearance and a name. Save adds it to your library; X cancels.") { editor = .init(record: nil) }
+                            .accessibilityIdentifier("createFonster")
+                        FonsterControlPanel(title: "Lobby", symbol: "person.3", tone: .company) {
+                            companionChoices
+                            FonsterControlGroup(title: "Library and company", tone: .company) {
+                                FonsterIconButton(title: "Original portrait gallery and exports", symbol: "square.grid.2x2") { gallery = true }
+                                FonsterIconButton(title: "Play together", symbol: "tennisball", tone: .play) { lobby.playTogether() }.disabled(blocked)
+                                #if os(macOS)
+                                if ProtectedPlayPolicy.allowsPublicSocialProfiles {
+                                    FonsterIconButton(title: "Local profiles", symbol: "sparkles.rectangle.stack", tone: .company) { profiles = true }
+                                }
+                                #endif
                             }
-                            #endif
+                            if let libraryError {
+                                Text(libraryError).font(.callout)
+                                FonsterIconButton(title: "Retry iCloud library", symbol: "arrow.clockwise") { Task { await openPersonalLibrary() } }
+                            }
                         }
-                        if let libraryError {
-                            Text(libraryError).font(.callout)
-                            FonsterIconButton(title: "Retry iCloud library", symbol: "arrow.clockwise") { Task { await openPersonalLibrary() } }
                         }
                     }
-                    }
+                    Spacer(minLength: 8)
+                    if lobby.inCare {
+                        FonsterIconButton(title: "Share Fonster", symbol: "square.and.arrow.up", tone: .company,
+                            detail: "A grown-up reviews the snapshot before sharing. Recipients can keep a copy.") {
+                            parentGate.request("Review this Fonster snapshot before sharing. Feelings and source references are optional. Typed drafts and backstory stay private; recipients can keep a copy.") { sharing = true }
+                        }
+                            .accessibilityIdentifier("shareFonster")
+                    } else { searchControl }
                 }
-                Spacer(minLength: 8)
                 if lobby.inCare {
-                    FonsterIconButton(title: "Share Fonster", symbol: "square.and.arrow.up", tone: .company,
-                        detail: "A grown-up reviews the snapshot before sharing. Recipients can keep a copy.") {
-                        parentGate.request("Review this Fonster snapshot before sharing. Feelings and source references are optional. Typed drafts and backstory stay private; recipients can keep a copy.") { sharing = true }
+                    HStack(alignment: .center) {
+                        if !compact { careRail }
+                        Color.clear.frame(maxWidth: .infinity, maxHeight: .infinity)
+                            .allowsHitTesting(false)
+                            .onGeometryChange(for: CGRect.self) { $0.frame(in: .global) } action: { frame in
+                                lobby.careClearFrame = frame; lobby.updateCamera()
+                            }
+                            .accessibilityElement().accessibilityLabel("Unobstructed Fonster area")
+                            .accessibilityIdentifier("careClearArea")
+                        if !compact { reactions }
+                    }.frame(maxHeight: .infinity)
+                    careNameTag
+                    if compact {
+                        HStack(spacing: 12) {
+                            reaction(.greet, "hand.wave", .company)
+                            reaction(.play, "sparkles", .play)
+                            reaction(.rest, "moon", .quiet)
+                            moreInteractions
+                        }.padding(6).background(.regularMaterial, in: RoundedRectangle(cornerRadius: 22))
                     }
-                        .accessibilityIdentifier("shareFonster")
-                } else { searchControl }
-            }
-            HStack {
-                if lobby.inCare { aspects.transition(.scale(scale: 0.94, anchor: .topLeading).combined(with: .opacity).combined(with: .offset(y: 12))) }
-                Spacer(minLength: 0)
-                if lobby.inCare { reactions.transition(.scale(scale: 0.94, anchor: .topTrailing).combined(with: .opacity).combined(with: .offset(y: 12))) }
-            }
-            Spacer(minLength: 0)
-            if command {
-                CreatureCommandBar(interpreter: interpreter, selected: lobby.selectedMember.name, names: lobby.names, revision: lobby.userRevision,
-                    enabled: !blocked, currentRevision: { lobby.userRevision }, apply: { lobby.execute($0) },
-                    onFocusChange: { typing = $0; if $0 { lobby.clearCameraKeys(); lobby.takeOwnerControl() } })
-            }
-            HStack(alignment: .bottom) {
-                FonsterIconButton(title: "Privacy and family", symbol: "hand.raised", tone: .quiet,
-                    detail: "Read the privacy policy for this protected play experience. No account is needed.") { privacy = true }
-                    .accessibilityIdentifier("familyPrivacyButton")
-                FonsterControlPanel(title: "World and camera", symbol: "rotate.3d", tone: .world) { cameraControls }
-                FonsterControlPanel(title: "Dance world", symbol: "music.note", tone: .play) { danceControls }
-                Spacer(minLength: 4)
-                if lobby.inCare {
-                    Text(lobby.selectedMember.name).font(.headline).padding(.horizontal, 14).padding(.vertical, 10)
-                        .background(.regularMaterial, in: Capsule()).accessibilityIdentifier("careName")
-                } else if !query.isEmpty {
-                    Image(systemName: lobby.searchMatches.isEmpty ? "questionmark.circle" : "scope")
-                        .foregroundStyle(FonsterTone.company.ink).padding(12).background(.regularMaterial, in: Circle())
-                        .accessibilityLabel(lobby.searchMatches.isEmpty ? "No matching Fonsters" : "Front match: " + lobby.names[lobby.searchMatches[0]])
-                        .accessibilityValue(lobby.searchMatches.map { lobby.names[$0] }.joined(separator: ", "))
-                        .accessibilityIdentifier("searchResults")
+                } else { Spacer(minLength: 0) }
+                if command {
+                    CreatureCommandBar(interpreter: interpreter, selected: lobby.selectedMember.name, names: lobby.names, revision: lobby.userRevision,
+                        enabled: !blocked, currentRevision: { lobby.userRevision }, apply: { lobby.execute($0) },
+                        onFocusChange: { typing = $0; if $0 { lobby.clearCameraKeys(); lobby.takeOwnerControl() } })
                 }
-                Spacer(minLength: 4)
-                FonsterIconButton(title: "Undo last control change", symbol: "arrow.uturn.backward") { if let state = history.undo() { lobby.restoreControls(state) } }
-                    .disabled(!history.canUndo).accessibilityIdentifier("undoLobbyControls")
-                FonsterIconButton(title: lobby.paused ? "Resume" : "Pause", symbol: lobby.paused ? "play.fill" : "pause.fill", selected: lobby.paused) { lobby.takeOwnerControl(); lobby.paused.toggle() }
-                    .accessibilityIdentifier("pauseLobby")
-            }
-        }.padding(16)
-        .animation(reduceMotion || lobby.still ? nil : .spring(response: 0.5, dampingFraction: 0.82), value: lobby.inCare)
+                HStack(alignment: .bottom, spacing: 8) {
+                    if lobby.inCare && compact {
+                        carePanel
+                        liveSenseButtons(horizontal: true)
+                    } else { privacyButton }
+                    FonsterControlPanel(title: "World and camera", symbol: "rotate.3d", tone: .world) {
+                        cameraControls
+                        if lobby.inCare && compact {
+                            FonsterControlPanel(title: "Dance world", symbol: "music.note", tone: .play) { danceControls }
+                            FonsterIconButton(title: "Privacy and family", symbol: "hand.raised", tone: .quiet) { panelPrivacy = true }
+                                .accessibilityIdentifier("familyPrivacyButton")
+                                .sheet(isPresented: $panelPrivacy) { FamilyPrivacyView() }
+                        }
+                    }
+                    if !lobby.inCare || !compact {
+                        FonsterControlPanel(title: "Dance world", symbol: "music.note", tone: .play) { danceControls }
+                        Spacer(minLength: 4)
+                    }
+                    if !lobby.inCare && !query.isEmpty {
+                        Image(systemName: lobby.searchMatches.isEmpty ? "questionmark.circle" : "scope")
+                            .foregroundStyle(FonsterTone.company.ink).padding(12).background(.regularMaterial, in: Circle())
+                            .accessibilityLabel(lobby.searchMatches.isEmpty ? "No matching Fonsters" : "Front match: " + lobby.names[lobby.searchMatches[0]])
+                            .accessibilityValue(lobby.searchMatches.map { lobby.names[$0] }.joined(separator: ", "))
+                            .accessibilityIdentifier("searchResults")
+                    }
+                    if !lobby.inCare || !compact { Spacer(minLength: 4) }
+                    FonsterIconButton(title: "Undo last control change", symbol: "arrow.uturn.backward") { if let state = history.undo() { lobby.restoreControls(state) } }
+                        .disabled(!history.canUndo).accessibilityIdentifier("undoLobbyControls")
+                    FonsterIconButton(title: lobby.paused ? "Resume" : "Pause", symbol: lobby.paused ? "play.fill" : "pause.fill", selected: lobby.paused) { lobby.takeOwnerControl(); lobby.paused.toggle() }
+                        .accessibilityIdentifier("pauseLobby")
+                }.padding(lobby.inCare && compact ? 6 : 0)
+                    .background { if lobby.inCare && compact { RoundedRectangle(cornerRadius: 22).fill(.regularMaterial) } }
+            }.padding(16)
+            .animation(reduceMotion || lobby.still ? nil : .spring(response: 0.5, dampingFraction: 0.82), value: lobby.inCare)
+        }
+    }
+
+    private var privacyButton: some View {
+        FonsterIconButton(title: "Privacy and family", symbol: "hand.raised", tone: .quiet,
+            detail: "Read the privacy policy for this protected play experience. No account is needed.") { privacy = true }
+            .accessibilityIdentifier("familyPrivacyButton")
+    }
+    private var carePanel: some View {
+        FonsterControlPanel(title: "Care", symbol: "slider.horizontal.3", tone: .company) { aspects }
+    }
+    private var careRail: some View {
+        VStack(spacing: 10) {
+            LobbyPortrait(appearance: lobby.selectedMember.descriptor).frame(width: 48, height: 48)
+                .accessibilityElement().accessibilityLabel("Original portrait of " + lobby.selectedMember.name)
+            carePanel
+            liveSenseButtons(horizontal: false)
+        }.padding(6).background(.regularMaterial, in: RoundedRectangle(cornerRadius: 22))
+    }
+    private var careNameTag: some View {
+        Group {
+            if let id = lobby.selectedSavedID, let record = library.first(where: { $0.id == id }) {
+                Button { editor = .init(record: record) } label: { nameTagContents }
+                    .buttonStyle(.plain)
+                    .fonsterHoverHelp("Edit name, backstory and interests")
+                    .accessibilityLabel("Name and backstory").accessibilityValue(lobby.selectedMember.name)
+                    .accessibilityHint("Edit this Fonster’s name and private interests")
+                    .accessibilityIdentifier("editFonsterProfile")
+            } else { nameTagContents }
+        }
+    }
+    private var nameTagContents: some View {
+        VStack(spacing: 3) {
+            Capsule().fill(FonsterTone.company.ink.opacity(0.45)).frame(width: 16, height: 3).accessibilityHidden(true)
+            Text(lobby.selectedMember.name).font(.headline).foregroundStyle(FonsterChrome.primary)
+                .multilineTextAlignment(.center).lineLimit(2).accessibilityIdentifier("careName")
+        }.padding(.horizontal, 20).padding(.vertical, 10).frame(maxWidth: 240).fixedSize(horizontal: true, vertical: false).frame(minHeight: 44)
+            .background(FonsterChrome.surface, in: RoundedRectangle(cornerRadius: 12))
+            .overlay(RoundedRectangle(cornerRadius: 12).stroke(FonsterTone.company.ink.opacity(0.35), lineWidth: 1))
+            .shadow(color: .black.opacity(0.12), radius: 4, y: 2)
+            .rotationEffect(.degrees(reduceMotion || lobby.still ? 0 : -2))
     }
 
     private var searchControl: some View {
@@ -386,13 +474,8 @@ struct ContinuousLobbyView: View {
             LobbyPortrait(appearance: lobby.selectedMember.descriptor).frame(width: 48, height: 48)
                 .padding(6).background(FonsterTone.company.wash, in: RoundedRectangle(cornerRadius: 14))
                 .accessibilityElement().accessibilityLabel("Original portrait of " + lobby.selectedMember.name)
-            liveSenseButtons
             FonsterControlPanel(title: "Mirror and voice", symbol: inputs.cameraEnabled || inputs.microphoneEnabled ? "person.crop.circle.badge.checkmark" : "hand.draw", tone: .company) { liveControls }
-            if let id = lobby.selectedSavedID, let record = library.first(where: { $0.id == id }) {
-                FonsterIconButton(title: "Name and backstory", symbol: "book.closed", tone: .company,
-                    detail: "Name this Fonster and choose its backstory, likes, dislikes and favorites. Save keeps your changes; X leaves them as they were.") { editor = .init(record: record) }
-                    .accessibilityIdentifier("editFonsterProfile")
-            } else {
+            if lobby.selectedSavedID == nil {
                 FonsterControlPanel(title: "Shared interests", symbol: "heart", tone: .company) {
                     FonsterRecipientInterests(selections: lobby.selectedBiography.interests ?? [])
                 }
@@ -408,7 +491,8 @@ struct ContinuousLobbyView: View {
                     HStack { Image(systemName: "heart.fill").foregroundStyle(FonsterTone.company.ink); ProgressView(value: personality.greetingWarmth).tint(FonsterTone.company.ink); FonsterInfo(title: "Greeting warmth", detail: personality.naturalQuirk) }.accessibilityLabel("Greeting warmth").accessibilityValue("\(Int(personality.greetingWarmth * 100)) percent")
                     HStack { Image(systemName: "tennisball.fill").foregroundStyle(FonsterTone.play.ink); ProgressView(value: personality.playEnergy).tint(FonsterTone.play.ink); FonsterInfo(title: "Shared rituals", detail: personality.observations(name: lobby.selectedMember.name).joined(separator: "\n")) }.accessibilityLabel("Play energy").accessibilityValue("\(Int(personality.playEnergy * 100)) percent")
                 } }
-                FonsterIconButton(title: "Original portrait gallery and exports", symbol: "square.grid.2x2") { gallery = true }
+                FonsterIconButton(title: "Original portrait gallery and exports", symbol: "square.grid.2x2") { panelGallery = true }
+                    .sheet(isPresented: $panelGallery) { portraitGallery }
             }
             FonsterControlPanel(title: "Feelings", symbol: lobby.selectedMember.controller.feeling.symbol, tone: .company) {
                 FonsterControlGroup(title: "Chosen feeling", tone: .company) {
@@ -430,7 +514,7 @@ struct ContinuousLobbyView: View {
             }
             }
             #endif
-            FonsterInfo(title: "Care aspects", detail: "The book opens name, backstory and favorites. The portrait opens appearance and learned personality. The feeling icon changes the emotion you choose. Your backstory stays private unless you include it when sharing.")
+            FonsterInfo(title: "Care aspects", detail: "Tap your Fonster’s name tag to edit its name, backstory and favorites. The portrait opens appearance and learned personality. The feeling icon changes the emotion you choose. Your backstory stays private unless you include it when sharing.")
         }.padding(6).background(.regularMaterial, in: RoundedRectangle(cornerRadius: 22))
     }
     private var reactions: some View {
@@ -438,7 +522,12 @@ struct ContinuousLobbyView: View {
             reaction(.greet, "hand.wave", .company)
             reaction(.play, "sparkles", .play)
             reaction(.rest, "moon", .quiet)
-            FonsterControlPanel(title: "More interactions", symbol: "ellipsis", tone: .play) {
+            moreInteractions
+            FonsterInfo(title: "Interact with your Fonster", detail: "Wave, play or rest. Stroke the face, belly or paws for different responses. More opens other reactions, typed requests and Stop. A new action interrupts the current one. Back brings companions into the lobby again.")
+        }.padding(6).background(.regularMaterial, in: RoundedRectangle(cornerRadius: 22))
+    }
+    private var moreInteractions: some View {
+        FonsterControlPanel(title: "More interactions", symbol: "ellipsis", tone: .play) {
                 FonsterControlGroup(title: "Reactions", tone: .play) {
                     LazyVGrid(columns: [GridItem(.adaptive(minimum: 48))], spacing: 12) {
                         reaction(.hop, "arrow.up", .play); reaction(.highFive, "hand.raised", .company)
@@ -451,8 +540,6 @@ struct ContinuousLobbyView: View {
                     FonsterIconButton(title: "Stop activity", symbol: "stop.fill") { lobby.stopActivity() }
                 }
             }
-            FonsterInfo(title: "Interact with your Fonster", detail: "Wave, play or rest. Stroke the face, belly or paws for different responses. More opens other reactions, typed requests and Stop. A new action interrupts the current one. Back brings companions into the lobby again.")
-        }.padding(6).background(.regularMaterial, in: RoundedRectangle(cornerRadius: 22))
     }
     private func reaction(_ action: PlayroomController.Reaction, _ symbol: String, _ tone: FonsterTone) -> some View {
         FonsterIconButton(title: action.rawValue.capitalized, symbol: symbol, tone: tone, detail: "Starts this reaction now. Another reaction replaces it; Stop activity ends it.") { stopLiveActivity(); lobby.perform(action) }
@@ -513,8 +600,9 @@ struct ContinuousLobbyView: View {
             else { inputs.toggleMicrophone(parentApproved: true) }
         }
     }
-    private var liveSenseButtons: some View {
-        VStack(spacing: 10) {
+    private func liveSenseButtons(horizontal: Bool) -> some View {
+        let layout = horizontal ? AnyLayout(HStackLayout(spacing: 8)) : AnyLayout(VStackLayout(spacing: 10))
+        return layout {
             if !inputs.cameraDenied { FonsterIconButton(title: inputs.cameraEnabled ? "Turn camera off" : "Mirror me", symbol: inputs.cameraEnabled ? "video.fill" : "video", tone: .company, selected: inputs.cameraEnabled) { if inputs.cameraEnabled { inputs.toggleCamera() } else { senseEducation = .camera } }.accessibilityIdentifier("careCamera") }
             if !inputs.microphoneDenied { FonsterIconButton(title: inputs.microphoneEnabled ? "Turn microphone off" : "Talk to my Fonster", symbol: inputs.microphoneEnabled ? "mic.fill" : "mic", tone: .company, selected: inputs.microphoneEnabled) { if inputs.microphoneEnabled { inputs.toggleMicrophone() } else { senseEducation = .microphone } }.accessibilityIdentifier("careMicrophone") }
         }.disabled(blocked || lobby.selectedMember.isVisitor)

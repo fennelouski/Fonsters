@@ -69,11 +69,25 @@ final class ProtectedPlayTests: XCTestCase {
         XCTAssertTrue(app.buttons["Fonster portrait"].firstMatch.waitForExistence(timeout: 10))
         attach(app, "protected-06-legacy-gallery")
     }
+    @MainActor func testCompactSecondaryPanelsPresentPrivacyAndGallery() {
+        let app = launch()
+        app.buttons["searchFonsters"].tap(); app.textFields["lobbySearchField"].typeText("moss\n")
+        waitShape(app, landscape: false)
+        app.buttons["panel_World and camera"].tap()
+        app.buttons["familyPrivacyButton"].tap()
+        XCTAssertTrue(app.buttons["closeFamilyPrivacy"].waitForExistence(timeout: 5))
+        app.buttons["closeFamilyPrivacy"].tap(); closeCareControlPanels(in: app)
+        openCareControlPanel("Appearance and personality", in: app)
+        app.buttons["Original portrait gallery and exports"].tap()
+        XCTAssertTrue(app.textFields["parentAnswer"].waitForExistence(timeout: 5))
+        app.buttons["cancelParentAction"].tap(); closeCareControlPanels(in: app)
+        XCTAssertTrue(app.buttons["careCamera"].isHittable)
+    }
     @MainActor func testInputGateUsesFixturesWithoutHardwarePermission() {
         let app = launch()
         app.buttons["searchFonsters"].tap(); app.textFields["lobbySearchField"].typeText("moss\n")
         waitShape(app, landscape: false)
-        app.buttons["panel_Mirror and voice"].tap(); app.buttons["liveMicrophone"].tap()
+        openCareControlPanel("Mirror and voice", in: app); app.buttons["liveMicrophone"].tap()
         XCTAssertTrue(app.buttons["senseEducationContinue"].waitForExistence(timeout: 5)); app.buttons["senseEducationContinue"].tap()
         XCTAssertTrue(app.textFields["parentAnswer"].waitForExistence(timeout: 5))
         app.buttons["cancelParentAction"].tap()

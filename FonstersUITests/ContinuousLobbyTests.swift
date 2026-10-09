@@ -3,11 +3,52 @@ import UIKit
 
 final class ContinuousLobbyTests: XCTestCase {
     override func setUpWithError() throws { continueAfterFailure = false }
-    @MainActor private func launch(still: Bool = false) -> XCUIApplication {
+    @MainActor private func launch(still: Bool = false, largeText: Bool = false) -> XCUIApplication {
         let app = XCUIApplication()
         app.launchArguments = ["--prototype", "--verify-manual", "--world-members", "6", "--verify-command-fallback", "--personality-file", "/tmp/continuous-lobby-\(UUID().uuidString).json"]
         if still { app.launchArguments.append("--verify-reduce-motion") }
+        if largeText { app.launchArguments += ["-UIPreferredContentSizeCategoryName", "UICTContentSizeCategoryAccessibilityXXXL"] }
         app.launch(); return app
+    }
+    @MainActor func testCompactCareKeepsControlsOutsideCreatureArea() throws {
+        try verifyCompactCare(largeText: false)
+    }
+    @MainActor func testCompactCareAtAccessibilityTextSize() throws {
+        try verifyCompactCare(largeText: true)
+    }
+    @MainActor private func verifyCompactCare(largeText: Bool) throws {
+        let app = launch(still: true, largeText: largeText)
+        XCTAssertTrue(app.buttons["searchFonsters"].waitForExistence(timeout: 30))
+        app.buttons["searchFonsters"].tap()
+        app.textFields["lobbySearchField"].typeText("moss\n")
+        waitEnabled(app.buttons["care_greet"])
+        let clear = app.otherElements["careClearArea"]
+        XCTAssertTrue(clear.waitForExistence(timeout: 5))
+        let settled = XCTNSPredicateExpectation(predicate: NSPredicate { _, _ in
+            let frame = clear.frame
+            return frame.height > app.windows.firstMatch.frame.height * 0.4 && frame.width > 250
+        }, object: nil)
+        XCTAssertEqual(XCTWaiter.wait(for: [settled], timeout: 10), .completed)
+        for id in ["backToLobby", "shareFonster", "care_greet", "care_play", "care_rest", "careCamera", "careMicrophone", "panel_Care", "panel_More interactions", "panel_World and camera", "pauseLobby"] {
+            let button = app.buttons[id]
+            XCTAssertTrue(button.isHittable, id)
+            XCTAssertGreaterThanOrEqual(button.frame.width, 44, id)
+            XCTAssertGreaterThanOrEqual(button.frame.height, 44, id)
+            XCTAssertFalse(clear.frame.intersects(button.frame), id)
+        }
+        XCTAssertFalse(clear.frame.intersects(app.staticTexts["careName"].frame))
+        attach(app, largeText ? "adaptive-large-text-care" : "adaptive-portrait-care")
+        openCareControlPanel("Feelings", in: app)
+        XCTAssertTrue(app.buttons["A little low"].waitForExistence(timeout: 5))
+        app.buttons["A little low"].tap()
+        closeCareControlPanels(in: app)
+        XCTAssertTrue(app.buttons["careCamera"].isHittable)
+        app.buttons["panel_More interactions"].tap()
+        XCTAssertTrue(app.buttons["care_hop"].waitForExistence(timeout: 5))
+        app.buttons["care_hop"].tap(); closeCareControlPanels(in: app)
+        app.buttons["backToLobby"].tap()
+        XCTAssertTrue(app.buttons["searchFonsters"].waitForExistence(timeout: 5))
+        attach(app, "adaptive-landscape-lobby")
     }
     @MainActor func testSpatialSearchCareTouchAndReturn() throws {
         let app = launch()
