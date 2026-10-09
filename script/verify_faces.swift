@@ -78,6 +78,28 @@ import simd
 
         let fixture = PlayroomCompanion.fixtures[1]
         let rig = try CreatureRig(fixture.descriptor)
+        let identityEncoder = JSONEncoder(); identityEncoder.outputFormatting = [.sortedKeys]
+        for companion in PlayroomCompanion.fixtures {
+            let faceRig = try CreatureRig(companion.descriptor, furDetail: .world)
+            let encoded = try identityEncoder.encode(faceRig.descriptor)
+            for brow in faceRig.brows {
+                guard let eye = faceRig.eyes.min(by: { abs($0.position.x - brow.position.x) < abs($1.position.x - brow.position.x) }),
+                      let part = companion.descriptor.parts.first(where: { $0.id == eye.name }) else { preconditionFailure("Brow without matching eye") }
+                let (_, height) = faceRig.extent(part)
+                precondition(brow.position.y > eye.position.y + height * 0.84)
+            }
+            for lift: Float in [0, 0.3, 0.7, 1] {
+                faceRig.express(smile: lift, smilingEyes: lift, opening: 1)
+                for eye in faceRig.eyes {
+                    let lid = eye.children.first(where: { $0.name == "smiling-upper-lid" })!
+                    precondition(lid.position.y > 0 && lid.isEnabled == (lift > 0.03))
+                    precondition(!eye.children.contains(where: { $0.name == "smiling-lower-lid" }))
+                }
+            }
+            let afterExpression = try identityEncoder.encode(faceRig.descriptor)
+            precondition(afterExpression == encoded)
+        }
+        print("PASS: twelve creature rigs keep eyebrows above enlarged eyes; smiling arches remain above eyes and disappear at neutral; legacy descriptors are unchanged")
         let controller = PlayroomController(); controller.lowPower = false; controller.orbit = 0
         controller.autonomyEnabled = false; controller.roaming = false; controller.writesProbe = false
         controller.install(rig, name: fixture.name)
