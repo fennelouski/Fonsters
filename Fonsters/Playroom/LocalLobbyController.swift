@@ -37,6 +37,8 @@ final class LocalLobbyController {
     var cameraGestureOrigin: ControlState?
     var viewportAspect: Float = 1.5
     @ObservationIgnored var viewportHeight: Float = 1
+    @ObservationIgnored var careViewportFrame: CGRect = .zero
+    @ObservationIgnored var careClearFrame: CGRect = .zero
     var visibleStageFraction: Float = 1
     @ObservationIgnored var camera: PerspectiveCamera?
     @ObservationIgnored private var socialAttention: [Int: (peer: Int, until: Double)] = [:]
@@ -507,11 +509,27 @@ final class LocalLobbyController {
         defer { updateAttention() }
         if continuousGallery && (inCare || !searchQuery.isEmpty) {
             var target: SIMD3<Float> = [0, inCare ? 1.15 : 0.8, 2.7] + cameraPan
-            let fit = max(1, 0.62 / max(0.25, viewportAspect))
+            var fit = max(1, 0.62 / max(0.25, viewportAspect))
+            let clear = careClearFrame.intersection(careViewportFrame)
+            let useClear = inCare && !clear.isNull && clear.width > 80 && clear.height > 80 && careViewportFrame.height > 0
+            if useClear {
+                fit *= max(1, 0.86 / Float(clear.height / careViewportFrame.height), 0.8 / Float(clear.width / careViewportFrame.width))
+            }
             let radius: Float = (inCare ? 4.8 : 9.8) * cameraZoom * fit
             if !inCare { target.y -= (1 - min(1, max(0.25, visibleStageFraction))) * radius * tan(Float.pi * 42 / 360) }
             let pitch = min(1.4, max(0.17, (inCare ? 0.22 : 0.40) + cameraPitch))
             let offset: SIMD3<Float> = [sin(cameraOrbit) * radius * cos(pitch), radius * sin(pitch), cos(cameraOrbit) * radius * cos(pitch)]
+            if useClear {
+                // Frame the creature in the open space between controls while keeping
+                // the world renderer edge to edge and preserving orbit/pan/zoom.
+                let forward = -simd_normalize(offset)
+                let right = simd_normalize(simd_cross(forward, SIMD3<Float>(0, 1, 0)))
+                let up = simd_cross(right, forward)
+                let x = Float((clear.midX - careViewportFrame.minX) / careViewportFrame.width * 2 - 1)
+                let y = Float(1 - (clear.midY - careViewportFrame.minY) / careViewportFrame.height * 2)
+                let halfHeight = radius * tan(Float(camera.camera.fieldOfViewInDegrees) * .pi / 360)
+                target -= right * x * halfHeight * viewportAspect + up * y * halfHeight
+            }
             camera.look(at: target, from: target + offset, relativeTo: nil); return
         }
         let overview = focusArea == nil && !followSelected

@@ -30,7 +30,7 @@ final class WindowRecorder: NSObject, SCStreamOutput, @unchecked Sendable {
         let appURL = URL(fileURLWithPath: CommandLine.arguments[1]).standardizedFileURL
         guard appURL.lastPathComponent == "Fonsters.app", appURL.path.contains("/.prototype-build/"), let app = NSWorkspace.shared.runningApplications.first(where: { $0.bundleURL?.standardizedFileURL == appURL }) else { throw CocoaError(.fileNoSuchFile) }
         let available = try await SCShareableContent.excludingDesktopWindows(true, onScreenWindowsOnly: true)
-        guard let window = available.windows.filter({ $0.owningApplication?.processID == app.processIdentifier && $0.frame.width > 600 }).max(by: { $0.frame.width < $1.frame.width }) else { throw CocoaError(.featureUnsupported) }
+        guard let window = available.windows.filter({ $0.owningApplication?.processID == app.processIdentifier && $0.frame.width >= 320 && $0.frame.height >= 300 }).max(by: { $0.frame.width < $1.frame.width }) else { throw CocoaError(.featureUnsupported) }
         let config = SCStreamConfiguration(); config.width = Int(window.frame.width); config.height = Int(window.frame.height)
         config.showsCursor = false; config.capturesAudio = false; config.minimumFrameInterval = CMTime(value: 1, timescale: 30)
         let recorder = try WindowRecorder(url: URL(fileURLWithPath: CommandLine.arguments[2]), width: config.width, height: config.height)
