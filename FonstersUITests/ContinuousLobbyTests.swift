@@ -64,7 +64,7 @@ final class ContinuousLobbyTests: XCTestCase {
         XCTAssertFalse(name.frame.intersects(app.buttons["backToLobby"].frame))
         attach(app, largeText ? "adaptive-large-text-care" : "adaptive-portrait-care")
         app.buttons["panel_Care"].tap()
-        let carePanel = app.otherElements["controlPanel_Care"]
+        let carePanel = app.descendants(matching: .any).matching(identifier: "controlPanel_Care").firstMatch
         XCTAssertTrue(carePanel.waitForExistence(timeout: 5))
         for title in ["Mirror and voice", "Shared interests", "Appearance and personality", "Feelings"] {
             XCTAssertTrue(app.buttons["panel_" + title].isHittable, title)
