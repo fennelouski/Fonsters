@@ -8,7 +8,7 @@ pets it and stops its current walk. The walking icon returns to solo care.
 
 On iPhone, exploration uses landscape and solo care uses portrait. Short
 landscape screens keep camera/microphone controls visible and group care and
-other reactions in panels. The owned Fonster’s name remains available.
+other reactions in panels. The selected Fonster’s name follows it overhead.
 Accessible walking actions and four directional controls provide alternatives
 to ground taps. Existing keyboard camera movement remains available.
 

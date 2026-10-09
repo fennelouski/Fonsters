@@ -1,8 +1,8 @@
-# Adaptive care controls and name tags
+# Adaptive care controls and names
 
 Selecting a Fonster keeps the native world edge to edge. Narrow portrait views put the primary reactions and camera/microphone controls in two compact bottom rows. Wide and short windows use short side rails. Appearance, feelings, and advanced mirroring remain available through Care; compact layouts put dance and privacy inside World and camera.
 
-A small hanging-style name tag appears below the creature. Owners can tap it to edit the existing name/backstory/interests; visitor tags remain read-only. The name supports Dynamic Type and two lines. Reduce Motion removes its slight tilt and existing UI transitions remain motion-aware.
+The selected Fonster's name now appears above its live body and follows it through care and exploration. Owners can tap it to edit name/backstory/interests; visitor names remain read-only. See [overhead names](FONSTERS_OVERHEAD_NAMES.md) for the replacement of the original footer tag and current verification.
 
 Care camera framing uses the measured unobstructed scene area, including safe areas and the dock, rather than shrinking the native renderer. Orbit, pan, zoom, keyboard navigation, and the existing lobby/detail orientation policy are preserved. Direct camera/microphone controls still disappear only after denied permission; education and parent checks remain in place.
 

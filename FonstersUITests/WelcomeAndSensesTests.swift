@@ -43,7 +43,7 @@ final class WelcomeAndSensesTests: XCTestCase {
         XCTAssertFalse(app.buttons["welcomeChoose"].waitForExistence(timeout: 3))
         app.buttons["searchFonsters"].tap(); app.textFields["lobbySearchField"].typeText("my fonster\n")
         XCTAssertTrue(app.buttons["careCamera"].waitForExistence(timeout: 15))
-        XCTAssertEqual(app.staticTexts["careName"].label, "My Fonster")
+        XCTAssertEqual(app.buttons["editFonsterProfile"].value as? String, "My Fonster")
         attach(app, "welcome-returning-care")
     }
     @MainActor private func attach(_ app: XCUIApplication, _ name: String) {

@@ -103,6 +103,7 @@ final class LocalLobbyController {
     var shouldAnimate: Bool { ready && !paused && !still && !reduceMotion && !backgrounded && !lowPower && !reviewingControls }
     var continuousGallery = false
     @ObservationIgnored private(set) var presentation = LobbyPresentation()
+    private(set) var overheadNameAnchor: SIMD2<Float>?
     private(set) var exploring = false
     private(set) var walkDestination: SIMD2<Float>?
     @ObservationIgnored var destinationMarker: ModelEntity?
@@ -536,7 +537,7 @@ final class LocalLobbyController {
     func updateCamera() {
         streamedWorld?.update(center: cameraPan)
         guard let camera else { return }
-        defer { updateAttention() }
+        defer { updateAttention(); updateOverheadName() }
         let clear = careClearFrame.intersection(careViewportFrame)
         let useClear = inCare && !clear.isNull && clear.width > 80 && clear.height > 80 && careViewportFrame.height > 0
         let clearFit: Float = useClear ? max(1, 0.86 / Float(clear.height / careViewportFrame.height), 0.8 / Float(clear.width / careViewportFrame.width)) : 1
@@ -572,6 +573,25 @@ final class LocalLobbyController {
         let offset: SIMD3<Float> = [sin(cameraOrbit) * radius * cos(pitch), radius * sin(pitch), cos(cameraOrbit) * radius * cos(pitch)]
         target = framed(target, offset: offset, radius: radius)
         camera.look(at: target, from: target + offset, relativeTo: nil)
+    }
+    /// Normalized viewport anchor above the live rig, including its fur and horns.
+    /// Hide offscreen labels instead of pinning a detached name to a screen edge.
+    private func updateOverheadName() {
+        guard inCare, ready, let camera, containers.indices.contains(selected) else {
+            overheadNameAnchor = nil; return
+        }
+        let bounds = (selectedMember.controller.rig?.root ?? containers[selected]).visualBounds(relativeTo: nil)
+        let world = SIMD3<Float>(bounds.center.x, bounds.max.y + 0.12, bounds.center.z)
+        let local = camera.convert(position: world, from: nil)
+        guard local.z < -0.001 else { overheadNameAnchor = nil; return }
+        let tangent = tan(Float(camera.camera.fieldOfViewInDegrees) * .pi / 360)
+        let projected = SIMD2<Float>((local.x / -local.z / tangent / viewportAspect + 1) * 0.5,
+                                     (1 - local.y / -local.z / tangent) * 0.5)
+        guard projected.x.isFinite, projected.y.isFinite,
+              (0...1).contains(projected.x), (0...1).contains(projected.y) else {
+            overheadNameAnchor = nil; return
+        }
+        overheadNameAnchor = projected
     }
     @discardableResult func walk(at point: CGPoint, size: CGSize) -> Bool {
         guard let camera, ready, !paused, !backgrounded, !lowPower, !reviewingControls,

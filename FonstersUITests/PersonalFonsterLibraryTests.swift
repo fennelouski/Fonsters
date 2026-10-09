@@ -2,6 +2,26 @@ import XCTest
 
 final class PersonalFonsterLibraryTests: XCTestCase {
     override func setUpWithError() throws { continueAfterFailure = false }
+    @MainActor func testOverheadOwnedNameOpensProfile() throws {
+        let app = XCUIApplication()
+        app.launchArguments = ["--prototype", "--verify-manual", "--verify-personal-library", "--library-store", "/tmp/overhead-library-\(UUID().uuidString).sqlite", "--personality-file", "/tmp/overhead-memory-\(UUID().uuidString).json"]
+        app.launch()
+        XCTAssertTrue(app.buttons["searchFonsters"].waitForExistence(timeout: 30))
+        waitReady(app)
+        XCTAssertFalse(app.buttons["editFonsterProfile"].exists)
+        app.buttons["searchFonsters"].tap(); app.textFields["lobbySearchField"].typeText("biscuit\n")
+        XCTAssertTrue(app.buttons["editFonsterProfile"].waitForExistence(timeout: 15))
+        XCTAssertEqual(app.buttons["editFonsterProfile"].value as? String, "Biscuit")
+        let nameButton = app.buttons["editFonsterProfile"]
+        XCTAssertTrue(nameButton.isHittable); XCTAssertGreaterThanOrEqual(nameButton.frame.height, 44)
+        nameButton.tap()
+        XCTAssertTrue(app.textFields["profileName"].waitForExistence(timeout: 8))
+        XCTAssertEqual(app.textFields["profileName"].value as? String, "Biscuit")
+        app.buttons["cancelProfile"].tap()
+        XCTAssertTrue(nameButton.waitForExistence(timeout: 10))
+        app.buttons["backToLobby"].tap()
+        XCTAssertFalse(app.buttons["editFonsterProfile"].exists)
+    }
     @MainActor func testCreateProfileCancelShareAndPersist() throws {
         let app = XCUIApplication()
         app.launchArguments = ["--prototype", "--verify-manual", "--verify-personal-library", "--verify-command-fallback", "--library-store", "/tmp/personal-library-\(UUID().uuidString).sqlite", "--personality-file", "/tmp/personal-memory-\(UUID().uuidString).json"]
@@ -27,14 +47,14 @@ final class PersonalFonsterLibraryTests: XCTestCase {
         attach(app, "personal-02-create-and-favorites")
         app.buttons["saveProfile"].tap()
         XCTAssertTrue(app.buttons["backToLobby"].waitForExistence(timeout: 20))
-        XCTAssertEqual(app.staticTexts["careName"].label, "Luma")
+        XCTAssertEqual(app.buttons["editFonsterProfile"].value as? String, "Luma")
         attach(app, "personal-03-custom-care")
         app.buttons["editFonsterProfile"].tap()
         XCTAssertTrue(name.waitForExistence(timeout: 8)); XCTAssertEqual(name.value as? String, "Luma")
         XCTAssertEqual(background.value as? String, "Born beneath a tiny paper moon.")
         name.tap(); name.typeText(" temporary")
         app.buttons["cancelProfile"].tap()
-        XCTAssertEqual(app.staticTexts["careName"].label, "Luma")
+        XCTAssertEqual(app.buttons["editFonsterProfile"].value as? String, "Luma")
         app.buttons["shareFonster"].tap(); approveParentAction(in: app)
         let profileSwitch = app.buttons["shareBiography"]
         XCTAssertTrue(profileSwitch.waitForExistence(timeout: 5)); XCTAssertEqual(profileSwitch.value as? String, "Excluded")
@@ -64,7 +84,7 @@ final class PersonalFonsterLibraryTests: XCTestCase {
         name.tap(); name.typeText(" Bee")
         let renamed = name.value as! String
         app.buttons["saveProfile"].tap()
-        XCTAssertTrue(app.staticTexts["careName"].waitForExistence(timeout: 15)); XCTAssertEqual(app.staticTexts["careName"].label, renamed)
+        XCTAssertTrue(app.buttons["editFonsterProfile"].waitForExistence(timeout: 15)); XCTAssertEqual(app.buttons["editFonsterProfile"].value as? String, renamed)
         app.buttons["backToLobby"].tap(); app.buttons["Clear and close search"].tap()
         let finalLabel = app.otherElements["continuousStage"].label
         XCTAssertTrue(finalLabel.contains(renamed)); XCTAssertTrue(starterLabel.replacingOccurrences(of: "Explorable Fonster world with ", with: "").split(separator: ",").allSatisfy { finalLabel.contains($0.trimmingCharacters(in: .whitespaces)) })

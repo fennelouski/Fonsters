@@ -57,7 +57,11 @@ final class ContinuousLobbyTests: XCTestCase {
             XCTAssertGreaterThanOrEqual(button.frame.height, 44, id)
             XCTAssertFalse(clear.frame.intersects(button.frame), id)
         }
-        XCTAssertFalse(clear.frame.intersects(app.staticTexts["careName"].frame))
+        let name = app.staticTexts["careName"]
+        XCTAssertTrue(name.exists)
+        XCTAssertLessThan(name.frame.midY, clear.frame.midY, "Name should float above the Fonster")
+        XCTAssertLessThan(abs(name.frame.midX - clear.frame.midX), clear.frame.width * 0.25)
+        XCTAssertFalse(name.frame.intersects(app.buttons["backToLobby"].frame))
         attach(app, largeText ? "adaptive-large-text-care" : "adaptive-portrait-care")
         openCareControlPanel("Feelings", in: app)
         XCTAssertTrue(app.buttons["A little low"].waitForExistence(timeout: 5))
