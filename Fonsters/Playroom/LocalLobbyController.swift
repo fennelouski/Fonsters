@@ -483,7 +483,7 @@ final class LocalLobbyController {
     }
     func endCameraGesture() { cameraGestureActive = false }
     func cameraKey(_ key: KeyEquivalent, modifiers: EventModifiers, held: Bool? = nil) -> Bool {
-        guard ready, !backgrounded, !modifiers.contains(.command), !modifiers.contains(.control) else { return false }
+        guard ready, !backgrounded, !reviewingControls, !modifiers.contains(.command), !modifiers.contains(.control) else { return false }
         if let held {
             let token: String
             switch key {

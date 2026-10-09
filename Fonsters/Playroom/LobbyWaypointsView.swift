@@ -13,6 +13,7 @@ struct LobbyWaypointsView: View {
     @State private var help = false
     @State private var catalog = false
     @State private var previewID = UUID()
+    @State private var landmarkKind = "windmill"
     @FocusState private var naming: Bool
     private var preview: LobbyWaypoint {
         let view = draft ?? lobby.waypointViewpoint
@@ -44,12 +45,18 @@ struct LobbyWaypointsView: View {
                             Text("Offline mapped sample · incomplete coverage").font(.caption).foregroundStyle(FonsterChrome.secondary)
                         }
                         Spacer()
-                        FonsterIconButton(title: "Explore mapped landmarks", symbol: "map", tone: .world, detail: "Choose a real mapped windmill, playground, or waterway in this public sample. No location permission or network request.") { catalog.toggle() }
+                        FonsterIconButton(title: "Explore mapped landmarks", symbol: "map", tone: .world, selected: catalog, detail: "Choose a real mapped windmill, playground, or waterway in this public sample. No location permission or network request.") { catalog.toggle() }
                             .accessibilityIdentifier("mappedLandmarkCatalog")
                     }.padding(12).background(FonsterTone.world.wash, in: RoundedRectangle(cornerRadius: 18))
                     if catalog {
+                        FonsterControlGroup(title: "Landmark type", tone: .world) {
+                            ForEach(["windmill", "playground", "waterway"], id: \.self) { kind in
+                                FonsterIconButton(title: kind == "windmill" ? "Windmills" : kind == "playground" ? "Playgrounds" : "Waterways", symbol: map.symbol(kind), tone: .world, selected: landmarkKind == kind) { landmarkKind = kind }
+                                    .accessibilityIdentifier("mappedKind_" + kind)
+                            }
+                        }
                         LazyVStack(spacing: 8) {
-                            ForEach(map.features.sorted { $0.kind == $1.kind ? $0.name < $1.name : $0.kind < $1.kind }) { feature in
+                            ForEach(map.features.filter { $0.kind == landmarkKind }.sorted { $0.name.localizedStandardCompare($1.name) == .orderedAscending }) { feature in
                                 Button { lobby.visitMappedFeature(feature); close() } label: {
                                     HStack { Image(systemName: map.symbol(feature.kind)); Text(feature.name).lineLimit(2); Spacer(); Image(systemName: "arrow.up.right") }
                                         .font(.callout).padding(12).background(FonsterChrome.surface, in: RoundedRectangle(cornerRadius: 12))

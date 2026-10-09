@@ -18,16 +18,25 @@ final class WaypointTests: XCTestCase {
         XCTAssertTrue(app.buttons["visitWaypoint_My first place"].waitForExistence(timeout: 5))
         attach("iphone-saved-place")
         app.buttons["visitWaypoint_My first place"].tap()
+        XCTAssertTrue(app.buttons["Close saved places"].waitForNonExistence(timeout: 5))
         XCTAssertTrue(app.buttons["savedPlacesButton"].waitForExistence(timeout: 5))
         app.buttons["savedPlacesButton"].tap()
-        app.buttons["mappedLandmarkCatalog"].tap()
+        let catalog = app.buttons["mappedLandmarkCatalog"]
+        XCTAssertTrue(catalog.waitForExistence(timeout: 5))
+        let sheetStarted = Date()
+        let sheetSettled = XCTNSPredicateExpectation(predicate: NSPredicate { _, _ in
+            Date().timeIntervalSince(sheetStarted) > 1 && catalog.isHittable
+        }, object: app)
+        XCTAssertEqual(XCTWaiter.wait(for: [sheetSettled], timeout: 5), .completed)
+        catalog.tap()
+        XCTAssertTrue(app.buttons["mappedKind_windmill"].waitForExistence(timeout: 5))
         let mill = app.buttons["mappedFeature_osm:way:285317879"]
         for _ in 0..<12 where !mill.isHittable { app.swipeUp() }
         XCTAssertTrue(mill.exists); mill.tap()
         XCTAssertTrue(app.otherElements["mappedWorldAttribution"].waitForExistence(timeout: 5))
         let settlingStarted = Date()
         let settled = XCTNSPredicateExpectation(predicate: NSPredicate { _, _ in
-            Date().timeIntervalSince(settlingStarted) > 1.5 && app.frame.width > app.frame.height
+            Date().timeIntervalSince(settlingStarted) > 1.5 && app.otherElements["mappedWorldAttribution"].exists && app.buttons["returnToSessionStart"].isHittable
         }, object: app)
         XCTAssertEqual(XCTWaiter.wait(for: [settled], timeout: 10), .completed)
         attach("iphone-real-mapped-windmill")

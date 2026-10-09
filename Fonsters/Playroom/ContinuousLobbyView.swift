@@ -143,7 +143,7 @@ struct ContinuousLobbyView: View {
         }
         .focusable().focused($stageFocused)
         .onKeyPress(phases: [.down, .repeat, .up]) { press in
-            guard !searchFocused && !typing && !gallery && !sharing && !agents && !profiles && editor == nil else { return .ignored }
+            guard !reviewing && !searchFocused && !typing && !gallery && !sharing && !agents && !profiles && editor == nil else { return .ignored }
             if press.key == .escape, press.phase == .down { if lobby.inCare { lobby.returnToLobby() } else { closeSearch() }; return .handled }
             if press.key == .return, press.phase == .down, !lobby.inCare, let first = lobby.searchMatches.first { lobby.openCare(first); return .handled }
             if press.key == .tab { return .ignored }
@@ -200,6 +200,16 @@ struct ContinuousLobbyView: View {
         inputLifecycle
         .sheet(item: $editor) { target in
             FonsterProfileEditor(record: target.record) { id in if target.record == nil { focusAfterSave = id } }
+                #if os(iOS)
+                .phoneOrientation(.details)
+                #endif
+        }
+        .sheet(isPresented: $waypointsShowing) {
+            LobbyWaypointsView(lobby: lobby) {
+                query = lobby.searchQuery
+                if query.isEmpty { searching = false }
+                waypointsShowing = false
+            }
                 #if os(iOS)
                 .phoneOrientation(.details)
                 #endif
@@ -546,9 +556,6 @@ struct ContinuousLobbyView: View {
                     if !lobby.inCare {
                         FonsterIconButton(title: "Saved places", symbol: "mappin.and.ellipse", tone: .world, detail: "Save this place, name a waypoint, or return to a saved place. Session start is always pinned.") { waypointsShowing = true }
                             .accessibilityIdentifier("savedPlacesButton")
-                            .sheet(isPresented: $waypointsShowing) {
-                                LobbyWaypointsView(lobby: lobby) { query = ""; searching = false; waypointsShowing = false }
-                            }
                         FonsterIconButton(title: "Return to session start", symbol: "house.fill", tone: .world, detail: "Return to where this session began. Use Undo to return to your previous view.") { query = ""; searching = false; lobby.visitWaypoint(.home) }
                             .accessibilityIdentifier("returnToSessionStart")
                     }

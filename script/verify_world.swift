@@ -44,6 +44,12 @@ import simd
             }
             print("PASS: complete playable terrain fits portrait phone, tablet, Mac and TV overview cameras")
             lobby.ready = true; lobby.lowPower = false
+            lobby.reviewingControls = true
+            let modalView = lobby.controls
+            precondition(!lobby.cameraKey("w", modifiers: [], held: true))
+            precondition(!lobby.cameraKey(.leftArrow, modifiers: []))
+            precondition(!lobby.cameraNavigationActive && lobby.controls == modalView)
+            lobby.reviewingControls = false
             for key: KeyEquivalent in [.leftArrow, .rightArrow, .upArrow, .downArrow, "a", "d", "w", "s", "q", "e", "+", "-"] {
                 lobby.showOverview(); let before = camera.transform
                 precondition(lobby.cameraKey(key, modifiers: []))
