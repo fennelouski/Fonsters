@@ -161,6 +161,29 @@ enum CreatureFur {
         geometry.indices.reserveCapacity(count * segments * sides * 6)
         geometry.materials.reserveCapacity(count * segments * sides * 2)
     }
+    static func volume(_ surface: ResolvedCreatureVolume, seed: UInt64, count: Int, toneVariation: Bool) -> Geometry {
+        var geometry = Geometry(), noise = Noise(state: seed), cumulative: [Float] = [], area: Float = 0
+        for i in stride(from: 0, to: surface.indices.count, by: 3) {
+            let a = surface.positions[Int(surface.indices[i])], b = surface.positions[Int(surface.indices[i+1])], c = surface.positions[Int(surface.indices[i+2])]
+            area += simd_length(simd_cross(b-a, c-a)) * 0.5; cumulative.append(area)
+        }
+        guard area > 0 else { return geometry }
+        reserve(&geometry, count: count)
+        for _ in 0..<count {
+            let target = noise.unit() * area
+            var lower = 0, upper = cumulative.count - 1
+            while lower < upper { let mid = (lower + upper) / 2; if cumulative[mid] < target { lower = mid + 1 } else { upper = mid } }
+            let indices = (0..<3).map { Int(surface.indices[lower * 3 + $0]) }
+            let a = sqrt(noise.unit()), b = noise.unit(), weights: [Float] = [1-a, a*(1-b), a*b]
+            var root = SIMD3<Float>.zero, normal = SIMD3<Float>.zero
+            for i in 0..<3 { root += surface.positions[indices[i]] * weights[i]; normal += surface.normals[indices[i]] * weights[i] }
+            normal = simd_normalize(normal)
+            let length: Float = 0.025 + noise.unit() * 0.035
+            append(&geometry, root: root - normal * 0.002, normal: normal, length: length,
+                   width: 0.0022, palette: Int(surface.materials[lower]), scale: .init(repeating: 1), toneVariation: toneVariation, noise: &noise)
+        }
+        return geometry
+    }
     private static func append(_ geometry: inout Geometry, root: SIMD3<Float>, normal: SIMD3<Float>,
                                length: Float, width: Float, palette: Int, scale: SIMD3<Float>,
                                toneVariation: Bool, noise: inout Noise) {

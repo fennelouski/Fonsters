@@ -92,6 +92,11 @@ final class CreatureRig {
         self.furDetail = furDetail
         root.name = "companion"
         root.addChild(head)
+        if !descriptor.supported {
+            try addResolvedVolume()
+            groundOffset = -1.08 - root.visualBounds(relativeTo: root).min.y
+            return
+        }
         let h = descriptor.head
         baseHead = point(h.centerX, h.centerY)
         head.position = baseHead
@@ -135,6 +140,26 @@ final class CreatureRig {
         try addMouth()
         if let furError { throw furError }
         groundOffset = -1.08 - root.visualBounds(relativeTo: root).min.y
+    }
+
+    private func addResolvedVolume() throws {
+        let geometry = ResolvedCreatureVolume.make(descriptor)
+        guard !geometry.positions.isEmpty else { throw CocoaError(.fileReadCorruptFile) }
+        var mesh = MeshDescriptor(name: "resolved-colored-volume-v1")
+        mesh.positions = MeshBuffers.Positions(geometry.positions)
+        mesh.normals = MeshBuffers.Normals(geometry.normals)
+        mesh.primitives = .triangles(geometry.indices)
+        mesh.materials = .perFace(geometry.materials)
+        let body = ModelEntity(mesh: try MeshResource.generate(from: [mesh]), materials: (0..<6).map { material(color($0), roughness: 1) })
+        body.name = "resolved-volumetric-body"; head.addChild(body)
+        let bounds = body.visualBounds(relativeTo: head)
+        let radii = simd_max(bounds.extents * 0.5, SIMD3<Float>(repeating: 0.03))
+        touchHeadRadius = [radii.x, radii.y]
+        touchSurfaces.append(.init(entity: head, center: bounds.center, radii: radii, zone: .cheek))
+        let coat = try CreatureFur.surface(key: coatKey + ":resolved-volume", name: "fuzzy-resolved-volume") {
+            CreatureFur.volume(geometry, seed: furSeed, count: furDetail == .portrait ? 12000 : (furDetail == .lobby ? 4000 : 1800), toneVariation: furDetail == .portrait)
+        }
+        addCoat(coat, to: head, name: "fuzzy-resolved-volume")
     }
 
     func point(_ x: Double, _ y: Double, z: Float = 0) -> SIMD3<Float> {

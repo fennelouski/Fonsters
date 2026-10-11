@@ -660,7 +660,6 @@ struct ContinuousLobbyView: View {
                     Image(systemName: "arrow.right").accessibilityHidden(true)
                     Image(systemName: "sparkles").foregroundStyle(FonsterTone.company.ink).accessibilityHidden(true)
                 }.accessibilityLabel("Exact original portrait beside the living 3D Fonster")
-                if let reason = lobby.selectedMember.descriptor.fallbackReason { Text(reason).font(.callout) }
                 if let personality = lobby.selectedMember.controller.personality { VStack(spacing: 12) {
                     HStack { Image(systemName: "heart.fill").foregroundStyle(FonsterTone.company.ink); ProgressView(value: personality.greetingWarmth).tint(FonsterTone.company.ink); FonsterInfo(title: "Greeting warmth", detail: personality.naturalQuirk) }.accessibilityLabel("Greeting warmth").accessibilityValue("\(Int(personality.greetingWarmth * 100)) percent")
                     HStack { Image(systemName: "tennisball.fill").foregroundStyle(FonsterTone.play.ink); ProgressView(value: personality.playEnergy).tint(FonsterTone.play.ink); FonsterInfo(title: "Shared rituals", detail: personality.observations(name: lobby.selectedMember.name).joined(separator: "\n")) }.accessibilityLabel("Play energy").accessibilityValue("\(Int(personality.playEnergy * 100)) percent")
@@ -724,7 +723,7 @@ struct ContinuousLobbyView: View {
     }
     private func reaction(_ action: PlayroomController.Reaction, _ symbol: String, _ tone: FonsterTone) -> some View {
         FonsterIconButton(title: action.rawValue.capitalized, symbol: symbol, tone: tone, detail: "Starts this reaction now. Another reaction replaces it; Stop activity ends it.") { cancelLesson(); lobby.perform(action) }
-            .disabled(blocked || !lobby.selectedMember.descriptor.supported).accessibilityIdentifier("care_" + action.rawValue)
+            .disabled(blocked).accessibilityIdentifier("care_" + action.rawValue)
     }
     private func connectInputs() {
         inputs.onGroup = { samples in lobby.receiveGroup(samples) }

@@ -840,13 +840,6 @@ final class LocalLobbyController {
         let hits = members.enumerated().compactMap { index, member -> (Int, CreatureRig.TouchHit)? in
             guard !continuousGallery || !inCare || exploring || index == selected else { return nil }
             if let hit = member.controller.rig?.touchHit(origin: ray.origin, direction: ray.direction) { return (index, hit) }
-            if !member.descriptor.supported, containers.indices.contains(index) {
-                let container = containers[index], inverse = container.transformMatrix(relativeTo: nil).inverse
-                let o = inverse * SIMD4<Float>(ray.origin, 1), d = inverse * SIMD4<Float>(ray.direction, 0)
-                guard abs(d.z) > 0.001 else { return nil }
-                let t = -o.z / d.z, point = o + d * t
-                if t > 0, abs(point.x) <= 0.95, abs(point.y) <= 0.95 { return (index, .init(distance: t, point: [point.x, point.y], zone: .cheek)) }
-            }
             return nil
         }
         guard let (index, hit) = hits.min(by: { $0.1.distance < $1.1.distance }) else { return false }

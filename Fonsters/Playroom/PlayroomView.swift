@@ -164,7 +164,7 @@ struct PlayroomView: View {
             ZStack(alignment: .topLeading) {
                 RoundedRectangle(cornerRadius: 26)
                     .fill(LinearGradient(colors: [FonsterTone.world.wash, FonsterChrome.background], startPoint: .topLeading, endPoint: .bottomTrailing))
-                if selected.descriptor.supported && controller.rendererError == nil {
+                if controller.rendererError == nil {
                     CreatureStageView(companion: selected, controller: controller)
                         .id(selected.id.uuidString + controller.environment.rawValue)
                         .clipShape(RoundedRectangle(cornerRadius: 26))
@@ -291,7 +291,7 @@ struct PlayroomView: View {
     private func reactionButton(_ title: String, _ icon: String, _ reaction: PlayroomController.Reaction, _ key: KeyEquivalent, _ tone: FonsterTone) -> some View {
         FonsterIconButton(title: "\(title) (\(key.character.uppercased()))", symbol: icon, tone: tone, selected: controller.reaction == reaction) { controller.perform(reaction, name: selected.name) }
             .keyboardShortcut(typingRequest ? nil : KeyboardShortcut(key, modifiers: []))
-            .disabled(!selected.descriptor.supported || controller.rendererError != nil)
+            .disabled(controller.rendererError != nil)
     }
     private var footer: some View {
         HStack(spacing: 8) {

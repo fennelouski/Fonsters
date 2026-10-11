@@ -58,10 +58,8 @@ struct FonsterProfileEditor: View {
             }.padding(16)
             ScrollView {
                 VStack(spacing: 18) {
-                    if companion.descriptor.supported {
-                        FonsterDraftStage(companion: companion).id(chosenSeed).frame(height: 230)
-                            .clipShape(RoundedRectangle(cornerRadius: 26))
-                    } else { LobbyPortrait(appearance: companion.descriptor).frame(width: 200, height: 200) }
+                    FonsterDraftStage(companion: companion).id(chosenSeed).frame(height: 230)
+                        .clipShape(RoundedRectangle(cornerRadius: 26))
                     if record == nil { appearanceChoices }
                     HStack(spacing: 12) {
                         Image(systemName: "pencil").foregroundStyle(FonsterTone.company.ink).accessibilityHidden(true)

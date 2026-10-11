@@ -172,20 +172,9 @@ struct LobbyStageView: View {
         lobby.containers = []
         for member in members {
             let container = Entity(); container.scale = .init(repeating: 0.55)
-            if member.descriptor.supported {
-                let rig = try CreatureRig(member.descriptor, furDetail: lobby.members.count > 6 ? .world : .lobby)
-                member.controller.install(rig, name: member.name); member.controller.orbit = 0
-                container.addChild(rig.root)
-            } else if let seed = member.localCompanion?.seed, let image = creatureImage(for: seed) {
-                // Unsupported families retain their exact legacy portrait rather
-                // than inventing a different 3D silhouette.
-                let texture = try await TextureResource(image: image, options: .init(semantic: .color))
-                guard !Task.isCancelled, lobby.roomRevision == revision else { throw CancellationError() }
-                var material = UnlitMaterial(); material.color = .init(tint: .white, texture: .init(texture))
-                material.blending = .transparent(opacity: .init(floatLiteral: 1))
-                let portrait = ModelEntity(mesh: .generatePlane(width: 1.9, height: 1.9), materials: [material])
-                container.addChild(portrait)
-            }
+            let rig = try CreatureRig(member.descriptor, furDetail: lobby.members.count > 6 ? .world : .lobby)
+            member.controller.install(rig, name: member.name); member.controller.orbit = 0
+            container.addChild(rig.root)
             roots.append(container); lobby.containers.append(container)
         }
         lobby.mirrorGuestsRoot = Entity(); lobby.mirrorGuests = []
