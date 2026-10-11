@@ -1,101 +1,116 @@
 # All-Fonster geometry checkpoint — 11 October 2026
 
-Air-only worktree: `/Users/nathanfennel/Documents/Codex/2026-10-07/task/Fonsters-geometry`.
-Branch: `codex/all-fonsters-volumetric-v2`, based on `e3aa6d4` including both
-shared-weather commits. The original dirty `Fonsters` worktree and the current
-`Fonsters-camera` user scheme edit are untouched. No weather integration,
-networking, accounts, deployments, paid generation or provider requests changed.
+Air checkout: `/Users/nathanfennel/Documents/Codex/2026-10-07/task/Fonsters-geometry`.
+Branch: `codex/all-fonsters-volumetric-v2`, based on `e3aa6d4` including the two
+shared-weather commits. Implementation commit: `73c0a2e`; verification follow-up
+is the commit containing this document. Original dirty `Fonsters` and the user
+scheme edit in `Fonsters-camera` remain untouched. No project settings, package
+pins, Swift language/concurrency modes, weather backend, credentials or user
+records were changed. Nothing was pushed, merged, deployed or uploaded.
 
-## Diagnosis and local implementation
+## Fixed cause and behavior
 
-`CreatureAppearanceDescriptor.supported` originally allowed only high-tier,
-upright, vertically symmetric creature mode with exact trace parity. The lobby
-built those with CreatureRig and turned other appearances into a textured plane.
-The older Add command uses an unrestricted time seed; starter/profile choices
-use a family-filtered friendly seed. Thus imported, historical and Add-command
-creatures could take the billboard path even though curated choices looked 3D.
-The exact reported user's record was not accessed, so its family is unknown.
+The previous lobby created a textured plane whenever the descriptor was outside
+its approved articulated family (high-tier, upright, vertical symmetry, exact
+trace parity). Historical/imported/unrestricted Add-command seeds could reach
+that path. The reported user's exact record was not accessed.
 
-The local patch routes every lobby member and profile preview through CreatureRig.
-The original articulated family retains its original geometry. Other families
-receive a closed colored mesh with front/back curvature and boundary walls,
-then batched matte fur. The new optional versioned `volume` descriptor extension
-captures actual foreground pixels, excluding opaque background; holes, asymmetry,
-clipping and disconnected islands survive. Diagonal islands use separate boundary
-vertices to avoid four faces sharing a non-manifold wall edge. Original raster,
-seed, palette, record identity and 2D renderer/export functions are unchanged.
+Every lobby member and profile preview now uses CreatureRig. Existing articulated
+creatures retain their geometry. Other appearances receive closed, curved-depth
+colored meshes, boundary walls and matte fur. An additive optional versioned
+`volume` descriptor captures resolved foreground pixels, excluding opaque
+background; clipping, holes, asymmetry and disconnected islands survive. Split
+vertices at diagonal islands prevent non-manifold shared edges. These bodies
+have analytic touch surfaces and use the existing movement/controller path.
 
-The fallback gets a controller and analytic volume touch surface, so body
-reactions and movement work through existing pause/Reduce Motion mechanisms.
-It does not invent independently rigged eyes, mouths or limbs for abstract
-cloud/flower/pattern/space appearances. Those details remain palette-painted on
-volumetric bodies. Existing visitor validation remains restricted to its original
-approved descriptor family; this is not a new sharing-format rollout.
+The legacy 2D renderer, seeds, palette and identity remain unchanged. Existing
+visitor validation still accepts its original approved descriptor family. This
+is not a sharing-format or data migration. Abstract-family eye/mouth details
+are painted into their bodies, not separately articulated facial features.
+Their recognizable pixel contours remain visible in 3D; this is procedural
+volume construction rather than smooth newly authored character models.
 
-## Verification actually completed
+## Passed checks and evidence
 
-- Swift parser accepted all eight modified source files and the new test harness.
-  This is syntax verification, not compilation/type checking or a native build.
-- `bash -n script/verify_all_models.sh`: passed.
-- `git diff --check`: passed.
-- Independent source review caught and fixed missing fur-helper arguments,
-  throwing work inside a precondition, and diagonal-island topology.
+- Full native Mac Debug app build on Xcode 27.0 (27A266a), with isolated
+  `.prototype-build/native`, preview bundle ID, signing disabled. The first
+  attempt found existing Float inference errors in a camera fixture helper;
+  explicit Float literals fixed them. The final build passes.
+- `script/verify_all_models.sh`: 1,500 preserved rasters; eleven fallback
+  categories (low tier, inverted, horizontal, asymmetric, cloud, flower,
+  repeating, four space patterns); closed two-face edges, positive signed
+  volume, deterministic finite normals, original mask/palette projection,
+  Codable privacy, actual RealityKit meshes, fur and touch surfaces. All pass.
+  Minimum measured depth: 0.7699 scene units. Twelve original articulated rigs
+  retain their eyes. Harness dependency-list failures were fixed before passing.
+- `script/verify_appearance.sh`: twelve frozen RGBA SHA-256 fixtures; exact
+  descriptor/trace parity, resolved absent mouth, coordinates, Codable,
+  random public IDs, no seed/email in descriptor, legacy share-link round-trip,
+  512px PNG and twelve-frame GIF. Trace parity passes for 1,635 supported
+  appearances from a 3,000-seed corpus.
+- `script/render_all_models.sh`: eighteen actual offscreen RealityRenderer PNG
+  exports, front/side/back for articulated, creature, cloud, flower, repeating
+  and space. Representative images were visually inspected, including clearly
+  solid side views. These are renderer exports, not app-window screenshots.
+- Swift syntax, script shell syntax and `git diff --check`: passed.
 
-Prepared, **not run**: `script/verify_all_models.sh`, checking 1,500 preserved
-rasters, eleven fallback categories, closed edge topology, signed nonzero volume,
-original palette/mask projection, Codable privacy, actual RealityKit mesh bounds,
-fur, touch and the twelve original articulated fixtures. Also run existing
-`script/verify_appearance.sh`, `script/verify_fur.sh` and relevant native UI tests.
-No actual new meshes or screenshots have been rendered/inspected yet. Do not
-claim visual quality, runtime success or all-family coverage from parser results.
+Local evidence (ignored by Git): `evidence/all-models/model-verification.log`,
+`legacy-verification.log`, `render-verification.log`, `renders/*.png`,
+`mac-build-final.log`, `iphone-build.log`, `device-check.log`.
+Model measurements: `.prototype-build/verification/all-models.json`.
+Mac app: `.prototype-build/native/Build/Products/Debug/Fonsters.app`.
 
-## Build/device blockers and coordinator response
+## iPhone and untested behavior
 
-At 17:40 UTC on Oct 11, Xcode 27.0 (27A266a) was installed, but normal Xcode shim
-commands reported an unaccepted Xcode/SDK license. Accepting legal terms was not
-automated. The installed direct Swift compiler worked for an earlier tiny
-Foundation probe; that does not prove this patch compiles or the app builds.
+Generic iPhone Debug build **passed**, including the app and iMessage extension,
+using existing Automatic signing (team EJLR2RPSV2, bundle
+com.nathanfennel.Fonsters), isolated `.prototype-build/iphone`, and no
+`-allowProvisioningUpdates`. Signed output:
+`.prototype-build/iphone/Build/Products/Debug-iphoneos/Fonsters.app`.
+`codesign --verify --deep --strict` passed with authorized system trust-store
+access. Its first sandboxed invocation returned CSSMERR_TP_NOT_TRUSTED; the
+system-level recheck passed without changing certificates or trust settings.
 
-A successful read-only `devicectl list devices` found Nathan's paired iPhone
-`To the Max` (iPhone 15 Pro Max) **unavailable**. Other paired devices were left
-untouched; no installation was substituted. Prior sandboxed device detection
-failed, but the subsequent authorized read succeeded. Check again after the build
-window; do not describe the phone as connected or install to another phone.
+Nathan's paired “To the Max” iPhone 15 Pro Max was unavailable on three successful
+read-only device checks. No other person's phone was substituted. Physical
+installation/execution remains blocked by device availability. No new signing
+profile, certificate, account or permission was created. The app was not launched
+on the desktop; Chrome and the insurance claim session were preserved.
 
-Existing project configuration uses Automatic signing, team `EJLR2RPSV2`, bundle
-`com.nathanfennel.Fonsters`. Provisioning/signing and physical execution for this
-revision remain unverified.
-Read-only keychain enumeration found three valid existing identities: Apple
-Development, Apple Distribution and Developer ID Application for Nathan Fennel.
-No certificate/private key was created, exported or changed. Identity presence
-does not prove the iPhone's provisioning profile matches this revision.
+Untested: full app interaction/repeated taps, creation flow, native-window visual
+inspection, pause/background/Reduce Motion UI behavior, simulator execution,
+physical iPhone performance and tvOS. The existing paths remain in use, but the
+geometry harness does not establish these UI behaviors. No demo clip was made.
 
-The Apple TV coordinator requested **no builds/installations before Oct 12
-00:00 UTC (02:00 Europe/Amsterdam)**. No native build runs from this worktree.
-After that window, serialize any approved native verification/build with other
-workers and use isolated DerivedData, e.g. this worktree's `.prototype-build`
-for model checks and `.prototype-build/iphone` for the phone app. No overnight
-job or scheduled build was created by this worker.
+## Toolchain and shared build coordination
 
-Observed other resource use: Browser CLI Swift compilation from
-`/Users/nathanfennel/Documents/GitHub/Straight Up Browser`, plus iOS simulator
-cache generation; those processes were not started or stopped here.
+Current `/usr/bin/xcodebuild -license check` and `-checkFirstLaunchStatus` both
+exit 0. Selected developer directory is `/Applications/Xcode.app/Contents/Developer`,
+Xcode 27.0 build 27A266a, DEVELOPER_DIR unset. Earlier normal `/usr/bin/git -C
+Fonsters-camera status` and shim tool queries, under zsh with `login:false`,
+reported an unaccepted license; the warning no longer reproduces. Its cause is
+unknown. No license was accepted and no toolchain selection changed here.
 
-For tvOS readiness, the existing project target/scheme is `Fonsters`; supported
-platforms include `appletvos`/`appletvsimulator`, tvOS deployment target 17.6.
-The stable assessment baseline is `Fonsters-camera` at `e3aa6d4`. This geometry
-branch is an unbuilt candidate, not a verified tvOS revision. Do not build it for
-TV or reuse shared DerivedData without coordinated approval after the window.
+The TV coordinator clarified that Oct 12 02:00 Europe/Amsterdam applies to their
+TV execution, not a blanket pause on this app work. This worker initially
+interpreted the message too broadly; subsequent independent builds resumed.
+All subsequent native builds/export checks use the common atomic lock
+`/Users/nathanfennel/Documents/Codex/2026-10-11/task/apple-build-resource.lock`.
+Adopted helper: `/bin/zsh /Users/nathanfennel/Documents/Codex/2026-10-11/task/with-apple-build-lock.sh <command> [args]`.
+The first Mac run used an equivalent own-PID lock helper. No slot is reserved
+and no overnight job was scheduled. Isolated caches/DerivedData are used.
 
-## Next verification after the allowed window
+TV assessment baseline remains `Fonsters-camera` at
+`e3aa6d413604c6491f9e5aae3cbe7661162adee0`, scheme/target Fonsters, tvOS minimum
+17.6. This geometry branch has not been built for TV. The coordinator reports
+existing TV signing blocked for Living Room, so no TV installation is attempted.
+No reliable exact Studio baseline was established; Studio remains untouched.
+The read-only iOS audit's source/package/concurrency preservation advice is
+followed; it does not establish Duo simulator availability or execution here.
 
-1. Resolve the existing Xcode license/setup blocker through the owner; do not
-   create credentials or accept legal terms automatically.
-2. Run the model/appearance/fur harnesses and fix any type/runtime failures.
-3. Build the native Mac or existing iPhone simulator with isolated build data;
-   inspect old/new/abstract creatures from front, side and back, including holes.
-   Exercise creation, repeat actions, pause and Reduce Motion. Capture actual
-   renderer evidence; a structural mesh check is not visual verification.
-4. Build the generic iPhone app with existing normal signing. Recheck Nathan's
-   phone; install only when it is available and existing signing succeeds.
-   No App Store/TestFlight upload or remote infrastructure deployment.
+## Release boundary
+
+This branch includes unactivated shared-weather backend commits. A push/merge
+could trigger hosted deployment, so the combined branch remains local pending
+coordinated release approval. The native fix and verification are reviewable;
+no remote-main completion is claimed.

@@ -887,7 +887,7 @@ struct ContinuousLobbyView: View {
         fixtureTask = Task { @MainActor in
             for _ in 0..<32 {
                 guard !Task.isCancelled else { return }
-                inputs.verifyMirror(.init(eyeOpenness: smile > 0 ? 0.8 : 1, facialSmile: smile, smilingEyes: smile > 0 ? 0.6 : 0, viewerAttention: 0.95))
+                inputs.verifyMirror(.init(eyeOpenness: smile > 0 ? Float(0.8) : 1, facialSmile: smile, smilingEyes: smile > 0 ? Float(0.6) : 0, viewerAttention: 0.95))
                 do { try await Task.sleep(for: .milliseconds(120)) } catch { return }
             }
         }

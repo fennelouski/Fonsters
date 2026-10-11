@@ -7,6 +7,6 @@ swiftc -target arm64-apple-macos15.0 -module-cache-path "$ROOT_DIR/.prototype-bu
  Fonsters/CreatureAvatar/CreatureTypes.swift Fonsters/CreatureAvatar/CreatureConstants.swift \
  Fonsters/CreatureAvatar/CreatureHash.swift Fonsters/CreatureAvatar/CreatureGenerator.swift Fonsters/CreatureAvatar/CreatureRaster.swift \
  Fonsters/Playroom/ResolvedCreatureTrace.swift Fonsters/Playroom/CreatureAppearanceDescriptor.swift \
- Fonsters/Playroom/FonsterPlatformColor.swift Fonsters/Playroom/CreatureFur.swift Fonsters/Playroom/CreatureTouchDynamics.swift Fonsters/Playroom/CreatureFacialGeometry.swift Fonsters/Playroom/CreatureRig.swift \
+ Fonsters/Playroom/FonsterPlatformColor.swift Fonsters/Playroom/CreatureFur.swift Fonsters/Playroom/CreatureTouchDynamics.swift Fonsters/Playroom/CreatureMirroring.swift Fonsters/Playroom/CreatureFaceDynamics.swift Fonsters/Playroom/CreatureFacialGeometry.swift Fonsters/Playroom/CreatureRig.swift \
  script/verify_all_models.swift -o .prototype-build/verification/all-models
 .prototype-build/verification/all-models "$ROOT_DIR/.prototype-build/verification/all-models.json"
