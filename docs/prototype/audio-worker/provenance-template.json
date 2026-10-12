@@ -1,0 +1,22 @@
+{
+  "schema_version": 1,
+  "catalogue_id": "fonsters-audio-2026-10-12",
+  "batch_id": "replace-with-nonsensitive-batch-id",
+  "status": "template_not_generated",
+  "records": [{
+    "asset_id": "fonsters.core.greet.v1.warm.01",
+    "filename": "fonster_greet_0.wav",
+    "status": "not_generated",
+    "provider": null,
+    "model": null,
+    "generated_at": null,
+    "submitted_prompt_sha256": null,
+    "original_audio_sha256": null,
+    "delivered_wav_sha256": null,
+    "reported_cost": null,
+    "license": {"status": "unverified", "evidence_reference": null, "verified_at": null},
+    "technical": {"duration_seconds": null, "sample_rate_hz": null, "channels": null, "bits_per_sample": null, "sample_peak_dbfs": null, "integrated_lufs": null, "loudness_measurement_note": null, "leading_silence_ms": null, "loop_start_frame": null, "loop_end_frame_exclusive": null},
+    "editing_notes": null,
+    "review": {"technical": "pending", "audition": "pending", "loop_repetitions_checked": null, "devices_checked": [], "notes": null, "approved_for_bundle": false}
+  }]
+}
