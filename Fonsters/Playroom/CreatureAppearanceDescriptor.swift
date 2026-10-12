@@ -22,6 +22,7 @@ struct CreatureAppearanceDescriptor: Codable, Equatable {
         let version: Int
         let family: String
         let pixels: [Pixel]
+        var anatomy: FamilyAnatomy? = nil
     }
 
     struct Pixel: Codable, Hashable { let x: Int; let y: Int }
@@ -102,7 +103,7 @@ struct CreatureAppearanceDescriptor: Codable, Equatable {
                                radius: config.creatureType == "alien" ? 13 : 11,
                                ellipseX: config.ellipseAspect.0, ellipseY: config.ellipseAspect.1, footprint: headFootprint),
                     parts: parts, clippingMask: mask, supported: supported,
-                    fallbackReason: supported ? nil : "This appearance stays in its original 2D form. The first 3D family supports upright, vertically mirrored creatures with visible features.")
+                    fallbackReason: supported ? nil : "This appearance uses its own resolved 3D family rig.")
         if !supported {
             // Trace semantics are trustworthy only when they match the raster.
             // Other generator modes have their own actual foreground mask.
@@ -114,7 +115,10 @@ struct CreatureAppearanceDescriptor: Codable, Equatable {
                     raster[y][x] >= 0 && (!config.hasOpaqueBackground || raster[y][x] != 0) ? Pixel(x: x, y: y) : nil
                 } }
             }
-            result.volume = .init(version: 1, family: config.avatarMode.rawValue, pixels: pixels)
+            result.volume = .init(version: 2, family: config.avatarMode.rawValue, pixels: pixels)
+            let anatomy = FamilyAnatomy.resolve(result, semantic: config.avatarMode == .creature && trace.pixels == raster,
+                variant: config.avatarMode == .space ? segmentPick(seed: effective, segmentId: "space_kind", n: 4) : 0)
+            result.volume?.anatomy = anatomy
         }
         return result
     }
@@ -127,8 +131,8 @@ struct ResolvedCreatureVolume {
     var normals: [SIMD3<Float>] = []
     var indices: [UInt32] = []
     var materials: [UInt32] = []
-    static func make(_ appearance: CreatureAppearanceDescriptor) -> Self {
-        let pixels = appearance.volume?.pixels ?? appearance.silhouette
+    static func make(_ appearance: CreatureAppearanceDescriptor, pixels selected: [CreatureAppearanceDescriptor.Pixel]? = nil, paint: [Int: Int8] = [:]) -> Self {
+        let pixels = selected ?? appearance.volume?.pixels ?? appearance.silhouette
         let cells = Set(pixels.map { $0.y * 32 + $0.x })
         func filled(_ x: Int, _ y: Int) -> Bool { (0..<32).contains(x) && (0..<32).contains(y) && cells.contains(y * 32 + x) }
         var result = Self(), vertices: [Int: UInt32] = [:]
@@ -157,7 +161,7 @@ struct ResolvedCreatureVolume {
             result.indices += [a, b, c, a, c, d]; result.materials += [palette, palette]
         }
         for p in pixels {
-            let x = p.x, y = p.y, palette = UInt32(max(0, appearance.raster[y * 32 + x]))
+            let x = p.x, y = p.y, palette = UInt32(max(0, paint[y * 32 + x] ?? appearance.raster[y * 32 + x]))
             let corners = [(x,y), (x+1,y), (x+1,y+1), (x,y+1)]
             let f = corners.map { vertex($0.0, $0.1, true, cellX: x, cellY: y) }
             let b = corners.map { vertex($0.0, $0.1, false, cellX: x, cellY: y) }

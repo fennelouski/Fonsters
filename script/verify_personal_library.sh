@@ -24,7 +24,7 @@ swiftc -module-name Fonsters -target arm64-apple-macos15.0 -module-cache-path .p
 swiftc -module-name Fonsters -target arm64-apple-macos15.0 -module-cache-path .prototype-build/verification/modules \
  Fonsters/CreatureAvatar/CreatureTypes.swift Fonsters/CreatureAvatar/CreatureConstants.swift \
  Fonsters/CreatureAvatar/CreatureHash.swift Fonsters/CreatureAvatar/CreatureGenerator.swift Fonsters/CreatureAvatar/CreatureRaster.swift \
- Fonsters/Playroom/ResolvedCreatureTrace.swift Fonsters/Playroom/CreatureAppearanceDescriptor.swift \
+ Fonsters/Playroom/ResolvedCreatureTrace.swift Fonsters/Playroom/CreatureAppearanceDescriptor.swift Fonsters/Playroom/CreatureFamilyAnatomy.swift \
  Fonsters/FonsterInterests.swift Fonsters/FonsterBiography.swift Fonsters/Fonster.swift Fonsters/PersonalFonsterLibrary.swift Fonsters/Playroom/CreatureSocialModels.swift \
  script/verify_personal_library.swift -o "$FIXTURE_DIR/verify-personal"
 "$FIXTURE_DIR/verify-personal" "$FIXTURE_DIR"

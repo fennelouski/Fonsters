@@ -29,6 +29,9 @@ final class CreatureRig {
     var baseHead: SIMD3<Float> = .zero
     var groundOffset: Float = 0
     var brows: [Entity] = []
+    private var familySurface: ResolvedCreatureVolume?
+    private var familyPieces: [(entity: Entity, position: SIMD3<Float>, phase: Float, kind: String)] = []
+    var familyVariant: String { descriptor.volume?.anatomy?.variant ?? "articulated" }
     private(set) var furStrands = 0
     private(set) var furTriangles = 0
     private(set) var furSurfaces = 0
@@ -143,23 +146,99 @@ final class CreatureRig {
     }
 
     private func addResolvedVolume() throws {
-        let geometry = ResolvedCreatureVolume.make(descriptor)
+        let anatomy = descriptor.volume?.anatomy ?? CreatureAppearanceDescriptor.FamilyAnatomy.resolve(descriptor, semantic: descriptor.volume?.family == "creature", variant: 0)
+        skinIndex = Int(anatomy.face.skin)
+        var paint: [Int: Int8] = [:]
+        for part in descriptor.parts where ["eye", "mouth", "brow"].contains(part.kind) && descriptor.volume?.family == "creature" {
+            for pixel in part.pixels { paint[pixel.y * 32 + pixel.x] = anatomy.face.skin }
+        }
+        let geometry = ResolvedCreatureVolume.make(descriptor, pixels: anatomy.bodyPixels, paint: paint)
         guard !geometry.positions.isEmpty else { throw CocoaError(.fileReadCorruptFile) }
-        var mesh = MeshDescriptor(name: "resolved-colored-volume-v1")
-        mesh.positions = MeshBuffers.Positions(geometry.positions)
-        mesh.normals = MeshBuffers.Normals(geometry.normals)
-        mesh.primitives = .triangles(geometry.indices)
-        mesh.materials = .perFace(geometry.materials)
-        let body = ModelEntity(mesh: try MeshResource.generate(from: [mesh]), materials: (0..<6).map { material(color($0), roughness: 1) })
-        body.name = "resolved-volumetric-body"; head.addChild(body)
+        familySurface = geometry
+        let keepOut: [(SIMD2<Float>, SIMD2<Float>)] = anatomy.eyes.map { eye in
+            let (w,h) = extent(eye); return (SIMD2<Float>(point(eye.centerX,eye.centerY).x,point(eye.centerX,eye.centerY).y), SIMD2<Float>(max(0.12,w*0.9),max(0.12,h*0.9)))
+        } + [(SIMD2<Float>(point(anatomy.face.mouthX,anatomy.face.mouthY).x,point(anatomy.face.mouthX,anatomy.face.mouthY).y), SIMD2<Float>(Float(anatomy.face.mouthWidth)*pixel*0.7,0.20))]
+        let count = furDetail == .portrait ? 12000 : (furDetail == .lobby ? 4000 : 1800)
+        let totalPixels = max(1, (descriptor.volume?.pixels.count ?? anatomy.bodyPixels.count))
+        let body = try addFamilySurface(geometry, parent: head, name: "resolved-volumetric-body", count: max(400,count*anatomy.bodyPixels.count/totalPixels), keepOut: keepOut)
         let bounds = body.visualBounds(relativeTo: head)
         let radii = simd_max(bounds.extents * 0.5, SIMD3<Float>(repeating: 0.03))
         touchHeadRadius = [radii.x, radii.y]
         touchSurfaces.append(.init(entity: head, center: bounds.center, radii: radii, zone: .cheek))
-        let coat = try CreatureFur.surface(key: coatKey + ":resolved-volume", name: "fuzzy-resolved-volume") {
-            CreatureFur.volume(geometry, seed: furSeed, count: furDetail == .portrait ? 12000 : (furDetail == .lobby ? 4000 : 1800), toneVariation: furDetail == .portrait)
+        if anatomy.face.addedSupport {
+            // A tiny/disconnected constellation cannot support eyes. Its resolved
+            // central tuft is a render-only face; all original stars remain around it.
+            let tuft = ball(color(skinIndex), scale: [0.32,0.32,0.30], at: point(anatomy.face.x,anatomy.face.y,z:0.25), parent: head, furry: true)
+            touchSurfaces.append(.init(entity:tuft,center:.zero,radii:.init(repeating:1.03),zone:.cheek))
         }
-        addCoat(coat, to: head, name: "fuzzy-resolved-volume")
+        for part in anatomy.appendages {
+            try addFamilyAppendage(part, count: max(80,count*part.pixels.count/totalPixels))
+        }
+        for (i, part) in anatomy.satellites.enumerated() {
+            let geometry = ResolvedCreatureVolume.make(descriptor,pixels:part.pixels)
+            let group = Entity(); group.name = part.id; head.addChild(group)
+            let surface = try addFamilySurface(geometry,parent:group,name:part.id+"-surface",count:max(40,count*part.pixels.count/totalPixels))
+            let hitBounds = surface.visualBounds(relativeTo:group)
+            touchSurfaces.append(.init(entity:group,center:hitBounds.center,
+                radii:simd_max(hitBounds.extents*0.5,SIMD3<Float>(repeating:0.03)),zone:.paw))
+            familyPieces.append((group,.zero,Float(i)*2.399,part.kind))
+        }
+        for eye in anatomy.eyes { addEye(eye) }
+        try addMouth()
+        if descriptor.volume?.family == "creature" {
+            for brow in descriptor.parts where brow.kind == "brow" { addBrow(brow) }
+        }
+        let fullBounds = head.visualBounds(relativeTo:head)
+        touchHeadRadius = simd_max(SIMD2<Float>(fullBounds.extents.x,fullBounds.extents.y)*0.5,SIMD2<Float>(repeating:0.2))
+        if let furError { throw furError }
+    }
+
+    @discardableResult private func addFamilySurface(_ geometry: ResolvedCreatureVolume, parent: Entity, name: String, count: Int, keepOut: [(SIMD2<Float>,SIMD2<Float>)] = []) throws -> ModelEntity {
+        let geometry = geometry.softened()
+        var mesh = MeshDescriptor(name: name)
+        mesh.positions = MeshBuffers.Positions(geometry.positions); mesh.normals = MeshBuffers.Normals(geometry.normals)
+        mesh.primitives = .triangles(geometry.indices); mesh.materials = .perFace(geometry.materials)
+        let body = ModelEntity(mesh: try MeshResource.generate(from: [mesh]), materials: (0..<6).map { material(color($0), roughness: 1) })
+        body.name = name; parent.addChild(body)
+        let coat = try CreatureFur.surface(key: coatKey + ":anatomy-v1:" + name, name: name+"-fur") {
+            CreatureFur.volume(geometry,seed:furSeed ^ UInt64(furSurfaces+1),count:count,toneVariation:furDetail == .portrait,faceKeepOut:keepOut)
+        }
+        addCoat(coat,to:body,name:name+"-fur"); groomedFaceStrands += coat.trimmedStrands
+        return body
+    }
+
+    private func addFamilyAppendage(_ part: CreatureAppearanceDescriptor.Part, count: Int) throws {
+        let center = descriptor.volume?.anatomy?.face
+        let sorted = part.pixels.sorted { hypot(Double($0.x)-(center?.x ?? 16),Double($0.y)-(center?.y ?? 16)) < hypot(Double($1.x)-(center?.x ?? 16),Double($1.y)-(center?.y ?? 16)) }
+        guard let first = sorted.first else { return }
+        let anchor = descriptor.volume?.anatomy?.bodyPixels.min { a,b in
+            let da=(a.x-first.x)*(a.x-first.x)+(a.y-first.y)*(a.y-first.y)
+            let db=(b.x-first.x)*(b.x-first.x)+(b.y-first.y)*(b.y-first.y)
+            return da < db
+        } ?? first
+        let pivot = point(Double(anchor.x),Double(anchor.y))
+        var geometry = ResolvedCreatureVolume.make(descriptor,pixels:part.pixels)
+        geometry.positions = geometry.positions.map { $0-pivot }
+        let joint=Entity(), bend=Entity(); joint.name=part.id; joint.position=pivot
+        joint.addChild(bend); head.addChild(joint)
+        let connection = point(Double(first.x),Double(first.y))-pivot
+        if simd_length(connection) > 0.05 {
+            tube(from:.zero,to:connection,radius:0.04,color:color(skinIndex),parent:bend)
+        }
+        _ = try addFamilySurface(geometry,parent:bend,name:part.id+"-surface",count:count)
+        limbs.append((joint,bend,0))
+        let bounds=bend.visualBounds(relativeTo:bend)
+        touchSurfaces.append(.init(entity:bend,center:bounds.center,radii:simd_max(bounds.extents*0.5,SIMD3<Float>(repeating:0.05)),zone:.paw))
+    }
+
+    /// Called by the existing controller clock only. Still mode resets every
+    /// secondary joint; no timers, per-frame entities or mesh rebuilds.
+    func animateFamily(time: Float, energy: Float, moving: Bool) {
+        for piece in familyPieces {
+            let wave = moving ? sin(time*(piece.kind == "petal" ? 1.2 : 0.75)+piece.phase)*min(1,max(0,energy)) : 0
+            piece.entity.position = piece.position + [0,wave*(piece.kind == "petal" ? 0.018 : 0.05),wave*0.025]
+            piece.entity.orientation = simd_quatf(angle:wave*(piece.kind == "petal" ? 0.035 : 0.025),axis:[0,1,0])
+        }
     }
 
     func point(_ x: Double, _ y: Double, z: Float = 0) -> SIMD3<Float> {
@@ -208,6 +287,11 @@ final class CreatureRig {
          Float((p.pixels.map(\.y).max() ?? 0) - (p.pixels.map(\.y).min() ?? 0) + 1) * pixel)
     }
     func faceDepth(_ x: Double, _ y: Double) -> Float {
+        if let anatomy = descriptor.volume?.anatomy {
+            if anatomy.face.addedSupport && hypot(x-anatomy.face.x,y-anatomy.face.y) < anatomy.face.radius { return 0.55 }
+            let position = point(x,y)
+            return familySurface?.positions.filter { abs($0.x-position.x) <= pixel*1.5 && abs($0.y-position.y) <= pixel*1.5 }.map(\.z).max() ?? 0.36
+        }
         let h = descriptor.head
         let dx = Float((x - h.centerX) / (h.radius * (h.shape == "ellipse" ? h.ellipseX : 1)))
         let dy = Float((y - h.centerY) / (h.radius * (h.shape == "ellipse" ? h.ellipseY : 1)))
@@ -293,7 +377,9 @@ final class CreatureRig {
 
     func addEye(_ part: CreatureAppearanceDescriptor.Part) {
         let eye = Entity(); eye.name = part.id; eye.position = facePosition(part)
-        let (w, h) = extent(part)
+        let dimensions = extent(part)
+        let w = descriptor.supported ? dimensions.0 : min(0.38,max(0.14,dimensions.0))
+        let h = descriptor.supported ? dimensions.1 : min(0.34,max(0.14,dimensions.1))
         // The resolved eye shape is retained as a rounded outline, with a glossy iris.
         let white = FonsterPlatformColor(srgbRed: 0.98, green: 0.96, blue: 0.88, alpha: 1)
         if part.style == "square" {
@@ -332,6 +418,9 @@ final class CreatureRig {
     /// including absence; no identity, portrait, visit format or saved feeling changes.
     static func smileLayout(for descriptor: CreatureAppearanceDescriptor) -> SmileLayout {
         let pixel: Float = 0.0625
+        if let face = descriptor.volume?.anatomy?.face {
+            return .init(centerX:face.mouthX,centerY:face.mouthY,width:Float(face.mouthWidth)*pixel,height:0.24,paletteIndex:contrastingMouthColor(descriptor,skin:Int(face.mouthSkin ?? face.skin)),hasLegacyMouth:false)
+        }
         if let part = descriptor.parts.first(where: { $0.kind == "mouth" }) {
             let w = Float((part.pixels.map(\.x).max() ?? 0) - (part.pixels.map(\.x).min() ?? 0) + 1) * pixel
             let h = Float((part.pixels.map(\.y).max() ?? 0) - (part.pixels.map(\.y).min() ?? 0) + 1) * pixel
@@ -345,6 +434,16 @@ final class CreatureRig {
         let y = min(h.centerY + h.radius * 0.72, max(h.centerY + h.radius * 0.40, obstacles))
         return .init(centerX: h.centerX, centerY: y, width: 0.48, height: 0.30,
                      paletteIndex: 3, hasLegacyMouth: false)
+    }
+    private static func contrastingMouthColor(_ descriptor: CreatureAppearanceDescriptor, skin: Int) -> Int {
+        let base = descriptor.rgbaPalette[min(5,max(0,skin))]
+        return (0..<6).max { a,b in
+            func contrast(_ index: Int) -> Int {
+                let c = descriptor.rgbaPalette[index]
+                return (0..<3).reduce(0) { $0+abs(Int(c[$1])-Int(base[$1])) }
+            }
+            return contrast(a) < contrast(b)
+        } ?? 3
     }
     func addMouth() throws {
         let layout = Self.smileLayout(for: descriptor)

@@ -119,6 +119,53 @@ import simd
         }
         print("PASS: 100 contacts immediately interrupt spin without a queue or learning; samples never train memory; one completed meaningful stroke learns once; five motion gates cancel contact and hold frames")
 
+        var familySeeds: [String:String] = [:]
+        for i in 0..<1500 {
+            let seed="little-fonster-\(i)", appearance=CreatureAppearanceDescriptor.resolve(seed:seed)
+            guard let volume=appearance.volume else { continue }
+            let config=resolveConfig(seed:seed)
+            let name=volume.family == "creature" ? (config.complexityTier < 4 ? "low-tier" : (config.upsideDown ? "inverted" : (config.symmetryAxis == .horizontal ? "horizontal" : "asymmetric"))) : volume.anatomy!.variant
+            if familySeeds[name] == nil { familySeeds[name]=seed }
+            if familySeeds.count == 11 { break }
+        }
+        precondition(familySeeds.count == 11)
+        for (name,seed) in familySeeds.sorted(by: { $0.key < $1.key }) {
+            let appearance=CreatureAppearanceDescriptor.resolve(seed:seed)
+            let before=try encoder.encode(appearance)
+            let rig=try CreatureRig(appearance,furDetail:.world)
+            let actor=PlayroomController(); actor.writesProbe=false; actor.lowPower=false; actor.roaming=false
+            actor.install(rig,name:name)
+            for _ in 0..<40 {
+                actor.perform(.greet,name:name,learn:false,audible:false)
+                actor.advance(dt:1/30)
+                actor.perform(.play,name:name,learn:false,audible:false)
+                actor.advance(dt:1/30)
+                actor.perform(.blink,name:name,learn:false,audible:false)
+                actor.advance(dt:1/30)
+            }
+            actor.setFeeling(.low); precondition(rig.facialGeometry!.curvature < 0)
+            actor.setFeeling(.neutral)
+            let center=rig.eyes[0].position(relativeTo:nil)
+            precondition(rig.touchHit(origin:center+[0,0,5],direction:[0,0,-1])?.zone == .eye)
+            for gate in ["pause","still","reduce","background","lowPower"] {
+                actor.paused=false; actor.staticMode=false; actor.systemReduceMotion=false; actor.backgrounded=false; actor.lowPower=false
+                if gate == "pause" { actor.paused=true }
+                if gate == "still" { actor.staticMode=true }
+                if gate == "reduce" { actor.systemReduceMotion=true }
+                if gate == "background" { actor.backgrounded=true }
+                if gate == "lowPower" { actor.lowPower=true }
+                actor.refreshStillPose(); let frames=actor.frameCount
+                actor.advance(dt:1/30); precondition(actor.frameCount == frames)
+                for part in appearance.volume!.anatomy!.satellites {
+                    let entity=rig.root.findEntity(named:part.id)!
+                    precondition(entity.position == .zero && abs(entity.orientation.angle)<0.001)
+                }
+            }
+            let after = try encoder.encode(appearance)
+            precondition(after == before)
+        }
+        print("PASS: eleven family rigs accept 40 repeated greeting/play/blink interruptions, negative low-mood mouths and real eye-ray contact; all five motion gates freeze frames/reset secondary joints; descriptor identity stays unchanged")
+
         var simulation = LocalLobbySimulation(names: Array(PlayroomCompanion.fixtures.prefix(4)).map(\.name))
         simulation.stopAgentMotion(actor: 0)
         let position = simulation.agents[0].position

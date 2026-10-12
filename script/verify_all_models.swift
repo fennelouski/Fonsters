@@ -21,12 +21,26 @@ import CryptoKit
         }
         precondition(Set(["low-tier", "inverted", "horizontal", "asymmetric", "cloud", "flower", "repeating", "space-0", "space-1", "space-2", "space-3"]).isSubset(of: Set(families.keys)))
         var metrics: [[String: Any]] = []
+        let legacyJSON = try JSONEncoder().encode(CreatureAppearanceDescriptor.resolve(seed:families.values.sorted().first!))
+        var legacyObject = try JSONSerialization.jsonObject(with:legacyJSON) as! [String:Any]
+        var legacyVolume = legacyObject["volume"] as! [String:Any]
+        legacyVolume.removeValue(forKey:"anatomy"); legacyVolume["version"] = 1
+        legacyObject["volume"] = legacyVolume
+        let restored = try JSONDecoder().decode(CreatureAppearanceDescriptor.self,from:JSONSerialization.data(withJSONObject:legacyObject))
+        let restoredRig = try CreatureRig(restored,furDetail:.world)
+        precondition(!restoredRig.eyes.isEmpty && restoredRig.mouth != nil)
+
         for (family, seed) in families.sorted(by: { $0.key < $1.key }) {
             let descriptor = CreatureAppearanceDescriptor.resolve(seed: seed)
             let geometry = ResolvedCreatureVolume.make(descriptor)
-            precondition(descriptor.volume?.version == 1 && !geometry.positions.isEmpty)
+            precondition(descriptor.volume?.version == 2 && !geometry.positions.isEmpty)
             precondition(geometry.positions == ResolvedCreatureVolume.make(descriptor).positions)
             precondition(geometry.indices.count / 3 == geometry.materials.count)
+            let soft = geometry.softened()
+            precondition(soft.indices == geometry.indices && soft.materials == geometry.materials)
+            precondition(soft.positions == geometry.softened().positions)
+            precondition(soft.positions.allSatisfy { [$0.x,$0.y,$0.z].allSatisfy(\.isFinite) })
+            precondition(soft.normals.allSatisfy { abs(simd_length($0)-1)<0.001 })
             precondition(geometry.positions.allSatisfy { [$0.x,$0.y,$0.z].allSatisfy(\.isFinite) })
             precondition(geometry.normals.allSatisfy { abs(simd_length($0)-1) < 0.001 })
             var edges: [String: Int] = [:], volume: Float = 0, projected = Set<Int>()
@@ -57,7 +71,21 @@ import CryptoKit
             let rig = try CreatureRig(descriptor, furDetail: .world)
             let bounds = rig.root.visualBounds(relativeTo: rig.root)
             precondition(bounds.extents.z >= 0.44 && rig.root.findEntity(named: "resolved-volumetric-body") != nil)
-            precondition(rig.furStrands == 1800 && rig.furSurfaces == 1 && rig.groundOffset.isFinite)
+            precondition(rig.furStrands >= 400 && rig.furStrands < 20000 && rig.furSurfaces >= 1 && rig.groundOffset.isFinite)
+            precondition(!rig.eyes.isEmpty && rig.eyes.count == rig.pupils.count && rig.mouth != nil)
+            rig.express(smile:-0.6,smilingEyes:0,opening:0.1)
+            let sad = rig.facialGeometry!.curvature
+            rig.express(smile:0.9,smilingEyes:0.8,opening:0.7)
+            precondition(rig.facialGeometry!.curvature > sad)
+            rig.animateFamily(time:2,energy:1,moving:true)
+            rig.animateFamily(time:2,energy:1,moving:false)
+            for part in descriptor.volume!.anatomy!.satellites {
+                let entity = rig.root.findEntity(named:part.id)!
+                precondition(entity.position == .zero && abs(entity.orientation.angle) < 0.001)
+                let b=entity.visualBounds(relativeTo:nil)
+                precondition(rig.touchHit(origin:b.center+[0,0,5],direction:[0,0,-1]) != nil,"Every satellite needs a live touch surface")
+            }
+            precondition(rig.limbs.count == descriptor.volume!.anatomy!.appendages.count)
             let hit = rig.touchHit(origin: [0,0,5], direction: [0,0,-1])
             precondition(hit != nil, "Volume needs a touch surface")
             metrics.append(["family": family, "triangles": geometry.indices.count/3, "depth": bounds.extents.z, "signedVolume": volume, "furStrands": rig.furStrands])

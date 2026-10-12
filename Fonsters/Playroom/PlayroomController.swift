@@ -567,6 +567,7 @@ final class PlayroomController {
             pupil.position = [sin(yaw) / sin(0.35) * travel.x, sin(pitch) / sin(0.35) * travel.y, 0.105 - (1 - cos(yaw) * cos(pitch)) * 0.04]
             pupil.orientation = simd_quatf(angle: yaw, axis: [0, 1, 0]) * simd_quatf(angle: -pitch, axis: [1, 0, 0])
         }
+        rig.animateFamily(time: elapsed, energy: reaction == .rest ? 0.2 : (reaction == .play ? 1 : 0.55), moving: shouldAnimate)
         rig.express(smile: pose.smile, smilingEyes: pose.smilingEyes * min(1, pose.eyes * 2), opening: pose.mouth)
         for (i, brow) in rig.brows.enumerated() {
             brow.orientation = simd_quatf(angle: (i == 0 ? 1 : -1) * pose.tilt * 0.8, axis: [0, 0, 1])
