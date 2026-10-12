@@ -1,3 +1,8 @@
+> 12 October follow-up: a REST provider adapter, closed host routes and native
+> weather information/credits are now implemented. Live activation remains
+> blocked. See [current activation checkpoint](weather-activation.md); the
+> following notes record the earlier integration assessment.
+
 # Shared weather handoff — 9 October 2026
 
 Offline candidate: branch `codex/shared-weather-hourly`, based on Fonsters main

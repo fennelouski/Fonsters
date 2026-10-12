@@ -30,7 +30,8 @@ function normalize(result, point, datasets, now, strict) {
   const a = result?.attribution;
   if (!https(a?.legalPageURL) || (strict && (a.serviceName !== 'Apple Weather' || !https(a.markURL)))) throw failure('invalid_weather_attribution');
   // Copy only supported fields; never forward raw provider payloads or identifiers.
-  const entry = { version: 2, location: point, datasets: {}, attribution: { serviceName: a.serviceName || 'Apple Weather', legalPageURL: a.legalPageURL, ...(a.markURL ? { markURL: a.markURL } : {}) }, provenance: { provider: 'apple-weather', transformed: false } };
+  if (a.darkMarkURL !== undefined && !https(a.darkMarkURL)) throw failure('invalid_weather_attribution');
+  const entry = { version: 2, location: point, datasets: {}, attribution: { serviceName: a.serviceName || 'Apple Weather', legalPageURL: a.legalPageURL, ...(a.markURL ? { markURL: a.markURL } : {}), ...(a.darkMarkURL ? { darkMarkURL: a.darkMarkURL } : {}) }, provenance: { provider: 'apple-weather', transformed: false } };
   if (datasets.includes('current')) entry.datasets.current = { ...metadata(result.currentWeather?.metadata, now, strict), condition: condition(result.currentWeather) };
   if (datasets.includes('hourly')) {
     const data = result.forecastHourly, start = Math.floor(now / HOUR) * HOUR;

@@ -126,6 +126,11 @@ struct FamilyPrivacyView: View {
                     Text("Camera and microphone can be turned off at any time. Cancel practice to discard a draft; Undo or Reset changes learned movement. A grown-up can edit or remove library entries in the original gallery. Removing the app does not necessarily remove iCloud backups or copies shared with someone else. Existing library records and links are preserved by this update.")
                     Text("A grown-up task helps prevent accidental access. It does not verify age or establish legal parental consent. A future account experience will have a separate age, country and consent review and its own notice; it will never silently upgrade protected play.").font(.footnote)
                 }
+                Section("World") {
+                    NavigationLink { WeatherInformationView() } label: {
+                        Label("Weather & data sources", systemImage: "cloud.sun")
+                    }.accessibilityIdentifier("weatherInformationLink")
+                }
                 Section("Privacy questions") {
                     Text("Nathan Fennel · nathanfennel.com. This preview notice is being prepared for publication. Full operator contact details must be confirmed before a public child release.")
                 }

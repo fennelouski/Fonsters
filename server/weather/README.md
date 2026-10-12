@@ -1,7 +1,8 @@
 # Shared private weather engine — offline integration candidate
 
-`npm run test:weather` uses fixtures only. No provider, HTTP route, credential,
-production store, deployment or native networking is activated in this change.
+`npm run test:weather` uses fixtures only. A real REST provider adapter and closed
+host routes are now implemented; credentials, production storage, deployment and
+native networking are not activated. See [activation checkpoint](../../docs/backend/weather-activation.md).
 
 ## Versioned contract
 
