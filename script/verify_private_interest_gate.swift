@@ -20,6 +20,9 @@ actor Calls { var count=0; func hit() {count += 1} }
         let now=Date(timeIntervalSince1970: 1_700_000_000)
         let record: [String: Any] = ["id":"00000000-0000-4000-8000-000000000000", "source":"wikipedia", "sourceID":"en:1", "title":"Synthetic film", "url":"https://en.wikipedia.org/?curid=1", "detail":"Synthetic", "approval":"unreviewed", "verification":["method":"provider-api","checkedAt":"2023-11-14T22:13:20.000Z"]]
         func data(_ value: [String: Any]) throws -> Data { try JSONSerialization.data(withJSONObject:["version":1,"records":[value]]) }
+        let duplicate = try JSONSerialization.data(withJSONObject:["version":1,"records":[record,record]])
+        do { _ = try FonsterPrivateInterestResolver.entities(duplicate,category:.movies,now:now); fatalError("duplicate canonical IDs accepted") }
+        catch FonsterPrivateInterestResolver.Failure.invalidResponse {}
         let found=try FonsterPrivateInterestResolver.entities(data(record),category:.movies,now:now)
         precondition(found.count==1 && found[0].title=="Synthetic film")
         for (key,value) in [("source","youtube"),("approval","approved"),("url","http://en.wikipedia.org"),("url","https://evil.invalid"),("title","bad\u{0000}title")] {

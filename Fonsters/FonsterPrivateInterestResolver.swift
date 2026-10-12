@@ -57,7 +57,7 @@ actor FonsterPrivateInterestResolver: FonsterInterestResolving {
     nonisolated static func entities(_ data: Data, category: FonsterInterestCategory, now: Date) throws -> [FonsterInterestEntity] {
         guard data.count <= 262_144 else { throw Failure.invalidResponse }
         let result = try JSONDecoder().decode(SearchResult.self, from: data)
-        guard result.version == 1, result.records.count <= 32 else { throw Failure.invalidResponse }
+        guard result.version == 1, result.records.count <= 32, Set(result.records.map(\.id)).count == result.records.count else { throw Failure.invalidResponse }
         return try result.records.map { record in
             guard UUID(uuidString: record.id) != nil, record.verification.method == "provider-api",
                   record.approval == "unreviewed",

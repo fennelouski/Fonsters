@@ -131,6 +131,9 @@ struct FamilyPrivacyView: View {
                         Label("Weather & data sources", systemImage: "cloud.sun")
                     }.accessibilityIdentifier("weatherInformationLink")
                 }
+                Section("Accounts") {
+                    NavigationLink("Private account") { FonsterAccountView() }
+                }
                 Section("Privacy questions") {
                     Text("Nathan Fennel · nathanfennel.com. This preview notice is being prepared for publication. Full operator contact details must be confirmed before a public child release.")
                 }
