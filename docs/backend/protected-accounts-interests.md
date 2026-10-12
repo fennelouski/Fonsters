@@ -85,13 +85,13 @@ release approval**.
 
 ## Remaining live activation gates — all closed
 
-1. **Release/audience decision:** determine whether accounts belong in a distinct
-   adult experience/build or a reviewed mixed-audience product. Review supported
-   countries and the actual assurance/parental-consent design before enabling
-   signup. The safe implementation currently grants no child/teen provider access
-   and no public social to anyone. No DOB/child account persistence was added. Guardian-managed accounts or
-   verifiable parental consent require a distinct reviewed flow and are not
-   implied by adult identity or the camera math gate.
+1. **Release/audience decision:** Nathan approved adult-only hosted accounts on
+   12 October 2026. Children and teens retain private local play; public social
+   stays off. The audience choice is settled, but supported countries and the
+   authoritative adult/region assurance adapter and separate release notice still
+   require review before signup. Guardian-managed accounts/verifiable parental
+   consent are outside this first release, not implied by Apple identity or the
+   camera math gate. No DOB or child account persistence was added.
 2. **Identity and token vault:** approved Apple audience/entitlement configuration,
    authorized code exchange and trusted-key rotation adapter, encrypted revocation
    vault, revocation and interrupted/denied exchange reconciliation. Rejected enrollment
@@ -141,3 +141,10 @@ cover account deletion, kids' privacy, third-party data handling and social-cont
 protections. [Token revocation](https://developer.apple.com/documentation/signinwithapplerestapi/revoke-tokens)
 is the provider integration reference. These references inform the activation
 checklist; this implementation makes no claim of complete regulatory compliance.
+
+## Native continuation
+
+The dedicated native owner continued the recoverable client/UI work after this
+backend checkpoint; see [native account lifecycle](native-account-lifecycle.md).
+Production account routes, approved endpoint and signup remain closed. The first
+release audience decision above supersedes the original pending audience question.
