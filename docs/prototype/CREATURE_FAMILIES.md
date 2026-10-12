@@ -99,13 +99,30 @@ mouth. Successful native builds were repeated after the correction.
 ## Deliverables and limits
 
 Mac preview: `.prototype-build/native/Build/Products/Debug/Fonsters.app`.
+Use the existing preview bundle identifier `com.nathanfennel.Fonsters.Playroom`
+so double-clicking always selects memory-only/non-cloud prototype data.
+`bash script/preview_family_gallery.sh run` opens an eleven-family **in-memory**
+SwiftData gallery using the explicit `--prototype --family-gallery` flags. Memory
+files/evidence use a fresh `/tmp/fonsters-family-gallery.*` directory. No production
+user records are read/migrated. `prepare` allocates the scratch folder only.
+An initial externally seeded persistent-store preview stalled inside SQLite open;
+only that owned process was stopped, and the gallery switched to in-memory data.
+No permission change or real-user database migration was made.
+Its optional window export is labeled an app-owned UI/scene composite, not a
+screen recording. The snapshot uses this app's live scene and measured window.
 Signed phone build: `.prototype-build/iphone/Build/Products/Debug-iphoneos/Fonsters.app`.
 Renders: `evidence/all-models/renders/*.png`.
 Contact sheets: `evidence/families/family-contact-sheet-{1,2}.png`.
 Logs: `evidence/families/{model-checks,behavior-checks,family-interaction-checks,render-checks,mac-build,iphone-build}.log`.
 Evidence/build products are local and ignored by Git; scripts/source/docs are committed.
 
-Untested: actual app-window end-to-end UI, physical iPhone installation/frame rate,
+Native gallery launch is verified: eleven synthetic members, rendererReady=true,
+empty renderer error, and more than 600 advancing frames. Own app UI/live-scene
+composite was captured and inspected (`evidence/families/native-gallery-ui-scene.png`);
+probe: `native-gallery-probe.json`. This is not a desktop screenshot. The isolated
+preview is left open for interaction; records are in memory only.
+
+Untested: exhaustive app-window end-to-end UI, physical iPhone installation/frame rate,
 real camera/microphone operation on these families and tvOS/visionOS. No phone
 installation retry was made. Family variant coverage is comprehensive, but mesh
 runtime checks use representative variants rather than enumerating every possible

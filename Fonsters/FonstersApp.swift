@@ -168,7 +168,14 @@ struct FonstersApp: App {
                 try? FileManager.default.createDirectory(at: url.deletingLastPathComponent(), withIntermediateDirectories: true)
                 return try! ModelContainer(for: schema, configurations: [ModelConfiguration("PersonalPreview", schema: schema, url: url, cloudKitDatabase: .none)])
             }
-            return try! ModelContainer(for: schema, configurations: [ModelConfiguration(schema: schema, isStoredInMemoryOnly: true, cloudKitDatabase: .none)])
+            let container = try! ModelContainer(for: schema, configurations: [ModelConfiguration(schema: schema, isStoredInMemoryOnly: true, cloudKitDatabase: .none)])
+            if args.contains("--family-gallery") {
+                for (index, fixture) in CreatureAppearanceDescriptor.FamilyAnatomy.previewSeeds.enumerated() {
+                    container.mainContext.insert(Fonster(name: fixture.name, seed: fixture.seed, createdAt: Date().addingTimeInterval(-Double(index))))
+                }
+                try! container.mainContext.save()
+            }
+            return container
         }
         #endif
         // Only use CloudKit when an iCloud account is available; otherwise we get

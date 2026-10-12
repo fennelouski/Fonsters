@@ -232,6 +232,9 @@ struct ContinuousLobbyView: View {
         #if os(macOS)
         .task { await resizeCarePreviewIfRequested(); await verifyCameraKeyboardIfRequested(); await verifyExplorationIfRequested(); await verifyCameraLifecycleIfRequested(); await verifyWaypointsIfRequested() }
         #endif
+        #if os(macOS)
+        .background(VerificationWindowCapture(label: "lobby").frame(width: 0, height: 0))
+        #endif
         .onDisappear { pauseLiveActivity(); lobby.backgrounded = true; lobby.cancelContact(); lobby.refreshGates(); interpreter.cancel() }
     }
     private var portraitGallery: some View {

@@ -11,6 +11,12 @@ extension CreatureAppearanceDescriptor {
             let addedSupport: Bool
             var mouthSkin: Int8? = nil
         }
+        /// Public synthetic fixtures only, used by the explicit memory-only gallery.
+        static let previewSeeds: [(name: String, seed: String)] = [
+            ("Pip","little-fonster-3"),("Topsy","little-fonster-1"),("Twins","little-fonster-6"),
+            ("Quirk","little-fonster-43"),("Nimbus","little-fonster-167"),("Petal","little-fonster-46"),
+            ("Patch","little-fonster-2"),("Moon","little-fonster-180"),("Starlight","little-fonster-158"),
+            ("Nebbie","little-fonster-193"),("Galaxy","little-fonster-341")]
         let version: Int
         let variant: String
         let face: Face
