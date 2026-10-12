@@ -68,6 +68,31 @@ no push is proof of activation. Native still needs the approved host connection,
 location-choice wiring and actual mark loading before applying data to the world.
 No fallback direct WeatherKit call may bypass shared metering.
 
+## Credential clarification from Nathan
+
+Native WeatherKit and a shared backend use different authentication paths:
+
+| Connection | Authentication | Where it belongs |
+| --- | --- | --- |
+| Native app → Apple's Swift WeatherKit | App capability/entitlement and provisioning | Signed app; no owner API key embedded |
+| Shared backend → Apple WeatherKit REST | Apple WeatherKit private signing key, Team/key IDs and Service ID; signed short-lived JWT | Approved server-only secret runtime |
+| Nathan's server → his private backend | That backend's own owner/service API key | Approved server-only runtime; not a bundled mobile secret |
+| Fonsters app → shared weather endpoint | Reviewed weather-specific client authorization and abuse limits | Approved app/backend boundary; never the owner's private service key |
+
+Nathan reports an existing backend service with a separate personal API key, but
+its URL/repository and weather functionality have not been established. Locate
+that service first: if it already brokers Apple weather, reuse its approved
+server connection rather than create another Apple key. If it does not, native
+app provisioning alone does not authenticate this Node REST adapter. The shared
+backend needs a verified upstream provider connection. No key creation, capability
+change, private key retrieval or native fallback request is authorized by this
+clarification. Ask for the backend location, not a secret pasted into chat.
+
+The existing engine's `clients` secrets are internal server-to-server credentials;
+they do not supply the app authorization boundary. Its route composition keeps
+them behind the injected approved authorizer. Keep shared quota/cache semantics
+instead of adding direct per-app requests that bypass the central service.
+
 ## Official references checked today
 
 - https://developer.apple.com/weatherkit/ — Weather trademark and data-source
