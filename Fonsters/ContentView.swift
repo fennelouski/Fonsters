@@ -850,7 +850,7 @@ struct HelpSheetView: View {
                     Label("Deletion asks for confirmation and cannot be undone. Cancel keeps the portrait.", systemImage: "trash")
                 }
             }
-            .navigationTitle("How to use Fonsters")
+            .navigationTitle("How to play")
             .toolbar {
                 ToolbarItem(placement: .confirmationAction) {
                     Button("Done") { dismiss() }
