@@ -1,6 +1,14 @@
 {
   "rewrites": [
     {
+      "source": "/api/accounts/:action",
+      "destination": "/api/accounts?action=:action"
+    },
+    {
+      "source": "/api/private-interests/:action",
+      "destination": "/api/private-interests?action=:action"
+    },
+    {
       "source": "/api/interests/:action",
       "destination": "/api/interests?action=:action"
     },

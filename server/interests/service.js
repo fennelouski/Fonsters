@@ -16,16 +16,24 @@ function publicFields(entity) {
   return { id, source, sourceID, title, category, url, detail, attribution, verification, approval };
 }
 class InterestService {
-  constructor({ env = process.env, fetcher = fetch, clock = Date.now, cache } = {}) {
-    this.env = env; this.fetcher = fetcher; this.clock = clock;
+  constructor({ env = process.env, fetcher = fetch, clock = Date.now, cache, accounts, mode = 'preview' } = {}) {
+    this.accounts = accounts; this.mode = mode; this.env = env; this.fetcher = fetcher; this.clock = clock;
     this.cache = cache || new InterestCache({ file: env.INTEREST_CACHE_FILE, clock }); this.rate = new Map();
   }
   async handle({ method, path, headers: requestHeaders = {}, body = '', client = 'preview' }) {
     const respond = (statusCode, data, additional = {}) => ({ statusCode, headers: { ...headers, ...additional }, body: JSON.stringify(data) });
     if (!['/api/interests/search', '/api/interests/records', '/api/interests/status', '/api/interests/recipient'].includes(path)) return respond(404, { error: 'not_found' });
-    if (this.env.INTEREST_PREVIEW_ENABLED !== 'true' || !this.env.INTEREST_PREVIEW_ACCESS_KEY || this.env.INTEREST_PREVIEW_ACCESS_KEY.length < 24) return respond(503, { error: 'interest_preview_not_configured' });
+    if (this.mode !== 'account' && (this.env.INTEREST_PREVIEW_ENABLED !== 'true' || !this.env.INTEREST_PREVIEW_ACCESS_KEY || this.env.INTEREST_PREVIEW_ACCESS_KEY.length < 24)) return respond(503, { error: 'interest_preview_not_configured' });
     const inputHeaders = Object.fromEntries(Object.entries(requestHeaders).map(([key, value]) => [key.toLowerCase(), value]));
-    if (inputHeaders.origin && inputHeaders.origin !== this.env.INTEREST_ALLOWED_ORIGIN) return respond(403, { error: 'origin_not_allowed' });
+    const allowedOrigin=this.mode==='account'?this.accounts?.policy.allowedOrigin:this.env.INTEREST_ALLOWED_ORIGIN;
+    if (inputHeaders.origin && inputHeaders.origin !== allowedOrigin) return respond(403, { error: 'origin_not_allowed' });
+    let accountToken;
+    if (this.mode === 'account') {
+      if (!this.accounts?.configured) return respond(503,{error:'account_release_disabled'});
+      accountToken = typeof inputHeaders.authorization==='string' && inputHeaders.authorization.startsWith('Bearer ')?inputHeaders.authorization.slice(7):'';
+      try {await this.accounts.authorizeInterest(accountToken);} catch(e) {return respond(e.code==='rate_limited'?429:e.code==='protected_experience'?403:401,{error:e.code==='rate_limited'?'rate_limited':e.code==='protected_experience'?'protected_experience':'authentication_required'});}
+      if(path.endsWith('/recipient')) return respond(403,{error:'public_social_disabled'});
+    } else {
     const expected = Buffer.from('Bearer ' + this.env.INTEREST_PREVIEW_ACCESS_KEY);
     // AWS's existing outer Basic preview gate removes Authorization before the
     // origin. Keep our independent preview secret in a separate header there.
@@ -38,9 +46,11 @@ class InterestService {
     if (counter.window !== window) { counter.window = window; counter.count = 0; }
     this.rate.set(rateKey, counter);
     if (++counter.count > 60) return respond(429, { error: 'rate_limited' }, { 'Retry-After': '60' });
+    }
+    const stillAuthorized = async () => {if(this.mode==='account') await this.accounts.authorizeInterest(accountToken,{charge:false});};
     if (path === '/api/interests/status') {
       if (method !== 'GET') return respond(405, { error: 'method_not_allowed' }, { Allow: 'GET' });
-      return respond(200, { version: 1, mode: 'developer-preview', accountService: false, protectedAppConnected: false,
+      return respond(200, { version: 1, mode: this.mode==='account'?'private-account':'developer-preview', accountService: this.mode==='account', protectedAppConnected: false,
         routing: this.env.JEV_API_KEY ? 'jev-configured-not-verified' : 'jev-unconfigured', providers: [...providerPlan('music', this.env), ...providerPlan('places', this.env).filter(item => item.source === 'apple-maps'), ...unavailable] });
     }
     if (method !== 'POST') return respond(405, { error: 'method_not_allowed' }, { Allow: 'POST' });
@@ -53,26 +63,30 @@ class InterestService {
       const records = [...new Set(data.ids)].map(id => this.cache.get(id)).filter(Boolean);
       // Provider identification is insufficient for a public social audience.
       const visible = path.endsWith('/recipient') ? records.filter(record => record.approval === 'approved') : records;
+      try {await stillAuthorized();} catch {return respond(401,{error:'authentication_required'});}
       return respond(200, { version: 1, records: visible.map(publicFields), missing: data.ids.filter(id => !records.some(record => record.id === id)), publicApprovalRequired: path.endsWith('/recipient') });
     }
     if (Object.keys(data).some(key => !['query', 'category'].includes(key)) || typeof data.query !== 'string' || data.query.trim().length < 2 || data.query.length > 128 || typeof data.category !== 'string' || !categories.has(data.category)) return respond(400, { error: 'invalid_search' });
-    const query = data.query.trim();
+    const query = data.query.normalize('NFKC').trim();
+    if(query.length<2 || query.length>128 || /[\p{Cc}\p{Cf}\u2028\u2029]/u.test(query)) return respond(422,{error:'use_a_public_interest_name'});
     // Do not route likely personal contact data or precise street addresses to a
     // provider/AI. This is a bounded precaution, not a complete PII classifier.
     if (/[@\n\r]|https?:\/\//i.test(query) || /\d{5,}/.test(query) || /^\d+\s+.+\b(street|road|avenue|lane|drive|st|rd|ave)\b/i.test(query)) return respond(422, { error: 'use_a_public_interest_name' });
     try {
       const result = await this.cache.search(this.cache.key(query, data.category), async () => {
+        await stillAuthorized();
         const routing = await route(query, data.category, this.env, this.fetcher);
         const plan = providerPlan(routing.category, this.env);
         const settled = await Promise.all(plan.map(async provider => {
           if (provider.status !== 'ready') return { ...provider, records: [] };
-          try { const found = await adapters[provider.source](query, routing.category, this.env, this.fetcher, this.clock());
+          try { await stillAuthorized(); const found = await adapters[provider.source](query, routing.category, this.env, this.fetcher, this.clock());
             return { source: provider.source, status: 'ready', records: found.filter(Boolean).map(record => this.cache.put(record, 3600000)) };
           } catch { return { source: provider.source, status: 'unavailable', records: [] }; }
         }));
         return { version: 1, routing, records: settled.flatMap(provider => provider.records).map(publicFields),
           providers: [...settled.map(({ source, status }) => ({ source, status })), ...unavailable] };
       }, 300000);
+      await stillAuthorized();
       return respond(200, result);
     } catch { return respond(503, { error: 'search_temporarily_unavailable' }); }
   }
