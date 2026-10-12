@@ -4,7 +4,8 @@ const criteria = { movies: 'films and movie titles', shows: 'television or strea
 const allowedHosts = new Set(['en.wikipedia.org', 'www.googleapis.com', 'api.typesafe.ai', 'api.music.apple.com', 'maps-api.apple.com']);
 
 async function fetchJSON(url, options = {}, fetcher = fetch) {
-  if (!allowedHosts.has(new URL(url).hostname)) throw new Error('Upstream host not allowed');
+  const parsed=new URL(url);
+  if (parsed.protocol!=='https:' || parsed.username || parsed.password || parsed.port || !allowedHosts.has(parsed.hostname)) throw new Error('Upstream host not allowed');
   const response = await fetcher(url, { ...options, redirect: 'error', signal: AbortSignal.timeout(4000) });
   if (!response.ok) throw new Error('Provider unavailable');
   const declaredSize = Number(response.headers.get('content-length') || 0);
