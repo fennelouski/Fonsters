@@ -13,6 +13,8 @@ struct FonsterPrivateInterestsView: View {
     @State private var revision: Int?
     @State private var message = ""
     @State private var loading = false
+    @State private var work = FonsterAccountTaskState()
+    private var busy: Bool { work.busy }
     @State private var saving = false
     @State private var saveTask: Task<Void, Never>?
     private var searchKey: String { category.rawValue + ":" + query + ":" + String(phase == .active) }
@@ -33,7 +35,7 @@ struct FonsterPrivateInterestsView: View {
                         Text("Source: " + record.source).font(.caption)
                         Text(record.url.absoluteString).font(.caption).textSelection(.enabled)
                         Button(selected(record) ? "Remove private selection" : "Select privately") { toggle(record) }
-                            .disabled(revision == nil || saving || (!selected(record) && selections.count >= 32))
+                            .disabled(revision == nil || busy || (!selected(record) && selections.count >= 32))
                     }
                 }
             }
@@ -42,11 +44,11 @@ struct FonsterPrivateInterestsView: View {
                     HStack {
                         Text(selection.category.capitalized + " · private source record")
                         Spacer()
-                        Button("Remove") { selections.removeAll { $0 == selection } }.disabled(saving || revision == nil)
+                        Button("Remove") { selections.removeAll { $0 == selection } }.disabled(busy || revision == nil)
                     }
                 }
                 Text("Saved source details may need revalidation after the provider cache expires. Unresolved records cannot be used in public sharing.").font(.footnote)
-                Button("Save private selections") { save() }.disabled(saving || revision == nil)
+                Button("Save private selections") { save() }.disabled(busy || revision == nil)
                 if saving { ProgressView("Saving…") }
                 if !message.isEmpty { Text(message) }
             }
@@ -55,12 +57,14 @@ struct FonsterPrivateInterestsView: View {
         .task(id: phase) {
             guard phase == .active else { return }
             revision = nil
-            do {
+            await work.reload(load: {
                 let data = try await client.exportAccount()
-                let archive = try JSONDecoder().decode(FonsterAccountClient.Archive.self, from: data)
-                try Task.checkCancellation()
-                selections = archive.selections; revision = archive.account.revision
-            } catch { message = "Private interests are unavailable. Sign in again or try later." }
+                return try JSONDecoder().decode(FonsterAccountClient.Archive.self, from: data)
+            }, apply: { archive in
+                selections = archive.selections; revision = archive.account.revision; message = ""
+            }, failed: { _ in
+                message = "Private interests are unavailable. Sign in again or try later."
+            })
         }
         .task(id: searchKey) {
             results = []; loading = false
@@ -70,31 +74,41 @@ struct FonsterPrivateInterestsView: View {
                 let resolver = try await client.privateInterestResolver()
                 let records = try await resolver.resolve(query, category: category)
                 try Task.checkCancellation(); results = records; loading = false
-            } catch is CancellationError {} catch { loading = false; message = "Search is unavailable. Your saved selections are unchanged." }
+            } catch is CancellationError {} catch {
+                guard !Task.isCancelled, phase == .active else { return }
+                loading = false; message = "Search is unavailable. Your saved selections are unchanged."
+            }
         }
-        .onChange(of: phase) { _, phase in if phase != .active { query = ""; results = []; saveTask?.cancel() } }
-        .onDisappear { query = ""; results = []; saveTask?.cancel() }
+        .onChange(of: phase) { _, phase in if phase != .active { work.invalidate(); revision = nil; query = ""; results = []; loading = false; saveTask?.cancel() } }
+        .onDisappear { work.invalidate(); revision = nil; query = ""; results = []; loading = false; saveTask?.cancel() }
     }
     private func selected(_ record: FonsterInterestEntity) -> Bool {
         guard let id = UUID(uuidString: record.id) else { return false }
         return selections.contains(.init(id: id, category: category.rawValue))
     }
     private func toggle(_ record: FonsterInterestEntity) {
-        guard revision != nil, !saving, let id = UUID(uuidString: record.id) else { return }
+        guard revision != nil, !busy, let id = UUID(uuidString: record.id) else { return }
         let selection = FonsterAccountClient.Selection(id: id, category: category.rawValue)
         if selections.contains(selection) { selections.removeAll { $0 == selection } }
         else if selections.count < 32 { selections.append(selection) }
     }
     private func save() {
-        guard !saving, let revision else { return }
+        guard phase == .active, let revision, let ticket = work.begin() else { return }
         saving = true; message = ""
         let draft = selections
         saveTask = Task { @MainActor in
-            defer { saving = false; saveTask = nil }
-            do { self.revision = try await client.saveSelections(draft, revision: revision); message = "Private selections saved." }
-            catch FonsterAccountClient.Failure.conflict { self.revision = nil; message = "Selections changed on another device. Reopen this page before saving." }
-            catch is CancellationError { message = "Save cancelled. Reopen this page to check the latest selections." }
-            catch { message = "Selections could not be saved. No public sharing was enabled." }
+            defer { work.finish(ticket); saving = false; saveTask = nil }
+            do {
+                let savedRevision = try await client.saveSelections(draft, revision: revision)
+                if work.accepts(ticket) { self.revision = savedRevision; message = "Private selections saved." }
+            } catch {
+                guard work.accepts(ticket) else { return }
+                if error as? FonsterAccountClient.Failure == .conflict {
+                    self.revision = nil; message = "Selections changed on another device. Reopen this page before saving."
+                } else if error is CancellationError {
+                    message = "Save cancelled. Reopen this page to check the latest selections."
+                } else { message = "Selections could not be saved. No public sharing was enabled." }
+            }
         }
     }
 }

@@ -8,7 +8,8 @@ struct FonsterAccountView: View {
     var client: FonsterAccountClient? = nil
     var identity: FonsterAccountClient.Identity? = nil
     @State private var account: FonsterAccountClient.Account?
-    @State private var busy = false
+    @State private var work = FonsterAccountTaskState()
+    private var busy: Bool { work.busy }
     @State private var message = ""
     @State private var confirmDelete = false
     @State private var export: FonsterAccountExport?
@@ -28,8 +29,8 @@ struct FonsterAccountView: View {
             } else if account != nil {
                 Section("Your account") {
                     if let client { NavigationLink("Private interests") { FonsterPrivateInterestsView(client: client) } }
-                    Button("Export private account data") { perform { client in export = FonsterAccountExport(data: try await client.exportAccount()); exporting = true } }
-                    Button("Sign out") { perform { client in account = nil; try await client.signOut() } }
+                    Button("Export private account data") { perform({ try await $0.exportAccount() }) { data in export = FonsterAccountExport(data: data); exporting = true } }
+                    Button("Sign out") { perform({ try await $0.signOut() }, prepare: { account = nil }) { _ in } }
                     if identity != nil { Button("Sign in again") { signIn() } }
                     Button("Delete hosted account", role: .destructive) { confirmDelete = true }
                     Text("Deletion removes the hosted account and private interest selections. Your local creature library, iCloud library and copies previously shared with others are separate.").font(.footnote)
@@ -44,19 +45,22 @@ struct FonsterAccountView: View {
             if !message.isEmpty { Text(message).accessibilityIdentifier("accountResult") }
         }
         .navigationTitle("Private account")
-        .task(id: phase) { guard phase == .active, let client else { return }; // A foreground transition may arrive before a cancelled operation
-            // unwinds. Wait cancellably, then reload instead of skipping it.
-            do { while busy { try await Task.sleep(for: .milliseconds(30)) }; try Task.checkCancellation() }
-            catch { return }
-            busy = true
-            defer { busy = false }
-            do { let current = try await client.currentAccount(); try Task.checkCancellation(); if phase == .active { account = current } }
-            catch is CancellationError {} catch { if phase == .active { message = Self.message(error) } } }
-        .onDisappear { operation?.cancel(); export = nil }
-        .onChange(of: phase) { _, phase in if phase != .active { operation?.cancel(); export = nil; exporting = false } }
+        .task(id: phase) {
+            guard phase == .active, let client else { return }
+            await work.reload(load: { try await client.currentAccount() },
+                              apply: { account = $0; message = "" },
+                              failed: { error in
+                                  message = Self.message(error)
+                                  if error as? FonsterAccountClient.Failure == .signedOut { account = nil }
+                              })
+        }
+        .onDisappear { work.invalidate(); operation?.cancel(); export = nil; exporting = false }
+        .onChange(of: phase) { _, phase in
+            if phase != .active { work.invalidate(); operation?.cancel(); export = nil; exporting = false }
+        }
         .confirmationDialog("Delete hosted account?", isPresented: $confirmDelete, titleVisibility: .visible) {
-            Button("Delete hosted account", role: .destructive) { perform { client in
-                let pending = try await client.deleteAccount(); account = nil
+            Button("Delete hosted account", role: .destructive) { perform({ try await $0.deleteAccount() }) { pending in
+                account = nil
                 message = pending ? "Account access is blocked. Provider cleanup is pending; the service will retry." : "Hosted account deleted."
             } }
             Button("Cancel", role: .cancel) {}
@@ -67,20 +71,28 @@ struct FonsterAccountView: View {
         }
     }
     private func signIn() {
-        perform { client in
-            guard let identity else { return }
-            account = nil
+        guard let identity else { return }
+        perform({ client in
             try await client.signIn(identity: { nonce in try await identity(nonce) })
-            account = try await client.currentAccount()
-        }
+            return try await client.currentAccount()
+        }, prepare: { account = nil }) { account = $0 }
     }
-    private func perform(_ action: @escaping @MainActor (FonsterAccountClient) async throws -> Void) {
-        guard !busy, let client else { return }
-        busy = true; message = ""
+    private func perform<Value>(_ action: @escaping @MainActor (FonsterAccountClient) async throws -> Value,
+                                prepare: @MainActor () -> Void = {},
+                                apply: @escaping @MainActor (Value) -> Void) {
+        guard phase == .active, let client, let ticket = work.begin() else { return }
+        prepare(); message = ""
         operation = Task { @MainActor in
-            defer { busy = false; operation = nil }
-            do { try await action(client) }
-            catch { message = Self.message(error); if error as? FonsterAccountClient.Failure == .signedOut { account = nil } }
+            defer { work.finish(ticket); operation = nil }
+            do {
+                let value = try await action(client)
+                if work.accepts(ticket) { apply(value) }
+            } catch {
+                if work.accepts(ticket) {
+                    message = Self.message(error)
+                    if error as? FonsterAccountClient.Failure == .signedOut { account = nil }
+                }
+            }
         }
     }
     private static func message(_ error: Error) -> String {
