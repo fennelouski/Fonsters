@@ -47,6 +47,13 @@ struct ContinuousLobbyView: View {
     @State private var canUndoLearning = false
     @State private var fixtureTask: Task<Void, Never>?
     @State private var didPreviewDance = false
+    #if os(macOS)
+    @State private var searchWindowOwner = FonstersSearchWindowOwner()
+    #elseif os(iOS)
+    @State private var searchWindowOwner = FonstersMobileSearchWindowOwner()
+    #endif
+    @State private var keyboardRouteSeen = false
+    @State private var keyboardRouteMatched = false
     @State private var searching = false
     @State private var query = ""
     @State private var gallery = false
@@ -72,12 +79,58 @@ struct ContinuousLobbyView: View {
     var body: some View {
         presentations
             .environment(\.fonsterButtonDiscovery, buttonDiscovery)
+            #if os(macOS)
+            .background(FonstersSearchWindowAnchor(owner: searchWindowOwner))
+            #elseif os(iOS)
+            .background { FonstersMobileKeyboardAnchor(owner: searchWindowOwner, searching: searching && !reviewing,
+                mayOwnFocus: !reviewing && !searching && !typing, navigation: mobileNavigation).frame(width: 1, height: 1).accessibilityHidden(true) }
+            #endif
+            .onReceive(NotificationCenter.default.publisher(for: .fonstersSearchRequested)) { event in
+                if ProcessInfo.processInfo.arguments.contains("--verify-keyboard-routing") {
+                    keyboardRouteSeen = true; keyboardRouteMatched = searchCommandBelongsHere(event)
+                }
+                guard searchCommandBelongsHere(event), !launching, !reviewing else { return }
+                openSearch()
+            }
+            .onReceive(NotificationCenter.default.publisher(for: .fonstersSearchDismissRequested)) { event in
+                guard searchCommandBelongsHere(event), searching, !reviewing else { return }
+                closeSearch()
+            }
             .parentActions(parentGate)
             .parentActions(inputParentGate)
             #if os(iOS)
             .phoneOrientation((lobby.inCare && !lobby.exploring) || reviewing ? .details : .lobby)
             #endif
     }
+    private func searchCommandBelongsHere(_ event: Notification) -> Bool {
+        #if os(macOS)
+        guard let window = searchWindowOwner.window else { return false }
+        return event.object as AnyObject? === window
+        #else
+        guard let scene = searchWindowOwner.window?.windowScene else { return false }
+        return event.object as AnyObject? === scene
+        #endif
+    }
+    #if os(iOS)
+    private func mobileNavigation(_ key: UIKey, _ held: Bool) -> Bool {
+        guard !reviewing, !typing, !searching, !key.modifierFlags.contains(.command), !key.modifierFlags.contains(.control) else { return false }
+        let equivalent: KeyEquivalent
+        switch key.keyCode {
+        case .keyboardUpArrow: equivalent = .upArrow
+        case .keyboardDownArrow: equivalent = .downArrow
+        case .keyboardLeftArrow: equivalent = .leftArrow
+        case .keyboardRightArrow: equivalent = .rightArrow
+        case .keyboardReturnOrEnter: equivalent = .return
+        case .keyboardEscape: equivalent = .escape
+        default:
+            guard let character = key.charactersIgnoringModifiers.lowercased().first else { return false }
+            equivalent = KeyEquivalent(character)
+        }
+        if held && equivalent == .escape { if lobby.inCare { lobby.returnToLobby() } else { closeSearch() }; return true }
+        if held && equivalent == .return && !lobby.inCare, let first = lobby.searchMatches.first { lobby.openCare(first); return true }
+        return lobby.cameraKey(equivalent, modifiers: key.modifierFlags.contains(.shift) ? [.shift] : [], held: held)
+    }
+    #endif
     private var stageAndKeyboard: some View {
         ZStack {
             (lobby.danceMode == .daylight ? Color(red: 0.91, green: 0.94, blue: 0.87) : Color(red: 0.075, green: 0.07, blue: 0.14)).ignoresSafeArea()
@@ -102,6 +155,7 @@ struct ContinuousLobbyView: View {
                     editor = .init(record: record)
                 }.ignoresSafeArea()
             }
+            if searching && !launching { searchOverlay.zIndex(5) }
             if explorationGuide {
                 VStack(spacing: 24) {
                     HStack(spacing: 28) { Image(systemName: "hand.draw"); Image(systemName: "arrow.up.and.down.and.arrow.left.and.right"); Image(systemName: "person.crop.circle") }.font(.largeTitle)
@@ -143,6 +197,9 @@ struct ContinuousLobbyView: View {
         }
         .focusable().focused($stageFocused)
         .onKeyPress(phases: [.down, .repeat, .up]) { press in
+            if press.phase == .down, press.modifiers.contains(.command), !press.modifiers.contains(.shift),
+               press.characters.lowercased() == "f", !launching, !reviewing { openSearch(); return .handled }
+            if press.key == .escape, press.phase == .down, searching { closeSearch(); return .handled }
             guard !reviewing && !searchFocused && !typing && !gallery && !sharing && !agents && !profiles && editor == nil else { return .ignored }
             if press.key == .escape, press.phase == .down { if lobby.inCare { lobby.returnToLobby() } else { closeSearch() }; return .handled }
             if press.key == .return, press.phase == .down, !lobby.inCare, let first = lobby.searchMatches.first { lobby.openCare(first); return .handled }
@@ -177,7 +234,7 @@ struct ContinuousLobbyView: View {
     }
     private var inputLifecycle: some View {
         lifecycle
-        .onChange(of: lobby.inCare) { searchFocused = false; stageFocused = true; command = false; interpreter.cancel(); pauseLiveActivity(); inputs.setSuspended(inputsSuspended) }
+        .onChange(of: lobby.inCare) { searching = false; searchFocused = false; stageFocused = true; command = false; interpreter.cancel(); pauseLiveActivity(); inputs.setSuspended(inputsSuspended) }
         .onChange(of: lobby.selected) { pauseLiveActivity(); inputs.setSuspended(inputsSuspended); canUndoLearning = false }
         .onChange(of: inputsSuspended, initial: true) { inputs.setSuspended(inputsSuspended); if inputsSuspended { cancelLesson(); lobby.selectedMember.controller.clearMirror() } }
         .onChange(of: inputs.microphoneEnabled) { if inputs.microphoneEnabled { for member in lobby.members { member.controller.silence() } }; lobby.listening = inputs.microphoneEnabled; lobby.refreshGates() }
@@ -230,7 +287,7 @@ struct ContinuousLobbyView: View {
         .sheet(isPresented: $profiles) { FonsterSocialStudio(lobby: lobby) }
         #endif
         #if os(macOS)
-        .task { await resizeCarePreviewIfRequested(); await verifyCameraKeyboardIfRequested(); await verifyExplorationIfRequested(); await verifyCameraLifecycleIfRequested(); await verifyWaypointsIfRequested() }
+        .task { await resizeCarePreviewIfRequested(); await verifyCameraKeyboardIfRequested(); await verifyExplorationIfRequested(); await verifyCameraLifecycleIfRequested(); await verifyWaypointsIfRequested(); await verifyOmniWindowIfRequested() }
         #endif
         #if os(macOS)
         .background(VerificationWindowCapture(label: "lobby").frame(width: 0, height: 0))
@@ -413,6 +470,97 @@ struct ContinuousLobbyView: View {
         }
         inputs.toggleCamera()
     }
+    private func verifyOmniWindowIfRequested() async {
+        let args = ProcessInfo.processInfo.arguments
+        guard args.contains("--verify-manual"), let i = args.firstIndex(of: "--omni-ui-verification-file"), i + 1 < args.count else { return }
+        for _ in 0..<600 { if lobby.ready { break }; try? await Task.sleep(for: .milliseconds(50)) }
+        guard let window = NSApp.keyWindow ?? NSApp.windows.first(where: { $0.canBecomeKey && $0.contentView != nil }) else { return }
+        NSApp.activate(ignoringOtherApps: true); window.makeMain(); window.makeKeyAndOrderFront(nil); stageFocused = true
+        try? await Task.sleep(for: .milliseconds(400))
+        var checks: [String: Bool] = ["ready": lobby.ready,
+            "hiddenTrafficLights": [NSWindow.ButtonType.closeButton, .miniaturizeButton, .zoomButton].allSatisfy { window.standardWindowButton($0)?.isHidden != false },
+            "titleBarHidden": window.titleVisibility == .hidden && window.styleMask.contains(.fullSizeContentView),
+            "standardCloseAndResize": window.styleMask.contains(.closable) && window.styleMask.contains(.resizable)]
+        func shortcut(shift: Bool = false) async {
+            NSApp.activate(ignoringOtherApps: true); window.makeMain(); window.makeKeyAndOrderFront(nil)
+            try? await Task.sleep(for: .milliseconds(250))
+            NSApp.mainMenu?.update()
+            for item in NSApp.mainMenu?.items ?? [] { item.submenu?.update() }
+            guard let event = NSEvent.keyEvent(with: .keyDown, location: .zero, modifierFlags: shift ? [.command, .shift] : [.command],
+                timestamp: ProcessInfo.processInfo.systemUptime, windowNumber: window.windowNumber, context: nil,
+                characters: shift ? "F" : "f", charactersIgnoringModifiers: shift ? "F" : "f", isARepeat: false, keyCode: 3) else { return }
+            let menus = NSApp.mainMenu?.items.compactMap(\.submenu) ?? []
+            if !menus.contains(where: { $0.performKeyEquivalent(with: event) }) { NSApp.sendEvent(event) }
+        }
+        await shortcut(); try? await Task.sleep(for: .milliseconds(550))
+        checks["commandFOpensFocusedSearch"] = searching && searchFocused
+        query = lobby.members[0].name
+        try? await Task.sleep(for: .milliseconds(180))
+        checks["nameSearch"] = lobby.searchResults(query).first?.member == 0 && lobby.searchMatches.first == 0
+        if let first = lobby.searchResults(query).first { selectSearchResult(first) }
+        try? await Task.sleep(for: .milliseconds(300))
+        checks["resultOpensCare"] = lobby.inCare && lobby.selected == 0 && !searching
+        await shortcut(); try? await Task.sleep(for: .milliseconds(450))
+        checks["commandFWorksInCare"] = searching && searchFocused
+        if let escape = NSEvent.keyEvent(with: .keyDown, location: .zero, modifierFlags: [], timestamp: ProcessInfo.processInfo.systemUptime,
+            windowNumber: window.windowNumber, context: nil, characters: "\u{1b}", charactersIgnoringModifiers: "\u{1b}", isARepeat: false, keyCode: 53) { window.sendEvent(escape) }
+        try? await Task.sleep(for: .milliseconds(350))
+        checks["escapeClosesWithoutLeavingCare"] = !searching && query.isEmpty && lobby.inCare
+        closeSearch(); lobby.returnToLobby(); stageFocused = true
+        await shortcut(shift: true)
+        for _ in 0..<80 { if window.styleMask.contains(.fullScreen) { break }; try? await Task.sleep(for: .milliseconds(50)) }
+        try? await Task.sleep(for: .milliseconds(900))
+        checks["commandShiftFEntersFullScreen"] = window.styleMask.contains(.fullScreen)
+        await shortcut(shift: true)
+        for _ in 0..<80 { if !window.styleMask.contains(.fullScreen) { break }; try? await Task.sleep(for: .milliseconds(50)) }
+        try? await Task.sleep(for: .milliseconds(900))
+        checks["commandShiftFLeavesFullScreen"] = !window.styleMask.contains(.fullScreen)
+        checks["fullScreenDoesNotOpenSearch"] = !searching
+        // Synthetic, in-memory fixture: no user records or account state.
+        let searchRecord = LocalLobbyController.SavedAppearance(id: UUID(), name: "Search Friend", seed: PlayroomCompanion.fixtures[0].seed,
+            biography: .init(likes: ["Paper moons"], interests: [.init(category: .shows, catalogID: "bluey-official")]))
+        lobby.showSaved([searchRecord])
+        for _ in 0..<600 { if lobby.ready { break }; try? await Task.sleep(for: .milliseconds(50)) }
+        checks["checkedInterestSearch"] = lobby.searchResults("Bluey").first?.member == 0
+        checks["privateLocalInterestSearch"] = lobby.searchResults("Paper moons").first?.member == 0
+        lobby.search("Bluey"); checks["interestArrangesWorld"] = lobby.searchMatches == [0]
+        var updatedRecord = searchRecord; updatedRecord.biography.interests = []
+        lobby.showSaved([updatedRecord])
+        checks["interestEditsRefreshExistingQuery"] = lobby.searchMatches.isEmpty && lobby.searchResults("Bluey").isEmpty
+        lobby.showSaved([searchRecord])
+        checks["restoredInterestRefreshesExistingQuery"] = lobby.searchMatches == [0]
+        lobby.members[0].controller.perform(.greet, name: lobby.names[0], learn: true)
+        checks["earnedMemorySearch"] = !lobby.searchResults("memorabilia").isEmpty
+        closeSearch(); openSearch(); query = "Bluey"
+        try? await Task.sleep(for: .milliseconds(400))
+        var menuBindings: [String] = []
+        for item in NSApp.mainMenu?.items ?? [] {
+            for command in item.submenu?.items ?? [] where command.keyEquivalent.lowercased() == "f" {
+                menuBindings.append(command.title + ": " + command.keyEquivalent + " modifiers=" + String(command.keyEquivalentModifierMask.rawValue) + " enabled=" + String(command.isEnabled))
+            }
+        }
+        let result: [String: Any] = ["checks": checks, "menuBindings": menuBindings, "applicationActive": NSApp.isActive, "keyWindow": NSApp.keyWindow == window, "passed": checks.values.allSatisfy { $0 }, "inputProvenance": "NSEvents sent only to this preview's own application/window; synthetic in-memory search fixture"]
+        if let data = try? JSONSerialization.data(withJSONObject: result, options: [.prettyPrinted, .sortedKeys]) { try? data.write(to: URL(fileURLWithPath: args[i + 1]), options: .atomic) }
+        if args.contains("--omni-preview-motion") {
+            try? await Task.sleep(for: .seconds(3))
+            closeSearch(); try? await Task.sleep(for: .milliseconds(800))
+            openSearch(); query = ""; try? await Task.sleep(for: .milliseconds(900))
+            query = "Search Friend"; try? await Task.sleep(for: .milliseconds(900))
+            if let first = lobby.searchResults(query).first { selectSearchResult(first) }
+            try? await Task.sleep(for: .milliseconds(1100))
+            openSearch(); query = "memorabilia"; try? await Task.sleep(for: .milliseconds(1100))
+            closeSearch(); lobby.returnToLobby()
+        }
+        if args.contains("--verify-last-window-quit") {
+            closeSearch()
+            let second = NSWindow(contentRect: NSRect(x: 0, y: 0, width: 400, height: 300), styleMask: [.titled, .closable], backing: .buffered, defer: false)
+            second.isReleasedWhenClosed = false; second.title = "Fonsters lifecycle verification"
+            second.makeKeyAndOrderFront(nil); window.close()
+            try? await Task.sleep(for: .milliseconds(400))
+            if NSApp.isRunning && second.isVisible { try? "PASS: closing one of two windows retained the application".write(to: URL(fileURLWithPath: args[i + 1] + ".two-windows"), atomically: true, encoding: .utf8) }
+            second.close()
+        }
+    }
     private func verifyCameraKeyboardIfRequested() async {
         let args = ProcessInfo.processInfo.arguments
         guard let i = args.firstIndex(of: "--camera-ui-verification-file"), i + 1 < args.count else { return }
@@ -516,7 +664,8 @@ struct ContinuousLobbyView: View {
                             parentGate.request("Review this Fonster snapshot before sharing. Feelings and source references are optional. Typed drafts and backstory stay private; recipients can keep a copy.") { sharing = true }
                         }
                             .accessibilityIdentifier("shareFonster")
-                    } else { searchControl }
+                    }
+                    searchControl
                 }
                 if lobby.inCare {
                     HStack(alignment: .center) {
@@ -613,26 +762,90 @@ struct ContinuousLobbyView: View {
         }.padding(6).background(.regularMaterial, in: RoundedRectangle(cornerRadius: 22))
     }
     private var searchControl: some View {
-        HStack(spacing: 6) {
-            if searching {
-                TextField("Find a Fonster", text: $query, prompt: Text("Find a Fonster").foregroundStyle(FonsterChrome.secondary)).textFieldStyle(.plain).focused($searchFocused)
+        FonsterIconButton(title: "Search Fonsters", symbol: "magnifyingglass", tone: .company, selected: searching,
+            detail: "Find Fonsters, interests and shared memories. Command-F opens search; Escape closes it.") {
+            openSearch()
+        }.accessibilityIdentifier("searchFonsters")
+            .accessibilityValue(searchAccessibilityValue)
+            .disabled(launching || reviewing)
+    }
+    private var searchAccessibilityValue: String {
+        #if os(iOS)
+        if ProcessInfo.processInfo.arguments.contains("--verify-keyboard-routing") {
+            let window = searchWindowOwner.window
+            let root = window?.rootViewController
+            let registered = root?.keyCommands?.contains { $0.input == "f" && $0.modifierFlags == .command } ?? false
+            return "window=\(window != nil) rootFind=\(registered) received=\(keyboardRouteSeen) matched=\(keyboardRouteMatched) reviewing=\(reviewing)"
+        }
+        #endif
+        return searching ? "Search open" : "Search closed"
+    }
+    private func openSearch() {
+        lobby.clearCameraKeys()
+        withAnimation(reduceMotion || lobby.still ? nil : .spring(response: 0.46, dampingFraction: 0.76)) { searching = true }
+        searchFocused = true
+    }
+    private var searchOverlay: some View {
+        VStack(spacing: 0) {
+            HStack(spacing: 12) {
+                Image(systemName: "magnifyingglass").font(.title3).foregroundStyle(FonsterTone.company.ink)
+                TextField("Search", text: $query, prompt: Text("Fonsters, interests, memories").foregroundStyle(FonsterChrome.secondary))
+                    .textFieldStyle(.plain).focused($searchFocused).font(.title3)
                     .foregroundStyle(FonsterChrome.primary)
-                    .frame(maxWidth: 230).padding(12).background(FonsterChrome.surface, in: RoundedRectangle(cornerRadius: 14))
-                    .accessibilityLabel("Find a Fonster").accessibilityIdentifier("lobbySearchField")
-                    .onSubmit { searchFocused = false; stageFocused = true; if let first = lobby.searchMatches.first { lobby.openCare(first) } }
+                    .accessibilityLabel("Search Fonsters, interests and memories").accessibilityIdentifier("lobbySearchField")
+                    .onSubmit { if let first = lobby.searchResults(query).first { selectSearchResult(first) } }
+                    .onKeyPress(.escape) { closeSearch(); return .handled }
                 FonsterIconButton(title: "Clear and close search", symbol: "xmark", tone: .company) { closeSearch() }
+                    .keyboardShortcut(.escape, modifiers: [])
+            }.padding(14)
+            let results = Array(lobby.searchResults(query).prefix(30))
+            if !results.isEmpty {
+                Divider().padding(.horizontal, 18)
+                ScrollView {
+                    LazyVStack(spacing: 4) {
+                        ForEach(results) { result in
+                            Button { selectSearchResult(result) } label: {
+                                HStack(spacing: 12) {
+                                    Image(systemName: result.symbol).font(.title3).frame(width: 32).foregroundStyle(FonsterTone.company.ink)
+                                    VStack(alignment: .leading, spacing: 3) {
+                                        Text(result.title).font(.body.weight(.semibold)).lineLimit(2).foregroundStyle(FonsterChrome.primary)
+                                        Text(result.subtitle).font(.caption).foregroundStyle(FonsterChrome.secondary).lineLimit(1)
+                                    }
+                                    Spacer(minLength: 0)
+                                    Image(systemName: "arrow.up.forward").font(.caption).foregroundStyle(FonsterChrome.secondary)
+                                }.frame(maxWidth: .infinity, alignment: .leading).padding(12)
+                                    .background(FonsterTone.company.wash.opacity(0.5), in: RoundedRectangle(cornerRadius: 16))
+                                    .contentShape(RoundedRectangle(cornerRadius: 16))
+                            }.buttonStyle(.plain).help("Open " + lobby.names[result.member])
+                                .accessibilityIdentifier("omniResult_" + result.title)
+                        }
+                    }.padding(10)
+                }.frame(height: min(220, min(max(64, availableStageHeight - 160), CGFloat(results.count) * 76)))
+            } else {
+                Label("No matches", systemImage: "sparkle.magnifyingglass").font(.callout)
+                    .foregroundStyle(FonsterChrome.secondary).padding(18)
             }
-            FonsterIconButton(title: "Search Fonsters", symbol: "magnifyingglass", tone: .company, selected: searching,
-                detail: "Matching Fonsters line up in the center. Others wait at the sides. Clear search to restore the lobby.") {
-                if searching { closeSearch() } else { searching = true; searchFocused = true }
-            }.accessibilityIdentifier("searchFonsters")
-        }.animation(reduceMotion ? nil : .easeInOut(duration: 0.2), value: searching)
+        }.frame(maxWidth: 560)
+            .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 26))
+            .overlay { RoundedRectangle(cornerRadius: 26).strokeBorder(LinearGradient(colors: [.pink.opacity(0.65), .purple.opacity(0.65), .blue.opacity(0.65), .mint.opacity(0.65)], startPoint: .topLeading, endPoint: .bottomTrailing), lineWidth: 2).allowsHitTesting(false) }
+            .shadow(color: .black.opacity(0.18), radius: 24, y: 10)
+            .padding(.horizontal, 16).padding(.top, 64)
+            .frame(maxHeight: .infinity, alignment: .top)
+            .transition(.opacity.combined(with: .scale(scale: reduceMotion ? 1 : 0.94, anchor: .top)))
+    }
+    private func selectSearchResult(_ result: LocalLobbyController.SearchResult) {
+        searchFocused = false; stageFocused = true
+        withAnimation(reduceMotion || lobby.still ? nil : .spring(response: 0.4, dampingFraction: 0.86)) { searching = false }
+        lobby.openCare(result.member)
     }
     private func updateVisibleStage() {
         lobby.visibleStageFraction = searchFocused ? min(1, max(0.25, Float(availableStageHeight) / max(1, lobby.viewportHeight))) : 1
         lobby.updateCamera()
     }
-    private func closeSearch() { query = ""; searching = false; searchFocused = false; stageFocused = true; lobby.search("") }
+    private func closeSearch() {
+        query = ""; searchFocused = false; stageFocused = true; lobby.search("")
+        withAnimation(reduceMotion || lobby.still ? nil : .spring(response: 0.35, dampingFraction: 0.86)) { searching = false }
+    }
 
     private var companionChoices: some View {
         FonsterControlGroup(title: "Meet a Fonster", tone: .company) {

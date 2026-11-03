@@ -125,15 +125,15 @@ final class LocalLobbyController {
         simulation.agents.map { .init(position: [$0.position.x, 0.594 + ($0.seated ? 0.42 : 0), $0.position.y - ($0.seated ? 0.78 : 0)], heading: $0.heading) }
     }
     func search(_ query: String) {
-        guard continuousGallery, !inCare else { return }
+        guard continuousGallery else { return }
         let normalized = query.trimmingCharacters(in: .whitespacesAndNewlines)
         guard normalized != searchQuery || presentation.poses.isEmpty else { return }
         takeOwnerControl()
-        if presentation.query.isEmpty && !query.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty { browsingCamera = controls; resetPresentationCamera() }
+        if !inCare && presentation.query.isEmpty && !query.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty { browsingCamera = controls; resetPresentationCamera() }
         presentation.sideDistance = max(1.5, min(5.5, viewportAspect * 3.3))
-        presentation.change(query: query, care: nil, names: names, natural: naturalPoses, immediate: immediatePresentation)
+        presentation.change(query: query, care: exploring ? nil : careFocus, names: names, natural: naturalPoses, immediate: immediatePresentation, rankedMatches: searchMembers(query))
         searchQuery = presentation.query; searchMatches = presentation.matches
-        if presentation.query.isEmpty, let state = browsingCamera { restoreCamera(state); browsingCamera = nil }
+        if !inCare, presentation.query.isEmpty, let state = browsingCamera { restoreCamera(state); browsingCamera = nil }
         applyLayout()
     }
     func openCare(_ index: Int) {
@@ -142,14 +142,15 @@ final class LocalLobbyController {
         takeOwnerControl()
         if !inCare { careReturnCamera = controls }
         selected = index; careFocus = index; exploring = false; resetPresentationCamera()
-        presentation.change(query: searchQuery, care: index, names: names, natural: naturalPoses, immediate: immediatePresentation)
+        presentation.change(query: searchQuery, care: index, names: names, natural: naturalPoses, immediate: immediatePresentation, rankedMatches: searchMembers(searchQuery))
         selectedMember.controller.perform(.greet, name: selectedMember.name, learn: !selectedMember.isVisitor)
         applyLayout()
     }
     func returnToLobby() {
         guard inCare else { return }
         takeOwnerControl(); selectedMember.controller.stopActivity(); careFocus = nil; exploring = false
-        presentation.change(query: searchQuery, care: nil, names: names, natural: naturalPoses, immediate: immediatePresentation)
+        presentation.change(query: searchQuery, care: nil, names: names, natural: naturalPoses, immediate: immediatePresentation, rankedMatches: searchMembers(searchQuery))
+        searchMatches = presentation.matches
         if let state = careReturnCamera { restoreCamera(state); careReturnCamera = nil }
         applyLayout()
     }
@@ -244,6 +245,70 @@ final class LocalLobbyController {
         if let card = selectedMember.visitCard { return FonsterBiography(interests: card.interests).recipientSnapshot }
         return selectedSavedID.flatMap { savedBiographies[$0] } ?? .init()
     }
+    struct SearchResult: Identifiable {
+        let member: Int
+        let id: String
+        let title: String
+        let subtitle: String
+        let symbol: String
+        let detail: String
+        let terms: String
+        var rank = 0
+    }
+    /// Device-local search never sends a query to an interest provider. Visitors
+    /// expose checked references only; their imported free text is not indexed.
+    func searchResults(_ query: String) -> [SearchResult] {
+        let term = FonsterInterestCatalog.key(query)
+        var results: [SearchResult] = []
+        for (index, member) in members.enumerated() {
+            func add(_ key: String, _ title: String, _ subtitle: String, _ symbol: String, _ detail: String = "", aliases: [String] = []) {
+                let terms = ([title, subtitle] + aliases).joined(separator: " ")
+                let normalized = terms.folding(options: [.caseInsensitive, .diacriticInsensitive], locale: Locale(identifier: "en_US_POSIX"))
+                guard term.isEmpty ? key == "name" : normalized.contains(term) else { return }
+                let name = FonsterInterestCatalog.key(title)
+                results.append(.init(member: index, id: member.id.uuidString + key + title,
+                    title: title, subtitle: subtitle, symbol: symbol, detail: detail, terms: terms,
+                    rank: term.isEmpty || name == term ? 0 : name.hasPrefix(term) ? 1 : 2))
+            }
+            add("name", member.name, "Fonster", "person.crop.circle")
+            let biography: FonsterBiography
+            if let card = member.visitCard { biography = FonsterBiography(interests: card.interests).recipientSnapshot }
+            else { biography = savedIdentities.first(where: { $0.value == member.id }).flatMap { savedBiographies[$0.key] } ?? .init() }
+            for selection in FonsterInterestCatalog.validated(biography.interests ?? []) {
+                if let entity = FonsterInterestCatalog.entity(selection.catalogID) {
+                    add("interest" + entity.id, entity.title, member.name + " · " + entity.source,
+                        entity.symbol, entity.summary, aliases: entity.aliases + [selection.category.rawValue, "interest"])
+                }
+            }
+            if !member.isVisitor {
+                let fields: [(String, [String])] = [("likes", biography.likes), ("dislikes", biography.dislikes),
+                    ("movies", biography.movies), ("shows", biography.shows), ("creators", biography.creators),
+                    ("celebrities", biography.celebrities), ("music", biography.music ?? []), ("places", biography.places ?? [])]
+                for (category, values) in fields {
+                    for value in values where !(biography.interests ?? []).contains(where: { FonsterInterestCatalog.entity($0.catalogID)?.title == value }) {
+                        add(category, value, member.name + " · " + category, "heart", aliases: ["interest"])
+                    }
+                }
+                if let memory = member.controller.personality {
+                    let keepsakes: [(String, Int, String)] = [("Shared hellos", memory.hellos, "hand.wave"),
+                        ("Games together", memory.games, "tennisball"), ("Quiet moments", memory.rests, "moon"),
+                        ("Little discoveries", memory.discoveries, "sparkles")]
+                    for (title, count, symbol) in keepsakes where count > 0 {
+                        add("memory" + title, title, member.name + " · \(count) shared moments", symbol,
+                            aliases: ["memorabilia", "keepsake", "memory", "ritual"])
+                    }
+                }
+                if member.controller.personality?.learnedMoves != nil {
+                    add("movement", "Learned movement", member.name + " · Shared memory", "figure.dance", aliases: ["memorabilia", "keepsake", "imitation"])
+                }
+            }
+        }
+        return results.sorted { $0.rank == $1.rank ? ($0.member == $1.member ? $0.id < $1.id : $0.member < $1.member) : $0.rank < $1.rank }
+    }
+    private func searchMembers(_ query: String) -> [Int] {
+        var seen = Set<Int>()
+        return searchResults(query).compactMap { seen.insert($0.member).inserted ? $0.member : nil }
+    }
     struct SavedAppearance: Equatable { let id: UUID; let name: String; let seed: String; var biography: FonsterBiography = .init() }
     func showSaved(_ records: [SavedAppearance]) {
         guard records != savedRoster else { return }
@@ -263,10 +328,11 @@ final class LocalLobbyController {
                     return .init(id: member.id, name: name, localCompanion: .init(name: name, seed: record.seed), visitCard: nil, controller: member.controller)
                 }
                 simulation.rename(names)
-                if !searchQuery.isEmpty && !inCare {
-                    presentation.change(query: searchQuery, care: nil, names: names, natural: naturalPoses, immediate: immediatePresentation)
-                    searchMatches = presentation.matches; applyLayout()
-                }
+            }
+            if !searchQuery.isEmpty {
+                presentation.change(query: searchQuery, care: exploring ? nil : careFocus, names: names,
+                    natural: naturalPoses, immediate: immediatePresentation, rankedMatches: searchMembers(searchQuery))
+                searchMatches = presentation.matches; applyLayout()
             }
             return
         }

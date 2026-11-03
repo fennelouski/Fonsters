@@ -29,6 +29,10 @@ import simd
         p.change(query: "orbit", care: nil, names: names, natural: natural, immediate: true)
         let still = p.poses; p.advance(dt: .nan, natural: natural)
         precondition(p.poses == still && p.matches == [4])
+        p.change(query: "Bluey", care: nil, names: names, natural: natural, immediate: true, rankedMatches: [3, 1])
+        precondition(p.matches == [3, 1] && p.poses[3].position.x == 0, "Interest matches should rank their owning Fonster in the world")
+        p.change(query: "Bluey", care: 3, names: names, natural: natural, immediate: true, rankedMatches: [3])
+        precondition(p.caringFor == 3 && p.poses[3].scale == 0.93, "Search in care must preserve the selected Fonster")
         var camera = LobbyCameraMotion()
         camera.press("w", down: true, fast: false)
         let first = camera.advance(dt: 0.016).translation
