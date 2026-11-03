@@ -32,9 +32,9 @@ struct LobbyPresentation {
             rank(normalized[$0]) == rank(normalized[$1]) ? $0 < $1 : rank(normalized[$0]) < rank(normalized[$1])
         }
     }
-    mutating func change(query: String, care: Int?, names: [String], natural: [Pose], immediate: Bool) {
+    mutating func change(query: String, care: Int?, names: [String], natural: [Pose], immediate: Bool, rankedMatches: [Int]? = nil) {
         self.query = query.trimmingCharacters(in: .whitespacesAndNewlines)
-        caringFor = care; matches = Self.ranked(self.query, names: names)
+        caringFor = care; matches = rankedMatches ?? Self.ranked(self.query, names: names)
         origins = poses.count == natural.count ? poses : natural
         poses = origins; progress = 0; transitionTime = 0
         durations = natural.indices.map { i in

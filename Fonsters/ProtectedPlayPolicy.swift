@@ -32,8 +32,10 @@ nonisolated struct ParentChallenge: Identifiable, Equatable {
     let id = UUID()
     let first: Int
     let second: Int
-    init(first: Int = Int.random(in: 12...29), second: Int = Int.random(in: 3...9)) {
-        self.first = first; self.second = second
+    init(first: Int? = nil, second: Int? = nil) {
+        let a = first ?? Int.random(in: 2...10)
+        let b = second ?? Int.random(in: 2...10)
+        self.first = a; self.second = b
     }
     var question: String { "What is \(first) × \(second)?" }
     func accepts(_ answer: String) -> Bool {

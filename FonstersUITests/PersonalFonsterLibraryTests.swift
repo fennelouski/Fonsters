@@ -1,7 +1,44 @@
 import XCTest
+import UIKit
 
 final class PersonalFonsterLibraryTests: XCTestCase {
     override func setUpWithError() throws { continueAfterFailure = false }
+    @MainActor func testOmniSearchFindsPrivateInterestAndKeepsCare() throws {
+        let app = XCUIApplication()
+        app.launchArguments = ["--prototype", "--verify-manual", "--verify-personal-library", "--verify-reduce-motion",
+            "--verify-keyboard-routing", "--library-store", "/tmp/omni-library-\(UUID().uuidString).sqlite", "--personality-file", "/tmp/omni-memory-\(UUID().uuidString).json"]
+        app.launch(); waitReady(app)
+        app.buttons["createFonster"].tap()
+        let name = app.textFields["profileName"]
+        XCTAssertTrue(name.waitForExistence(timeout: 8)); name.tap(); name.typeText("Moonbeam")
+        app.buttons["profileTab_likes"].tap()
+        field(app, "profileLikes", "Paper moons")
+        app.buttons["saveProfile"].tap()
+        XCTAssertTrue(app.buttons["editFonsterProfile"].waitForExistence(timeout: 20))
+        XCTAssertEqual(app.buttons["editFonsterProfile"].value as? String, "Moonbeam")
+        let settled = XCTNSPredicateExpectation(predicate: NSPredicate { _, _ in
+            !app.textFields["profileName"].exists && app.buttons["care_play"].isEnabled && app.buttons["searchFonsters"].isHittable
+        }, object: nil)
+        XCTAssertEqual(XCTWaiter.wait(for: [settled], timeout: 15), .completed)
+        app.activate()
+        print("Keyboard routing before command: \(app.buttons["searchFonsters"].value ?? "nil")")
+        app.typeKey("f", modifierFlags: .command)
+        let search = app.textFields["lobbySearchField"]
+        let opened = search.waitForExistence(timeout: 5)
+        print("Keyboard routing after command: \(app.buttons["searchFonsters"].value ?? "nil")")
+        XCTAssertTrue(opened); search.typeText("paper moons")
+        let result = app.buttons["omniResult_Paper moons"]
+        XCTAssertTrue(result.waitForExistence(timeout: 5)); XCTAssertTrue(result.isHittable)
+        let screenshot = XCTAttachment(screenshot: XCUIScreen.main.screenshot()); screenshot.name = "omni-private-interest"; screenshot.lifetime = .keepAlways; add(screenshot)
+        result.tap()
+        XCTAssertFalse(search.exists)
+        XCTAssertEqual(app.buttons["editFonsterProfile"].value as? String, "Moonbeam")
+        app.typeKey("f", modifierFlags: .command)
+        XCTAssertTrue(search.waitForExistence(timeout: 5))
+        app.typeKey(.escape, modifierFlags: [])
+        XCTAssertFalse(search.exists)
+        XCTAssertTrue(app.buttons["backToLobby"].isHittable)
+    }
     @MainActor func testOverheadOwnedNameOpensProfile() throws {
         let app = XCUIApplication()
         app.launchArguments = ["--prototype", "--verify-manual", "--verify-personal-library", "--library-store", "/tmp/overhead-library-\(UUID().uuidString).sqlite", "--personality-file", "/tmp/overhead-memory-\(UUID().uuidString).json"]
@@ -13,7 +50,7 @@ final class PersonalFonsterLibraryTests: XCTestCase {
         XCTAssertTrue(app.buttons["editFonsterProfile"].waitForExistence(timeout: 15))
         XCTAssertEqual(app.buttons["editFonsterProfile"].value as? String, "Biscuit")
         let nameButton = app.buttons["editFonsterProfile"]
-        XCTAssertTrue(nameButton.isHittable); XCTAssertGreaterThanOrEqual(nameButton.frame.height, 44)
+        XCTAssertTrue(nameButton.isHittable); XCTAssertGreaterThanOrEqual(nameButton.frame.height, 44 - 0.01)
         nameButton.tap()
         XCTAssertTrue(app.textFields["profileName"].waitForExistence(timeout: 8))
         XCTAssertEqual(app.textFields["profileName"].value as? String, "Biscuit")

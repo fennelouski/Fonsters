@@ -17,6 +17,7 @@ nonisolated struct CreatureMirrorSample: Sendable {
     var facialSmile: Float? = nil
     var smilingEyes: Float? = nil
     var viewerAttention: Float = 0
+    var hands: [CreatureHandSign] = []
     var valid: Bool {
         bodyLean.isFinite && leftArm.isFinite && rightArm.isFinite && crouch.isFinite && gaze.x.isFinite && gaze.y.isFinite && tilt.isFinite && motion.isFinite && raisedHand.isFinite &&
         (eyeOpenness?.isFinite ?? true) && (handX?.isFinite ?? true) &&
@@ -158,4 +159,69 @@ nonisolated struct CreatureImitationLesson {
         if first == nil { first = time }; last = time; count += 1
         if ready { draft.tempo = min(1.4, max(0.65, Float(4 / max(2.8, time - (first ?? time))))) }
     }
+}
+
+/// Deliberately small vocabulary: uncertain/occluded hands produce no command.
+nonisolated enum CreatureHandSign: Int, Sendable, CaseIterable { case thumbsUp, peace, thumbsDown }
+nonisolated enum CreatureHandReaction: String, Sendable {
+    case greet, play, hop, spin, highFive, look, rub, stretch, blink
+    static func matching(_ signs: [CreatureHandSign]) -> Self? {
+        let s = Array(signs.prefix(2)).sorted { $0.rawValue < $1.rawValue }
+        switch s {
+        case [.thumbsUp]: return .greet
+        case [.peace]: return .hop
+        case [.thumbsDown]: return .rub
+        case [.thumbsUp, .thumbsUp]: return .play
+        case [.peace, .peace]: return .spin
+        case [.thumbsDown, .thumbsDown]: return .stretch
+        case [.thumbsUp, .peace]: return .highFive
+        case [.thumbsUp, .thumbsDown]: return .look
+        case [.peace, .thumbsDown]: return .blink
+        default: return nil
+        }
+    }
+}
+
+nonisolated struct CreatureHandPose {
+    let wrist: SIMD2<Float>
+    let thumbTip: SIMD2<Float>
+    let thumbIP: SIMD2<Float>
+    /// Index, middle, ring, little: tip and proximal knuckle.
+    let fingers: [(tip: SIMD2<Float>, knuckle: SIMD2<Float>)]
+    var sign: CreatureHandSign? {
+        guard fingers.count == 4 else { return nil }
+        let coordinates = [wrist, thumbTip, thumbIP] + fingers.flatMap { [$0.tip, $0.knuckle] }
+        guard coordinates.allSatisfy({ $0.x.isFinite && $0.y.isFinite }) else { return nil }
+        let scale = simd_distance(wrist, fingers[1].knuckle)
+        guard scale > 0.025 else { return nil }
+        let extensionRatios = fingers.map { simd_distance(wrist, $0.tip) / max(0.001, simd_distance(wrist, $0.knuckle)) }
+        if extensionRatios[0] > 1.55 && extensionRatios[1] > 1.55 && extensionRatios[2] < 1.35 && extensionRatios[3] < 1.35 {
+            return .peace
+        }
+        guard extensionRatios.allSatisfy({ $0 < 1.35 }), simd_distance(thumbTip, thumbIP) > scale * 0.35 else { return nil }
+        let delta = thumbTip - thumbIP
+        guard abs(delta.y) > scale * 0.28, abs(delta.y) > abs(delta.x) * 1.15 else { return nil }
+        return delta.y > 0 ? .thumbsUp : .thumbsDown
+    }
+}
+
+/// Hold a sign for 0.55 seconds; release before rearming. No queued reactions.
+nonisolated struct CreatureHandDynamics {
+    private var candidate: CreatureHandReaction?
+    private var since: Double = 0
+    private var delivered: CreatureHandReaction?
+    private var released: Double?
+    private var lastEvent: Double = -.greatestFiniteMagnitude
+    mutating func receive(_ signs: [CreatureHandSign], time: Double) -> CreatureHandReaction? {
+        guard time.isFinite else { return nil }
+        let next = CreatureHandReaction.matching(signs)
+        if next == nil {
+            if released == nil { released = time }
+            if time - (released ?? time) >= 0.4 { delivered = nil }
+        } else { released = nil }
+        if next != candidate { candidate = next; since = time }
+        guard let next, next != delivered, time - since >= 0.55, time - lastEvent >= 1.6 else { return nil }
+        delivered = next; lastEvent = time; return next
+    }
+    mutating func reset() { self = .init() }
 }

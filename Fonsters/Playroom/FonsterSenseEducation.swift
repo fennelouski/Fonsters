@@ -20,7 +20,7 @@ struct FonsterSenseEducation: View {
                 .accessibilityLabel("Simulated Fonster preview; camera and microphone are off")
             Label(sense == .camera ? "Move together" : "Talk to your Fonster", systemImage: sense == .camera ? "video" : "mic")
                 .font(.title2.bold())
-            Text(sense == .camera ? "Wave, tilt your head or close your eyes. Your Fonster follows you using this device’s camera." : "Say wave, jump, dance or sleep. Your Fonster listens for short commands using on-device English speech recognition.")
+            Text(sense == .camera ? "Wave, dance, tilt your head or close your eyes. Try one or two thumbs up, peace signs or thumbs down. Your Fonster follows you using this device’s camera." : "Say wave, jump, dance or sleep. Your Fonster listens for short commands using on-device English speech recognition.")
                 .multilineTextAlignment(.center)
             Text("Nothing is recorded or uploaded. You can stop at any time. A grown-up review comes next, followed by device permission.")
                 .font(.callout).multilineTextAlignment(.center)
