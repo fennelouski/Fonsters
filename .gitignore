@@ -39,3 +39,7 @@ scratchpad-shots/
 # Node (api/ is deployed via Vercel)
 node_modules/
 .vercel
+
+# Local secrets
+.env.local
+node_modules/

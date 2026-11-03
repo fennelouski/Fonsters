@@ -1,0 +1,27 @@
+{
+  "name": "fonsters",
+  "version": "1.0.0",
+  "description": "Cross-platform SwiftUI app for creating and sharing **deterministic creature avatars (Fonsters)** from text seeds. Same seed → same creature. Each Fonster is a 32×32 pixel creature driven by a text seed. Supports **iOS**, **macOS**, **watchOS**, **tvOS**, and **visionOS**.",
+  "main": "index.js",
+  "directories": {
+    "doc": "docs"
+  },
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "example": "node --env-file=.env.local index.ts"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/fennelouski/Fonsters.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/fennelouski/Fonsters/issues"
+  },
+  "homepage": "https://github.com/fennelouski/Fonsters#readme",
+  "dependencies": {
+    "ai": "^7.0.133"
+  }
+}
