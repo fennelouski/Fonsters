@@ -908,43 +908,64 @@ struct ContinuousLobbyView: View {
             }
         }
     }
+    // Each group is its own opaque `some View` property. One VStack holding all
+    // four groups produced a deeply nested generic tuple type whose runtime
+    // metadata lookup (swift_getTypeByMangledName) crashed on device.
     private var cameraControls: some View {
         VStack(alignment: .leading, spacing: 14) {
-            FonsterControlGroup(title: "Camera", tone: .world) {
-                FonsterIconButton(title: "Turn left", symbol: "arrow.counterclockwise", tone: .world) { lobby.rotateCamera(-0.3) }
-                FonsterIconButton(title: "Turn right", symbol: "arrow.clockwise", tone: .world) { lobby.rotateCamera(0.3) }
-                FonsterIconButton(title: "Closer", symbol: "plus.magnifyingglass", tone: .world) { lobby.zoomCamera(0.85) }
-                FonsterIconButton(title: "Further", symbol: "minus.magnifyingglass", tone: .world) { lobby.zoomCamera(1.15) }
+            cameraViewGroup
+            cameraMovementGroup
+            cameraWalkGroup
+            cameraSoundGroup
+        }
+    }
+    private var cameraViewGroup: some View {
+        FonsterControlGroup(title: "Camera", tone: .world) {
+            FonsterIconButton(title: "Turn left", symbol: "arrow.counterclockwise", tone: .world) { lobby.rotateCamera(-0.3) }
+            FonsterIconButton(title: "Turn right", symbol: "arrow.clockwise", tone: .world) { lobby.rotateCamera(0.3) }
+            FonsterIconButton(title: "Closer", symbol: "plus.magnifyingglass", tone: .world) { lobby.zoomCamera(0.85) }
+            FonsterIconButton(title: "Further", symbol: "minus.magnifyingglass", tone: .world) { lobby.zoomCamera(1.15) }
+        }
+    }
+    private var cameraMovementGroup: some View {
+        FonsterControlGroup(title: "Camera movement", tone: .world) {
+            VStack {
+                cameraTiltRow
+                cameraPanRow
             }
-            FonsterControlGroup(title: "Camera movement", tone: .world) {
-                VStack {
-                    HStack {
-                        FonsterIconButton(title: "Tilt up", symbol: "arrow.up", tone: .world) { lobby.rotateCamera(0, vertical: 0.12) }
-                        FonsterIconButton(title: "Tilt down", symbol: "arrow.down", tone: .world) { lobby.rotateCamera(0, vertical: -0.12) }
-                        FonsterIconButton(title: "Raise camera", symbol: "arrow.up.to.line", tone: .world) { lobby.panCamera([0, 0.3, 0]) }
-                        FonsterIconButton(title: "Lower camera", symbol: "arrow.down.to.line", tone: .world) { lobby.panCamera([0, -0.3, 0]) }
-                    }
-                    HStack {
-                        FonsterIconButton(title: "Pan left", symbol: "arrow.left", tone: .world) { lobby.moveCamera([-1, 0]) }
-                        FonsterIconButton(title: "Pan right", symbol: "arrow.right", tone: .world) { lobby.moveCamera([1, 0]) }
-                        FonsterIconButton(title: "Pan forward", symbol: "arrow.up.forward", tone: .world) { lobby.moveCamera([0, -1]) }
-                        FonsterIconButton(title: "Pan backward", symbol: "arrow.down.backward", tone: .world) { lobby.moveCamera([0, 1]) }
-                    }
-                }
+        }
+    }
+    private var cameraTiltRow: some View {
+        HStack {
+            FonsterIconButton(title: "Tilt up", symbol: "arrow.up", tone: .world) { lobby.rotateCamera(0, vertical: 0.12) }
+            FonsterIconButton(title: "Tilt down", symbol: "arrow.down", tone: .world) { lobby.rotateCamera(0, vertical: -0.12) }
+            FonsterIconButton(title: "Raise camera", symbol: "arrow.up.to.line", tone: .world) { lobby.panCamera([0, 0.3, 0]) }
+            FonsterIconButton(title: "Lower camera", symbol: "arrow.down.to.line", tone: .world) { lobby.panCamera([0, -0.3, 0]) }
+        }
+    }
+    private var cameraPanRow: some View {
+        HStack {
+            FonsterIconButton(title: "Pan left", symbol: "arrow.left", tone: .world) { lobby.moveCamera([-1, 0]) }
+            FonsterIconButton(title: "Pan right", symbol: "arrow.right", tone: .world) { lobby.moveCamera([1, 0]) }
+            FonsterIconButton(title: "Pan forward", symbol: "arrow.up.forward", tone: .world) { lobby.moveCamera([0, -1]) }
+            FonsterIconButton(title: "Pan backward", symbol: "arrow.down.backward", tone: .world) { lobby.moveCamera([0, 1]) }
+        }
+    }
+    @ViewBuilder private var cameraWalkGroup: some View {
+        if lobby.exploring || !lobby.inCare {
+            FonsterControlGroup(title: "Walk", tone: .world) {
+                FonsterIconButton(title: "Walk forward", symbol: "arrow.up", tone: .world) { lobby.walkStep([0, -1]) }.disabled(blocked)
+                FonsterIconButton(title: "Walk backward", symbol: "arrow.down", tone: .world) { lobby.walkStep([0, 1]) }.disabled(blocked)
+                FonsterIconButton(title: "Walk left", symbol: "arrow.left", tone: .world) { lobby.walkStep([-1, 0]) }.disabled(blocked)
+                FonsterIconButton(title: "Walk right", symbol: "arrow.right", tone: .world) { lobby.walkStep([1, 0]) }.disabled(blocked)
             }
-            if lobby.exploring || !lobby.inCare {
-                FonsterControlGroup(title: "Walk", tone: .world) {
-                    FonsterIconButton(title: "Walk forward", symbol: "arrow.up", tone: .world) { lobby.walkStep([0, -1]) }.disabled(blocked)
-                    FonsterIconButton(title: "Walk backward", symbol: "arrow.down", tone: .world) { lobby.walkStep([0, 1]) }.disabled(blocked)
-                    FonsterIconButton(title: "Walk left", symbol: "arrow.left", tone: .world) { lobby.walkStep([-1, 0]) }.disabled(blocked)
-                    FonsterIconButton(title: "Walk right", symbol: "arrow.right", tone: .world) { lobby.walkStep([1, 0]) }.disabled(blocked)
-                }
-            }
-            FonsterControlGroup(title: "Sound and motion") {
-                FonsterIconToggle(title: "Sounds", symbol: "speaker.wave.2", isOn: Binding(get: { lobby.sounds }, set: { lobby.sounds = $0 }))
-                FonsterIconToggle(title: "Still mode", symbol: "snowflake", isOn: Binding(get: { lobby.still }, set: { lobby.still = $0 }))
-                FonsterIconButton(title: "Reset camera", symbol: "house.fill", tone: .world) { lobby.showOverview() }
-            }
+        }
+    }
+    private var cameraSoundGroup: some View {
+        FonsterControlGroup(title: "Sound and motion") {
+            FonsterIconToggle(title: "Sounds", symbol: "speaker.wave.2", isOn: Binding(get: { lobby.sounds }, set: { lobby.sounds = $0 }))
+            FonsterIconToggle(title: "Still mode", symbol: "snowflake", isOn: Binding(get: { lobby.still }, set: { lobby.still = $0 }))
+            FonsterIconButton(title: "Reset camera", symbol: "house.fill", tone: .world) { lobby.showOverview() }
         }
     }
 }
