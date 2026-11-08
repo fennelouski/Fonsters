@@ -585,7 +585,9 @@ final class LocalLobbyController {
     struct WaypointMarker: Identifiable { let waypoint: LobbyWaypoint; let point: SIMD2<Float>; var id: UUID { waypoint.id } }
     var waypointMarkers: [WaypointMarker] {
         guard ready, !inCare, searchQuery.isEmpty, let camera else { return [] }
-        let candidates = ([LobbyWaypoint.home] + waypoints.sorted(.nearest, from: waypointViewpoint.position, worldID: mappedAreaID)).filter { $0.viewpoint.worldID == mappedAreaID }.prefix(8)
+        // Session start is deliberately not pinned in the world: at launch the camera sits on it, so a floating
+        // Home button covered the scene. It stays reachable from the bottom bar and the Saved places panel.
+        let candidates = waypoints.sorted(.nearest, from: waypointViewpoint.position, worldID: mappedAreaID).filter { $0.viewpoint.worldID == mappedAreaID }.prefix(8)
         let tangent = tan(Float(camera.camera.fieldOfViewInDegrees) * .pi / 360)
         return candidates.compactMap { waypoint in
             let p = waypoint.viewpoint.position

@@ -48,6 +48,7 @@ struct ContinuousLobbyView: View {
     @State private var fixtureTask: Task<Void, Never>?
     @State private var didPreviewDance = false
     @State private var searching = false
+    @State private var controlsHidden = false
     @State private var query = ""
     @State private var gallery = false
     @State private var waypointsShowing = false
@@ -469,7 +470,20 @@ struct ContinuousLobbyView: View {
         }
     }
     #endif
+    /// All on-screen controls, plus a pinned top-right toggle that stays put and hides/shows the rest.
     private var hud: some View {
+        ZStack(alignment: .topTrailing) {
+            hudControls
+                .opacity(controlsHidden ? 0 : 1)
+                .allowsHitTesting(!controlsHidden)
+                .accessibilityHidden(controlsHidden)
+            FonsterIconButton(title: controlsHidden ? "Show buttons" : "Hide buttons", symbol: controlsHidden ? "eye" : "eye.slash", tone: .quiet, selected: controlsHidden,
+                detail: "Hide every button so the whole scene is visible. This button stays here to bring them back.") { controlsHidden.toggle() }
+                .accessibilityIdentifier("toggleControlsVisibility")
+                .padding(16)
+        }
+    }
+    private var hudControls: some View {
         GeometryReader { geometry in
             let short = geometry.size.height < 500
             let compact = geometry.size.width < 600 && !short
@@ -514,6 +528,7 @@ struct ContinuousLobbyView: View {
                         }
                             .accessibilityIdentifier("shareFonster")
                     } else { searchControl }
+                    Color.clear.frame(width: 40, height: 40).accessibilityHidden(true) // room for the pinned visibility toggle
                 }
                 if lobby.inCare {
                     HStack(alignment: .center) {
